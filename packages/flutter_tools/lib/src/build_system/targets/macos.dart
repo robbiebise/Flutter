@@ -50,7 +50,7 @@ abstract class UnpackMacOS extends Target {
     if (buildModeEnvironment == null) {
       throw MissingDefineException(kBuildMode, 'unpack_macos');
     }
-    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
+    final BuildMode buildMode = BuildMode.fromCliName(buildModeEnvironment);
     final String basePath = environment.artifacts.getArtifactPath(Artifact.flutterMacOSFramework, mode: buildMode);
 
     final ProcessResult result = environment.processManager.runSync(<String>[
@@ -191,7 +191,7 @@ class DebugMacOSFramework extends Target {
       ?? <DarwinArch>[DarwinArch.x86_64, DarwinArch.arm64];
 
     final Iterable<String> darwinArchArguments =
-        darwinArchs.expand((DarwinArch arch) => <String>['-arch', getNameForDarwinArch(arch)]);
+        darwinArchs.expand((DarwinArch arch) => <String>['-arch', arch.name]);
 
     outputFile.createSync(recursive: true);
     final File debugApp = environment.buildDir.childFile('debug_app.cc')
@@ -206,6 +206,7 @@ static const int Moo = 88;
       '-dynamiclib',
       '-Xlinker', '-rpath', '-Xlinker', '@executable_path/Frameworks',
       '-Xlinker', '-rpath', '-Xlinker', '@loader_path/Frameworks',
+      '-fapplication-extension',
       '-install_name', '@rpath/App.framework/App',
       '-o', outputFile.path,
     ]);
@@ -244,7 +245,7 @@ class CompileMacOSFramework extends Target {
     if (targetPlatformEnvironment == null) {
       throw MissingDefineException(kTargetPlatform, 'kernel_snapshot');
     }
-    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
+    final BuildMode buildMode = BuildMode.fromCliName(buildModeEnvironment);
     if (buildMode == BuildMode.debug) {
       throw Exception('precompiled macOS framework only supported in release/profile builds.');
     }
@@ -276,19 +277,18 @@ class CompileMacOSFramework extends Target {
       if (codeSizeDirectory != null) {
         final File codeSizeFile = environment.fileSystem
           .directory(codeSizeDirectory)
-          .childFile('snapshot.${getNameForDarwinArch(darwinArch)}.json');
+          .childFile('snapshot.${darwinArch.name}.json');
         final File precompilerTraceFile = environment.fileSystem
           .directory(codeSizeDirectory)
-          .childFile('trace.${getNameForDarwinArch(darwinArch)}.json');
+          .childFile('trace.${darwinArch.name}.json');
         extraGenSnapshotOptions.add('--write-v8-snapshot-profile-to=${codeSizeFile.path}');
         extraGenSnapshotOptions.add('--trace-precompiler-to=${precompilerTraceFile.path}');
       }
 
       pending.add(snapshotter.build(
-        bitcode: false,
         buildMode: buildMode,
         mainPath: environment.buildDir.childFile('app.dill').path,
-        outputPath: environment.fileSystem.path.join(buildOutputPath, getNameForDarwinArch(darwinArch)),
+        outputPath: environment.fileSystem.path.join(buildOutputPath, darwinArch.name),
         platform: TargetPlatform.darwin,
         darwinArch: darwinArch,
         splitDebugInfo: splitDebugInfo,
@@ -302,19 +302,23 @@ class CompileMacOSFramework extends Target {
       throw Exception('AOT snapshotter exited with code ${results.join()}');
     }
 
-    final String resultPath = environment.fileSystem.path.join(environment.buildDir.path, 'App.framework', 'App');
-    environment.fileSystem.directory(resultPath).parent.createSync(recursive: true);
-    final ProcessResult result = await environment.processManager.run(<String>[
-      'lipo',
-      ...darwinArchs.map((DarwinArch iosArch) =>
-          environment.fileSystem.path.join(buildOutputPath, getNameForDarwinArch(iosArch), 'App.framework', 'App')),
-      '-create',
-      '-output',
-      resultPath,
-    ]);
-    if (result.exitCode != 0) {
-      throw Exception('lipo exited with code ${result.exitCode}.\n${result.stderr}');
-    }
+    // Combine the app lib into a fat framework.
+    await Lipo.create(
+      environment,
+      darwinArchs,
+      relativePath: 'App.framework/App',
+      inputDir: buildOutputPath,
+    );
+
+    // And combine the dSYM for each architecture too, if it was created.
+    await Lipo.create(
+      environment,
+      darwinArchs,
+      relativePath: 'App.framework.dSYM/Contents/Resources/DWARF/App',
+      inputDir: buildOutputPath,
+      // Don't fail if the dSYM wasn't created (i.e. during a debug build).
+      skipMissingInputs: true,
+    );
   }
 
   @override
@@ -332,6 +336,7 @@ class CompileMacOSFramework extends Target {
   @override
   List<Source> get outputs => const <Source>[
     Source.pattern('{BUILD_DIR}/App.framework/App'),
+    Source.pattern('{BUILD_DIR}/App.framework.dSYM/Contents/Resources/DWARF/App'),
   ];
 }
 
@@ -367,7 +372,7 @@ abstract class MacOSBundleFlutterAssets extends Target {
     if (buildModeEnvironment == null) {
       throw MissingDefineException(kBuildMode, 'compile_macos_framework');
     }
-    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
+    final BuildMode buildMode = BuildMode.fromCliName(buildModeEnvironment);
     final Directory frameworkRootDirectory = environment
         .outputDir
         .childDirectory('App.framework');
@@ -382,6 +387,26 @@ abstract class MacOSBundleFlutterAssets extends Target {
       .childFile('App')
       .copySync(outputDirectory.childFile('App').path);
 
+    // Copy the dSYM
+    if (environment.buildDir.childDirectory('App.framework.dSYM').existsSync()) {
+      final File dsymOutputBinary = environment
+        .outputDir
+        .childDirectory('App.framework.dSYM')
+        .childDirectory('Contents')
+        .childDirectory('Resources')
+        .childDirectory('DWARF')
+        .childFile('App');
+      dsymOutputBinary.parent.createSync(recursive: true);
+      environment
+        .buildDir
+        .childDirectory('App.framework.dSYM')
+        .childDirectory('Contents')
+        .childDirectory('Resources')
+        .childDirectory('DWARF')
+        .childFile('App')
+        .copySync(dsymOutputBinary.path);
+    }
+
     // Copy assets into asset directory.
     final Directory assetDirectory = outputDirectory
       .childDirectory('Resources')
@@ -394,11 +419,7 @@ abstract class MacOSBundleFlutterAssets extends Target {
       targetPlatform: TargetPlatform.darwin,
       shaderTarget: ShaderTarget.sksl,
     );
-    final DepfileService depfileService = DepfileService(
-      fileSystem: environment.fileSystem,
-      logger: environment.logger,
-    );
-    depfileService.writeToFile(
+    environment.depFileService.writeToFile(
       assetDepfile,
       environment.buildDir.childFile('flutter_assets.d'),
     );
@@ -530,6 +551,18 @@ class ProfileMacOSBundleFlutterAssets extends MacOSBundleFlutterAssets {
     CompileMacOSFramework(),
     ProfileUnpackMacOS(),
   ];
+
+  @override
+  List<Source> get inputs => <Source>[
+    ...super.inputs,
+    const Source.pattern('{BUILD_DIR}/App.framework.dSYM/Contents/Resources/DWARF/App'),
+  ];
+
+  @override
+  List<Source> get outputs => <Source>[
+    ...super.outputs,
+    const Source.pattern('{OUTPUT_DIR}/App.framework.dSYM/Contents/Resources/DWARF/App'),
+  ];
 }
 
 
@@ -544,6 +577,18 @@ class ReleaseMacOSBundleFlutterAssets extends MacOSBundleFlutterAssets {
   List<Target> get dependencies => const <Target>[
     CompileMacOSFramework(),
     ReleaseUnpackMacOS(),
+  ];
+
+  @override
+  List<Source> get inputs => <Source>[
+    ...super.inputs,
+    const Source.pattern('{BUILD_DIR}/App.framework.dSYM/Contents/Resources/DWARF/App'),
+  ];
+
+  @override
+  List<Source> get outputs => <Source>[
+    ...super.outputs,
+    const Source.pattern('{OUTPUT_DIR}/App.framework.dSYM/Contents/Resources/DWARF/App'),
   ];
 
   @override

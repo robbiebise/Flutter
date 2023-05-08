@@ -13,6 +13,12 @@ void main() {
     expect(const FloatingActionButtonThemeData().hashCode, const FloatingActionButtonThemeData().copyWith().hashCode);
   });
 
+  test('FloatingActionButtonThemeData lerp special cases', () {
+    expect(FloatingActionButtonThemeData.lerp(null, null, 0), null);
+    const FloatingActionButtonThemeData data = FloatingActionButtonThemeData();
+    expect(identical(FloatingActionButtonThemeData.lerp(data, data, 0.5), data), true);
+  });
+
   testWidgets('Default values are used when no FloatingActionButton or FloatingActionButtonThemeData properties are specified', (WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -307,7 +313,7 @@ void main() {
       'hoverElevation: 10.0',
       'disabledElevation: 11.0',
       'highlightElevation: 43.0',
-      'shape: BeveledRectangleBorder(BorderSide(Color(0xff000000), 0.0, BorderStyle.none), BorderRadius.zero)',
+      'shape: BeveledRectangleBorder(BorderSide(width: 0.0, style: none), BorderRadius.zero)',
       'enableFeedback: true',
       'iconSize: 42.0',
       'sizeConstraints: BoxConstraints(w=100.0, h=100.0)',

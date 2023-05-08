@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 
 import 'basic_types.dart';
 import 'borders.dart';
-import 'edge_insets.dart';
 
 /// A border that fits a circle within the available space.
 ///
@@ -34,9 +33,7 @@ class CircleBorder extends OutlinedBorder {
   ///
   /// The [side] argument must not be null.
   const CircleBorder({ super.side, this.eccentricity = 0.0 })
-      : assert(side != null),
-        assert(eccentricity != null),
-        assert(eccentricity >= 0.0, 'The eccentricity argument $eccentricity is not greater than or equal to zero.'),
+      : assert(eccentricity >= 0.0, 'The eccentricity argument $eccentricity is not greater than or equal to zero.'),
         assert(eccentricity <= 1.0, 'The eccentricity argument $eccentricity is not less than or equal to one.');
 
   /// Defines the ratio (0.0-1.0) from which the border will deform
@@ -44,18 +41,6 @@ class CircleBorder extends OutlinedBorder {
   /// When 0.0, it draws a circle touching at least two sides of the rectangle.
   /// When 1.0, it draws an oval touching all sides of the rectangle.
   final double eccentricity;
-
-  @override
-  EdgeInsetsGeometry get dimensions {
-    switch (side.strokeAlign) {
-      case StrokeAlign.inside:
-        return EdgeInsets.all(side.width);
-      case StrokeAlign.center:
-        return EdgeInsets.all(side.width / 2);
-      case StrokeAlign.outside:
-        return EdgeInsets.zero;
-    }
-  }
 
   @override
   ShapeBorder scale(double t) => CircleBorder(side: side.scale(t), eccentricity: eccentricity);
@@ -84,25 +69,12 @@ class CircleBorder extends OutlinedBorder {
 
   @override
   Path getInnerPath(Rect rect, { TextDirection? textDirection }) {
-    final double delta;
-    switch (side.strokeAlign) {
-      case StrokeAlign.inside:
-        delta = side.width;
-        break;
-      case StrokeAlign.center:
-        delta = side.width / 2.0;
-        break;
-      case StrokeAlign.outside:
-        delta = 0;
-        break;
-    }
-    final Rect adjustedRect = _adjustRect(rect).deflate(delta);
-    return Path()..addOval(adjustedRect);
+    return Path()..addOval(_adjustRect(rect).deflate(side.strokeInset));
   }
 
   @override
   Path getOuterPath(Rect rect, { TextDirection? textDirection }) {
-      return Path()..addOval(_adjustRect(rect));
+    return Path()..addOval(_adjustRect(rect));
   }
 
   @override
@@ -128,35 +100,11 @@ class CircleBorder extends OutlinedBorder {
       case BorderStyle.none:
         break;
       case BorderStyle.solid:
-        if (eccentricity != 0.0) {
-          final Rect borderRect = _adjustRect(rect);
-          final Rect adjustedRect;
-          switch (side.strokeAlign) {
-            case StrokeAlign.inside:
-              adjustedRect = borderRect.deflate(side.width / 2.0);
-              break;
-            case StrokeAlign.center:
-              adjustedRect = borderRect;
-              break;
-            case StrokeAlign.outside:
-              adjustedRect = borderRect.inflate(side.width / 2.0);
-              break;
-          }
-          canvas.drawOval(adjustedRect, side.toPaint());
+        if (eccentricity == 0.0) {
+          canvas.drawCircle(rect.center, (rect.shortestSide + side.strokeOffset) / 2, side.toPaint());
         } else {
-          final double radius;
-          switch (side.strokeAlign) {
-            case StrokeAlign.inside:
-              radius = (rect.shortestSide - side.width) / 2.0;
-              break;
-            case StrokeAlign.center:
-              radius = rect.shortestSide / 2.0;
-              break;
-            case StrokeAlign.outside:
-              radius = (rect.shortestSide + side.width) / 2.0;
-              break;
-          }
-          canvas.drawCircle(rect.center, radius, side.toPaint());
+          final Rect borderRect = _adjustRect(rect);
+          canvas.drawOval(borderRect.inflate(side.strokeOffset / 2), side.toPaint());
         }
     }
   }

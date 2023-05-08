@@ -10,10 +10,8 @@ import 'package:flutter/material.dart' show Card;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:test_api/src/expect/async_matcher.dart'; // ignore: implementation_imports
-// This import is discouraged in general, but we need it to implement flutter_test.
-// ignore: deprecated_member_use
-import 'package:test_api/test_api.dart';
+import 'package:matcher/expect.dart';
+import 'package:matcher/src/expect/async_matcher.dart'; // ignore: implementation_imports
 
 import '_matchers_io.dart' if (dart.library.html) '_matchers_web.dart' show MatchesGoldenFile, captureImage;
 import 'accessibility.dart';
@@ -500,7 +498,7 @@ AsyncMatcher matchesReferenceImage(ui.Image image) {
 /// Asserts that a [SemanticsNode] contains the specified information.
 ///
 /// If either the label, hint, value, textDirection, or rect fields are not
-/// provided, then they are not part of the comparison.  All of the boolean
+/// provided, then they are not part of the comparison. All of the boolean
 /// flag and action fields must match, and default to false.
 ///
 /// To retrieve the semantics data of a widget, use [WidgetTester.getSemantics]
@@ -542,6 +540,7 @@ Matcher matchesSemantics({
   // Flags //
   bool hasCheckedState = false,
   bool isChecked = false,
+  bool isCheckStateMixed = false,
   bool isSelected = false,
   bool isButton = false,
   bool isSlider = false,
@@ -617,6 +616,7 @@ Matcher matchesSemantics({
     // Flags
     hasCheckedState: hasCheckedState,
     isChecked: isChecked,
+    isCheckStateMixed: isCheckStateMixed,
     isSelected: isSelected,
     isButton: isButton,
     isSlider: isSlider,
@@ -713,6 +713,7 @@ Matcher containsSemantics({
   // Flags
   bool? hasCheckedState,
   bool? isChecked,
+  bool? isCheckStateMixed,
   bool? isSelected,
   bool? isButton,
   bool? isSlider,
@@ -788,6 +789,7 @@ Matcher containsSemantics({
     // Flags
     hasCheckedState: hasCheckedState,
     isChecked: isChecked,
+    isCheckStateMixed: isCheckStateMixed,
     isSelected: isSelected,
     isButton: isButton,
     isSlider: isSlider,
@@ -1442,7 +1444,7 @@ class _MoreOrLessEquals extends Matcher {
 
   @override
   bool matches(dynamic object, Map<dynamic, dynamic> matchState) {
-    if (object is! double) {
+    if (object is! num) {
       return false;
     }
     if (object == value) {
@@ -1977,7 +1979,7 @@ class _CoversSameAreaAs extends Matcher {
 class _ColorMatcher extends Matcher {
   const _ColorMatcher({
     required this.targetColor,
-  }) : assert(targetColor != null);
+  });
 
   final Color targetColor;
 
@@ -2085,6 +2087,7 @@ class _MatchesSemanticsData extends Matcher {
     // Flags
     required bool? hasCheckedState,
     required bool? isChecked,
+    required bool? isCheckStateMixed,
     required bool? isSelected,
     required bool? isButton,
     required bool? isSlider,
@@ -2138,6 +2141,7 @@ class _MatchesSemanticsData extends Matcher {
   })  : flags = <SemanticsFlag, bool>{
           if (hasCheckedState != null) SemanticsFlag.hasCheckedState: hasCheckedState,
           if (isChecked != null) SemanticsFlag.isChecked: isChecked,
+          if (isCheckStateMixed != null) SemanticsFlag.isCheckStateMixed: isCheckStateMixed,
           if (isSelected != null) SemanticsFlag.isSelected: isSelected,
           if (isButton != null) SemanticsFlag.isButton: isButton,
           if (isSlider != null) SemanticsFlag.isSlider: isSlider,
@@ -2272,10 +2276,10 @@ class _MatchesSemanticsData extends Matcher {
         .toList();
 
       if (expectedActions.isNotEmpty) {
-        description.add(' with actions: ').addDescriptionOf(expectedActions);
+        description.add(' with actions: ${_createEnumsSummary(expectedActions)} ');
       }
       if (notExpectedActions.isNotEmpty) {
-        description.add(' without actions: ').addDescriptionOf(notExpectedActions);
+        description.add(' without actions: ${_createEnumsSummary(notExpectedActions)} ');
       }
     }
     if (flags.isNotEmpty) {
@@ -2289,10 +2293,10 @@ class _MatchesSemanticsData extends Matcher {
         .toList();
 
       if (expectedFlags.isNotEmpty) {
-        description.add(' with flags: ').addDescriptionOf(expectedFlags);
+        description.add(' with flags: ${_createEnumsSummary(expectedFlags)} ');
       }
       if (notExpectedFlags.isNotEmpty) {
-        description.add(' without flags: ').addDescriptionOf(notExpectedFlags);
+        description.add(' without flags: ${_createEnumsSummary(notExpectedFlags)} ');
       }
     }
     if (textDirection != null) {
@@ -2434,17 +2438,23 @@ class _MatchesSemanticsData extends Matcher {
       return failWithDescription(matchState, 'maxValueLength was: ${data.maxValueLength}');
     }
     if (actions.isNotEmpty) {
+      final List<SemanticsAction> unexpectedActions = <SemanticsAction>[];
+      final List<SemanticsAction> missingActions = <SemanticsAction>[];
       for (final MapEntry<ui.SemanticsAction, bool> actionEntry in actions.entries) {
         final ui.SemanticsAction action = actionEntry.key;
         final bool actionExpected = actionEntry.value;
         final bool actionPresent = (action.index & data.actions) == action.index;
         if (actionPresent != actionExpected) {
-          final List<String> actionSummary = <String>[
-            for (final int action in SemanticsAction.values.keys)
-              if ((data.actions & action) != 0) describeEnum(action),
-          ];
-          return failWithDescription(matchState, 'actions were: $actionSummary');
+          if(actionExpected) {
+            missingActions.add(action);
+          } else {
+            unexpectedActions.add(action);
+          }
         }
+      }
+
+      if (unexpectedActions.isNotEmpty || missingActions.isNotEmpty) {
+        return failWithDescription(matchState, 'missing actions: ${_createEnumsSummary(missingActions)} unexpected actions: ${_createEnumsSummary(unexpectedActions)}');
       }
     }
     if (customActions != null || hintOverrides != null) {
@@ -2473,17 +2483,23 @@ class _MatchesSemanticsData extends Matcher {
       }
     }
     if (flags.isNotEmpty) {
+      final List<SemanticsFlag> unexpectedFlags = <SemanticsFlag>[];
+      final List<SemanticsFlag> missingFlags = <SemanticsFlag>[];
       for (final MapEntry<ui.SemanticsFlag, bool> flagEntry in flags.entries) {
         final ui.SemanticsFlag flag = flagEntry.key;
         final bool flagExpected = flagEntry.value;
         final bool flagPresent = flag.index & data.flags == flag.index;
         if (flagPresent != flagExpected) {
-          final List<String> flagSummary = <String>[
-            for (final int flag in SemanticsFlag.values.keys)
-              if ((data.flags & flag) != 0) describeEnum(flag),
-          ];
-          return failWithDescription(matchState, 'flags were: $flagSummary');
+          if(flagExpected) {
+            missingFlags.add(flag);
+          } else {
+            unexpectedFlags.add(flag);
+          }
         }
+      }
+
+      if (unexpectedFlags.isNotEmpty || missingFlags.isNotEmpty) {
+        return failWithDescription(matchState, 'missing flags: ${_createEnumsSummary(missingFlags)} unexpected flags: ${_createEnumsSummary(unexpectedFlags)}');
       }
     }
     bool allMatched = true;
@@ -2511,6 +2527,15 @@ class _MatchesSemanticsData extends Matcher {
     bool verbose,
   ) {
     return mismatchDescription.add(matchState['failure'] as String);
+  }
+
+  static String _createEnumsSummary<T extends Object>(List<T> enums) {
+    assert(T == SemanticsAction || T == SemanticsFlag, 'This method is only intended for lists of SemanticsActions or SemanticsFlags.');
+    if (T == SemanticsAction) {
+      return '[${(enums as List<SemanticsAction>).map((SemanticsAction d) => d.name).join(', ')}]';
+    } else {
+      return '[${(enums as List<SemanticsFlag>).map((SemanticsFlag d) => d.name).join(', ')}]';
+    }
   }
 }
 

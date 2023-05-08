@@ -57,7 +57,7 @@ dynamic getRenderChip(WidgetTester tester) {
   if (!tester.any(findRenderChipElement())) {
     return null;
   }
-  final Element element = tester.element(findRenderChipElement());
+  final Element element = tester.element(findRenderChipElement().first);
   return element.renderObject;
 }
 
@@ -80,7 +80,7 @@ Widget wrapForChip({
     home: Directionality(
       textDirection: textDirection,
       child: MediaQuery(
-        data: MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(textScaleFactor: textScaleFactor),
+        data: MediaQueryData(textScaleFactor: textScaleFactor),
         child: Material(child: child),
       ),
     ),
@@ -215,7 +215,7 @@ Finder findTooltipContainer(String tooltipText) {
 }
 
 void main() {
-  testWidgets('Chip defaults', (WidgetTester tester) async {
+  testWidgets('M2 Chip defaults', (WidgetTester tester) async {
     late TextTheme textTheme;
 
     Widget buildFrame(Brightness brightness) {
@@ -290,6 +290,87 @@ void main() {
     expect(labelStyle.overflow, textTheme.bodyLarge?.overflow);
     expect(labelStyle.textBaseline, textTheme.bodyLarge?.textBaseline);
     expect(labelStyle.wordSpacing, textTheme.bodyLarge?.wordSpacing);
+  });
+
+  testWidgets('M3 Chip defaults', (WidgetTester tester) async {
+    late TextTheme textTheme;
+    final ThemeData lightTheme = ThemeData.light(useMaterial3: true);
+    final ThemeData darkTheme = ThemeData.dark(useMaterial3: true);
+
+    Widget buildFrame(ThemeData theme) {
+      return MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (BuildContext context) {
+                textTheme = Theme.of(context).textTheme;
+                return Chip(
+                  avatar: const CircleAvatar(child: Text('A')),
+                  label: const Text('Chip A'),
+                  onDeleted: () { },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildFrame(lightTheme));
+    expect(getMaterial(tester).color, null);
+    expect(getMaterial(tester).elevation, 0);
+    expect(getMaterial(tester).shape, RoundedRectangleBorder(
+      side: BorderSide(color: lightTheme.colorScheme.outline),
+      borderRadius: BorderRadius.circular(8.0),
+    ));
+    expect(getIconData(tester).color, lightTheme.colorScheme.primary);
+    expect(getIconData(tester).opacity, null);
+    expect(getIconData(tester).size, 18);
+
+    TextStyle labelStyle = getLabelStyle(tester, 'Chip A').style;
+    expect(labelStyle.color, textTheme.labelLarge?.color);
+    expect(labelStyle.fontFamily, textTheme.labelLarge?.fontFamily);
+    expect(labelStyle.fontFamilyFallback, textTheme.labelLarge?.fontFamilyFallback);
+    expect(labelStyle.fontFeatures, textTheme.labelLarge?.fontFeatures);
+    expect(labelStyle.fontSize, textTheme.labelLarge?.fontSize);
+    expect(labelStyle.fontStyle, textTheme.labelLarge?.fontStyle);
+    expect(labelStyle.fontWeight, textTheme.labelLarge?.fontWeight);
+    expect(labelStyle.height, textTheme.labelLarge?.height);
+    expect(labelStyle.inherit, textTheme.labelLarge?.inherit);
+    expect(labelStyle.leadingDistribution, textTheme.labelLarge?.leadingDistribution);
+    expect(labelStyle.letterSpacing, textTheme.labelLarge?.letterSpacing);
+    expect(labelStyle.overflow, textTheme.labelLarge?.overflow);
+    expect(labelStyle.textBaseline, textTheme.labelLarge?.textBaseline);
+    expect(labelStyle.wordSpacing, textTheme.labelLarge?.wordSpacing);
+
+    await tester.pumpWidget(buildFrame(darkTheme));
+    await tester.pumpAndSettle(); // Theme transition animation
+    expect(getMaterial(tester).color, null);
+    expect(getMaterial(tester).elevation, 0);
+    expect(getMaterial(tester).shape, RoundedRectangleBorder(
+      side: BorderSide(color: darkTheme.colorScheme.outline),
+      borderRadius: BorderRadius.circular(8.0),
+    ));
+    expect(getIconData(tester).color, darkTheme.colorScheme.primary);
+    expect(getIconData(tester).opacity, null);
+    expect(getIconData(tester).size, 18);
+
+    labelStyle = getLabelStyle(tester, 'Chip A').style;
+    expect(labelStyle.color, textTheme.labelLarge?.color);
+    expect(labelStyle.fontFamily, textTheme.labelLarge?.fontFamily);
+    expect(labelStyle.fontFamilyFallback, textTheme.labelLarge?.fontFamilyFallback);
+    expect(labelStyle.fontFeatures, textTheme.labelLarge?.fontFeatures);
+    expect(labelStyle.fontSize, textTheme.labelLarge?.fontSize);
+    expect(labelStyle.fontStyle, textTheme.labelLarge?.fontStyle);
+    expect(labelStyle.fontWeight, textTheme.labelLarge?.fontWeight);
+    expect(labelStyle.height, textTheme.labelLarge?.height);
+    expect(labelStyle.inherit, textTheme.labelLarge?.inherit);
+    expect(labelStyle.leadingDistribution, textTheme.labelLarge?.leadingDistribution);
+    expect(labelStyle.letterSpacing, textTheme.labelLarge?.letterSpacing);
+    expect(labelStyle.overflow, textTheme.labelLarge?.overflow);
+    expect(labelStyle.textBaseline, textTheme.labelLarge?.textBaseline);
+    expect(labelStyle.wordSpacing, textTheme.labelLarge?.wordSpacing);
   });
 
   testWidgets('Chip control test', (WidgetTester tester) async {
@@ -495,11 +576,11 @@ void main() {
   );
 
   testWidgets('Chip in row works ok', (WidgetTester tester) async {
-    const TextStyle style = TextStyle(fontFamily: 'Ahem', fontSize: 10.0);
+    const TextStyle style = TextStyle(fontSize: 10.0);
     await tester.pumpWidget(
       wrapForChip(
-        child: Row(
-          children: const <Widget>[
+        child: const Row(
+          children: <Widget>[
             Chip(label: Text('Test'), labelStyle: style),
           ],
         ),
@@ -509,8 +590,8 @@ void main() {
     expect(tester.getSize(find.byType(Chip)), const Size(64.0, 48.0));
     await tester.pumpWidget(
       wrapForChip(
-        child: Row(
-          children: const <Widget>[
+        child: const Row(
+          children: <Widget>[
             Flexible(child: Chip(label: Text('Test'), labelStyle: style)),
           ],
         ),
@@ -520,8 +601,8 @@ void main() {
     expect(tester.getSize(find.byType(Chip)), const Size(64.0, 48.0));
     await tester.pumpWidget(
       wrapForChip(
-        child: Row(
-          children: const <Widget>[
+        child: const Row(
+          children: <Widget>[
             Expanded(child: Chip(label: Text('Test'), labelStyle: style)),
           ],
         ),
@@ -534,8 +615,8 @@ void main() {
   testWidgets('Chip responds to materialTapTargetSize', (WidgetTester tester) async {
       await tester.pumpWidget(
         wrapForChip(
-          child: Column(
-            children: const <Widget>[
+          child: const Column(
+            children: <Widget>[
               Chip(
                 label: Text('X'),
                 materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -650,8 +731,8 @@ void main() {
   testWidgets('Chip responds to textScaleFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
       wrapForChip(
-        child: Column(
-          children: const <Widget>[
+        child: const Column(
+          children: <Widget>[
             Chip(
               avatar: CircleAvatar(child: Text('A')),
               label: Text('Chip A'),
@@ -665,24 +746,22 @@ void main() {
       ),
     );
 
-    // TODO(gspencer): Update this test when the font metric bug is fixed to remove the anyOfs.
-    // https://github.com/flutter/flutter/issues/12357
     expect(
       tester.getSize(find.text('Chip A')),
-      anyOf(const Size(84.0, 14.0), const Size(83.0, 14.0)),
+      const Size(84.0, 14.0),
     );
     expect(
       tester.getSize(find.text('Chip B')),
-      anyOf(const Size(84.0, 14.0), const Size(83.0, 14.0)),
+      const Size(84.0, 14.0),
     );
-    expect(tester.getSize(find.byType(Chip).first), anyOf(const Size(132.0, 48.0), const Size(131.0, 48.0)));
-    expect(tester.getSize(find.byType(Chip).last), anyOf(const Size(132.0, 48.0), const Size(131.0, 48.0)));
+    expect(tester.getSize(find.byType(Chip).first), const Size(132.0, 48.0));
+    expect(tester.getSize(find.byType(Chip).last), const Size(132.0, 48.0));
 
     await tester.pumpWidget(
       wrapForChip(
         textScaleFactor: 3.0,
-        child: Column(
-          children: const <Widget>[
+        child: const Column(
+          children: <Widget>[
             Chip(
               avatar: CircleAvatar(child: Text('A')),
               label: Text('Chip A'),
@@ -696,20 +775,16 @@ void main() {
       ),
     );
 
-    // TODO(gspencer): Update this test when the font metric bug is fixed to remove the anyOfs.
-    // https://github.com/flutter/flutter/issues/12357
-    expect(tester.getSize(find.text('Chip A')), anyOf(const Size(252.0, 42.0), const Size(251.0, 42.0)));
-    expect(tester.getSize(find.text('Chip B')), anyOf(const Size(252.0, 42.0), const Size(251.0, 42.0)));
-    expect(tester.getSize(find.byType(Chip).first).width, anyOf(310.0, 311.0));
-    expect(tester.getSize(find.byType(Chip).first).height, equals(50.0));
-    expect(tester.getSize(find.byType(Chip).last).width, anyOf(310.0, 311.0));
-    expect(tester.getSize(find.byType(Chip).last).height, equals(50.0));
+    expect(tester.getSize(find.text('Chip A')), const Size(252.0, 42.0));
+    expect(tester.getSize(find.text('Chip B')), const Size(252.0, 42.0));
+    expect(tester.getSize(find.byType(Chip).first), const Size(310.0, 50.0));
+    expect(tester.getSize(find.byType(Chip).last), const Size(310.0, 50.0));
 
     // Check that individual text scales are taken into account.
     await tester.pumpWidget(
       wrapForChip(
-        child: Column(
-          children: const <Widget>[
+        child: const Column(
+          children: <Widget>[
             Chip(
               avatar: CircleAvatar(child: Text('A')),
               label: Text('Chip A', textScaleFactor: 3.0),
@@ -723,13 +798,10 @@ void main() {
       ),
     );
 
-    // TODO(gspencer): Update this test when the font metric bug is fixed to remove the anyOfs.
-    // https://github.com/flutter/flutter/issues/12357
-    expect(tester.getSize(find.text('Chip A')), anyOf(const Size(252.0, 42.0), const Size(251.0, 42.0)));
-    expect(tester.getSize(find.text('Chip B')), anyOf(const Size(84.0, 14.0), const Size(83.0, 14.0)));
-    expect(tester.getSize(find.byType(Chip).first).width, anyOf(318.0, 319.0));
-    expect(tester.getSize(find.byType(Chip).first).height, equals(50.0));
-    expect(tester.getSize(find.byType(Chip).last), anyOf(const Size(132.0, 48.0), const Size(131.0, 48.0)));
+    expect(tester.getSize(find.text('Chip A')), const Size(252.0, 42.0));
+    expect(tester.getSize(find.text('Chip B')), const Size(84.0, 14.0));
+    expect(tester.getSize(find.byType(Chip).first), const Size(318.0, 50.0));
+    expect(tester.getSize(find.byType(Chip).last), const Size(132.0, 48.0));
   });
 
   testWidgets('Labels can be non-text widgets', (WidgetTester tester) async {
@@ -752,17 +824,9 @@ void main() {
       ),
     );
 
-    // TODO(gspencer): Update this test when the font metric bug is fixed to remove the anyOfs.
-    // https://github.com/flutter/flutter/issues/12357
-    expect(
-      tester.getSize(find.byKey(keyA)),
-      anyOf(const Size(84.0, 14.0), const Size(83.0, 14.0)),
-    );
+    expect(tester.getSize(find.byKey(keyA)), const Size(84.0, 14.0));
     expect(tester.getSize(find.byKey(keyB)), const Size(10.0, 10.0));
-    expect(
-      tester.getSize(find.byType(Chip).first),
-      anyOf(const Size(132.0, 48.0), const Size(131.0, 48.0)),
-    );
+    expect(tester.getSize(find.byType(Chip).first), const Size(132.0, 48.0));
     expect(tester.getSize(find.byType(Chip).last), const Size(58.0, 48.0));
   });
 
@@ -1425,7 +1489,7 @@ void main() {
               StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
                 return RawChip(
                   avatar: avatar,
-                  onSelected: selectable != null
+                  onSelected: selectable
                     ? (bool value) {
                         setState(() {
                           selected = value;
@@ -1504,7 +1568,7 @@ void main() {
             children: <Widget>[
               StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
                 return RawChip(
-                  onSelected: selectable != null
+                  onSelected: selectable
                     ? (bool value) {
                         setState(() {
                           selected = value;
@@ -1578,7 +1642,7 @@ void main() {
               StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
                 return RawChip(
                   avatar: avatar,
-                  onSelected: selectable != null
+                  onSelected: selectable
                     ? (bool value) {
                         setState(() {
                           selected = value;
@@ -3219,6 +3283,55 @@ void main() {
     ));
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Chip background color and shape are drawn on Ink', (WidgetTester tester) async {
+    const Color backgroundColor = Color(0xff00ff00);
+    const OutlinedBorder shape = ContinuousRectangleBorder();
+
+    await tester.pumpWidget(wrapForChip(
+      child: const RawChip(
+        label: Text('text'),
+        backgroundColor: backgroundColor,
+        shape: shape,
+      ),
+    ));
+
+    final Ink ink = tester.widget(find.descendant(
+      of: find.byType(RawChip),
+      matching: find.byType(Ink),
+    ));
+    final ShapeDecoration decoration = ink.decoration! as ShapeDecoration;
+    expect(decoration.color, backgroundColor);
+    expect(decoration.shape, shape);
+  });
+
+  testWidgets('Chip highlight color is drawn on top of the backgroundColor', (WidgetTester tester) async {
+    final FocusNode focusNode = FocusNode(debugLabel: 'RawChip');
+    tester.binding.focusManager.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
+    const Color backgroundColor = Color(0xff00ff00);
+
+    await tester.pumpWidget(wrapForChip(
+      child: RawChip(
+        label: const Text('text'),
+        backgroundColor: backgroundColor,
+        autofocus: true,
+        focusNode: focusNode,
+        onPressed: () {},
+      ),
+    ));
+
+    await tester.pumpAndSettle();
+
+    expect(focusNode.hasPrimaryFocus, isTrue);
+    expect(
+      find.byType(Material).last,
+      paints
+        // Background color is drawn first.
+        ..rrect(color: backgroundColor)
+        // Highlight color is drawn on top of the background color.
+        ..rect(color: const Color(0x1f000000)),
+    );
   });
 }
 

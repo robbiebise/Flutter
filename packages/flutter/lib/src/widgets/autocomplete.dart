@@ -439,15 +439,18 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
           highlightIndexNotifier: _highlightedOptionIndex,
           child: Builder(
             builder: (BuildContext context) {
+              // TODO(justinmc): Or we could pass this to optionsViewBuilder.
+              // Probably should do that, because options that are wider than
+              // the field seems like it would be common, say in a search bar
+              // kind of setup.
               final Widget options = widget.optionsViewBuilder(context, _select, _options);
-              final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-              if (fieldRenderBox == null) {
+              if (_optionsLayerLink.leaderSize == null) {
                 return options;
               }
               return UnconstrainedBox(
                 alignment: Alignment.topLeft,
                 child: SizedBox(
-                  width: fieldRenderBox.size.width,
+                  width: _optionsLayerLink.leaderSize!.width,
                   child: options,
                 ),
               );

@@ -438,7 +438,20 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         child: AutocompleteHighlightedOption(
           highlightIndexNotifier: _highlightedOptionIndex,
           child: Builder(
-            builder: (BuildContext context) => widget.optionsViewBuilder(context, _select, _options),
+            builder: (BuildContext context) {
+              final Widget options = widget.optionsViewBuilder(context, _select, _options);
+              final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+              if (fieldRenderBox == null) {
+                return options;
+              }
+              return UnconstrainedBox(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: fieldRenderBox.size.width,
+                  child: options,
+                ),
+              );
+            },
           ),
         ),
       ),

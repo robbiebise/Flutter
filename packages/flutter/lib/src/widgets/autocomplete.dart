@@ -8,11 +8,11 @@ import 'package:flutter/services.dart';
 
 import 'actions.dart';
 import 'basic.dart';
-import 'container.dart';
 import 'editable_text.dart';
 import 'focus_manager.dart';
 import 'framework.dart';
 import 'inherited_notifier.dart';
+import 'layout_builder.dart';
 import 'overlay.dart';
 import 'shortcuts.dart';
 import 'tap_region.dart';
@@ -300,9 +300,11 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
 }
 
 class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> {
-  final GlobalKey _fieldKey = GlobalKey();
   final LayerLink _optionsLayerLink = LayerLink();
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
+
+  // The box constraints that the field was last built with.
+  late BoxConstraints _fieldBoxConstraints;
 
   TextEditingController? _internalTextEditingController;
   TextEditingController get _textEditingController {
@@ -443,15 +445,12 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               // Probably should do that, because options that are wider than
               // the field seems like it would be common, say in a search bar
               // kind of setup.
-              final Widget options = widget.optionsViewBuilder(context, _select, _options);
-              if (_optionsLayerLink.leaderSize == null) {
-                return options;
-              }
               return UnconstrainedBox(
+                constrainedAxis: Axis.vertical,
                 alignment: Alignment.topLeft,
                 child: SizedBox(
-                  width: _optionsLayerLink.leaderSize!.width,
-                  child: options,
+                  width: _fieldBoxConstraints.maxWidth,
+                  child: widget.optionsViewBuilder(context, _select, _options),
                 ),
               );
             },
@@ -509,18 +508,20 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
-        child: Container(
-          key: _fieldKey,
-          child: Shortcuts(
-            shortcuts: _shortcuts,
-            child: Actions(
-              actions: _actionMap,
-              child: CompositedTransformTarget(
-                link: _optionsLayerLink,
-                child: fieldView,
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints boxConstraints) {
+            _fieldBoxConstraints = boxConstraints;
+            return Shortcuts(
+              shortcuts: _shortcuts,
+              child: Actions(
+                actions: _actionMap,
+                child: CompositedTransformTarget(
+                  link: _optionsLayerLink,
+                  child: fieldView,
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

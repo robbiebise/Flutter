@@ -1878,8 +1878,6 @@ void main() {
     testWidgets('parent constraints do not affect menu size',
         (WidgetTester tester) async {
       await changeSurfaceSize(tester, const Size(220, 200));
-      const ValueKey<TestMenu> anchorKey =
-          ValueKey<TestMenu>(TestMenu.anchorButton);
       await tester.pumpWidget(MaterialApp(
         theme: ThemeData(useMaterial3: false),
         home: ConstrainedBox(
@@ -2799,7 +2797,6 @@ enum TestMenu {
   outsideButton('Outside');
 
   const TestMenu(this.label);
-  // Strip the accelerator markers.
   final String label;
   Finder get findText => find.text(label);
   Finder get findMenuItem => find.widgetWithText(CupertinoMenuItem, label);

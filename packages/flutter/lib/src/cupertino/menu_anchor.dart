@@ -3469,42 +3469,19 @@ class _PanRegion extends SingleChildRenderObjectWidget {
   }
 }
 
-/// A render object that defines a region that can detect taps inside or outside
-/// of itself and any group of regions it belongs to, without participating in
-/// the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system.
-///
-/// This render object indicates to the nearest ancestor [_PanRegionSurface] that
-/// the region occupied by its child (or itself if [behavior] is
-/// [HitTestBehavior.opaque]) will participate in the tap detection for that
-/// surface.
-///
-/// If this region belongs to a group (by virtue of its [groupId]), all the
-/// regions in the group will act as one.
-///
-/// If there is no [_RenderPanRegionSurface] ancestor in the render tree,
-/// [_RenderPanRegion] will do nothing.
-///
-/// The [behavior] attribute describes how to behave during hit testing when
-/// deciding how the hit test propagates to children and whether to consider
-/// targets behind the tap region. Defaults to [HitTestBehavior.deferToChild].
-/// See [HitTestBehavior] for the allowed values and their meanings.
-///
-///
-///
 /// A render object that defines a region that begins tracking pan events upon
 /// receiving a [PointerDownEvent] within it's own bounds or the bounds of a
 /// group member.
 ///
-/// This render object indicates to the nearest ancestor [_PanRegionSurface] that
-/// the region occupied by this render object's child (or the render object
+/// This render object indicates to the nearest ancestor [_PanRegionSurface]
+/// that the region occupied by this render object's child (or the render object
 /// itself, if [behavior] is [HitTestBehavior.opaque]) will participate in the
 /// pan detection.
 ///
-/// Panning is defined as a sequence of [PointerEvent]s that start **after** a
-/// [PointerDownEvent] and end with a [PointerUpEvent] or [PointerCancelEvent].
-/// Pan events tracked by this widget do not participate in the [gesture
+/// Panning in this context is defined as a sequence of [PointerEvent]s that
+/// start **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
+/// [PointerCancelEvent]. Pan events tracked by this widget do not participate
+/// in the [gesture
 /// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
 /// system.
 ///

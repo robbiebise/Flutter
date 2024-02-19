@@ -2498,6 +2498,8 @@ class _MenuNextFocusAction extends NextFocusAction {
 
 }
 
+/// An action that moves focus in a menu in response to a [TextDirection], screen
+/// [Axis], and [TraversalDirection].
 class MenuDirectionalFocusAction extends DirectionalFocusAction {
   /// Creates a [DirectionalFocusAction].
   MenuDirectionalFocusAction();

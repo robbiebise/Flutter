@@ -8,22 +8,20 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-// Imports from Material for menu item localizations.
-import 'package:flutter/material.dart'
-    show
-        DismissMenuAction,
-        LocalizedShortcutLabeler,
-        MaterialLocalizations,
-        MenuAcceleratorCallbackBinding,
-        MenuAnchor,
-        MenuController,
-        MenuDirectionalFocusAction;
 import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../material/material_localizations.dart'
+    show MaterialLocalizations;
+import '../material/menu_anchor.dart'
+    show LocalizedShortcutLabeler,
+         MenuAcceleratorCallbackBinding,
+         MenuAnchor,
+         MenuController,
+         MenuDirectionalFocusAction;
 import 'app.dart';
 import 'colors.dart';
 import 'constants.dart';
@@ -37,8 +35,6 @@ const bool _kDebugMenus = false;
 const bool _kDebugPanRegion = false;
 
 /// Whether [defaultTargetPlatform] is an Apple platform (Mac or iOS).
-// I left this code alone because it appears to be for clarity rather than
-// efficiency.
 bool get _isApple {
   switch (defaultTargetPlatform) {
     case TargetPlatform.iOS:
@@ -2406,7 +2402,8 @@ class _CupertinoMenuItemLabel extends StatelessWidget
   }
 }
 
-/// A large horizontal divider that separates [CupertinoMenuItem]s.
+/// A large horizontal divider that is used to separate [CupertinoMenuItem]s in
+/// a [CupertinoMenuAnchor].
 ///
 /// The divider has a height of 8 logical pixels. The [color] parameter can be
 /// provided to customize the color of the divider.
@@ -2414,12 +2411,12 @@ class _CupertinoMenuItemLabel extends StatelessWidget
 /// See also:
 ///
 /// * [CupertinoMenuItem], a Cupertino-style menu item.
-/// * [CupertinoMenuDivider], a thin horizontal divider that separates menu
-///   items in a [CupertinoMenuAnchor].
 /// * [CupertinoMenuAnchor], a widget that creates a Cupertino-style popup menu.
+/// * [CupertinoMenuEntryMixin], a mixin that can be used to specify the
+///   dividers that should flank a custom menu item.
 class CupertinoLargeMenuDivider extends StatelessWidget
     with CupertinoMenuEntryMixin {
-  /// Creates a large horizontal divider for a [_CupertinoMenuPanel].
+  /// Creates a large horizontal divider for a [CupertinoMenuAnchor].
   const CupertinoLargeMenuDivider({
     super.key,
     this.color = defaultColor,
@@ -2614,7 +2611,6 @@ class _CupertinoMenuItemGestureHandler extends StatefulWidget {
     this.onPressed,
     this.onHover,
     this.onFocusChange,
-    this.shortcut,
     this.focusNodeDebugLabel,
     this.requestFocusOnHover = false,
     this.behavior = HitTestBehavior.opaque,
@@ -2655,11 +2651,6 @@ class _CupertinoMenuItemGestureHandler extends StatefulWidget {
 
   /// {@macro flutter.widgets.Focus.focusNode}
   final FocusNode? focusNode;
-
-  /// The optional shortcut that selects this [_CupertinoMenuItemGestureHandler].
-  ///
-  /// {@macro flutter.material.MenuBar.shortcuts_note}
-  final MenuSerializableShortcut? shortcut;
 
   /// Delay between a user's pointer entering a menu item during a pan, and
   /// the menu item being tapped.

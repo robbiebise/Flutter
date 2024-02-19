@@ -1,135 +1,106 @@
 // Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../menu/cupertino_menu.idea/lib/menu.dart';
+/// Flutter code sample for a [CupertinoMenuAnchor] that shows a basic menu.
+void main() => runApp(const CupertinoSimpleMenuApp());
 
-/// An enhanced enum to define the available menus and their shortcuts.
-///
-/// Using an enum for menu definition is not required, but this illustrates how
-/// they could be used for simple menu systems.
-enum MenuEntry {
-  itemOne('Item 1', SingleActivator(LogicalKeyboardKey.keyS, shift: true)),
-  itemTwo('Item 2', SingleActivator(LogicalKeyboardKey.keyS, control: true)),
-  itemThree('Item 3', SingleActivator(LogicalKeyboardKey.keyS, alt: true));
-
-  const MenuEntry(this.label, [this.shortcut]);
-
-  final String label;
-  final MenuSerializableShortcut? shortcut;
-}
-
-
-class MyCupertinoMenu extends StatefulWidget {
-  const MyCupertinoMenu({super.key});
+class CupertinoSimpleMenuApp extends StatelessWidget {
+  const CupertinoSimpleMenuApp({super.key});
 
   @override
-  State<MyCupertinoMenu> createState() => _MyCupertinoMenuState();
+  Widget build(BuildContext context) {
+    return const CupertinoApp(
+      localizationsDelegates: <LocalizationsDelegate<MaterialLocalizations>>[
+        DefaultMaterialLocalizations.delegate,
+      ],
+      home: Material(
+        child: CupertinoPageScaffold(
+          navigationBar:
+              CupertinoNavigationBar(middle: Text('CupertinoMenuAnchor Example')),
+          child: SafeArea(
+            child: MenuExample(),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _MyCupertinoMenuState extends State<MyCupertinoMenu> {
-  ShortcutRegistryEntry? _shortcutsEntry;
-
-  bool get isItemThreeEnabled => _isItemThreeEnabled;
-  bool _isItemThreeEnabled = true;
-  set isItemThreeEnabled(bool value) {
-    if(value != _isItemThreeEnabled) {
-      setState(() {
-        _isItemThreeEnabled = value;
-      });
-    }
-  }
-
-  String get message => _message;
-  String _message = 'No shortcut has been activated.';
-  set message(String value) {
-    if(value != _message) {
-      setState(() {
-        _message = value;
-      });
-    }
-  }
+class MenuExample extends StatefulWidget {
+  const MenuExample({super.key});
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Dispose of any previously registered shortcuts, since they are about to
-    // be replaced.
-    _shortcutsEntry?.dispose();
-    // Collect the shortcuts from the different menu selections so that they can
-    // be registered to apply to the entire app. Menus don't register their
-    // shortcuts, they only display the shortcut hint text.
-    final Map<ShortcutActivator, Intent> shortcuts = <ShortcutActivator, Intent>{
-      for (final MenuEntry item in MenuEntry.values)
-        if (item.shortcut != null)
-          item.shortcut!: VoidCallbackIntent(() => _handleShortcut(item)),
-    };
-    // Register the shortcuts with the ShortcutRegistry so that they are
-    // available to the entire application.
-    _shortcutsEntry = ShortcutRegistry.of(context).addAll(shortcuts);
-  }
+  State<MenuExample> createState() => _MenuExampleState();
+}
+
+class _MenuExampleState extends State<MenuExample> {
+  // Optional: Create a focus node to control the menu button.
+  final FocusNode _buttonFocusNode = FocusNode(debugLabel: 'Menu Button');
+  String _pressedItem = '';
 
   @override
   void dispose() {
-    _shortcutsEntry?.dispose();
+    _buttonFocusNode.dispose();
     super.dispose();
-  }
-
-  void _handleShortcut(MenuEntry entry) {
-    message = switch (entry) {
-      MenuEntry.itemThree when !_isItemThreeEnabled =>
-        "Whoops, Item 3 should be disabled! Shortcuts shouldn't work!",
-      MenuEntry.itemThree ||
-      MenuEntry.itemOne ||
-      MenuEntry.itemTwo =>
-        'The shortcut for ${entry.label} was activated!'
-    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: <Widget>[
-        Text(message),
-        Align(
-          child: CupertinoMenuAnchor(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          CupertinoMenuAnchor(
+            childFocusNode: _buttonFocusNode,
             menuChildren: <Widget>[
+              // Doesn't close the menu when pressed.
               CupertinoMenuItem(
                 onPressed: () {
-                  message = 'Item 1 was pressed.';
+                  setState(() {
+                    _pressedItem = 'Regular Item';
+                  });
                 },
-                shortcut: MenuEntry.itemOne.shortcut,
-                child: Text(MenuEntry.itemOne.label),
+                subtitle: const Text('Subtitle'),
+                child: const Text('Regular Item'),
               ),
               CupertinoMenuItem(
                 onPressed: () {
-                  isItemThreeEnabled = !isItemThreeEnabled;
-                  message = 'Item 2 was pressed.';
+                  setState(() {
+                    _pressedItem = 'Colorful Item';
+                  });
                 },
-                requestCloseOnActivate: false,
-                shortcut: MenuEntry.itemTwo.shortcut,
-                subtitle: Text(
-                    'Tap to ${isItemThreeEnabled ? "disable" : "enable"}'
-                    ' item 3.',),
-                child: Text(MenuEntry.itemTwo.label),
+                hoveredColor: const CupertinoDynamicColor.withBrightness(
+                  color: Color(0xFF880000),
+                  darkColor: Color(0xFFAA0000),
+                ),
+                focusedColor: const Color(0xFF0000AA),
+                pressedColor: const Color(0xFF006600),
+                child: const Text('Colorful Item'),
               ),
-              const CupertinoLargeMenuDivider(),
               CupertinoMenuItem(
-                onPressed: _isItemThreeEnabled
-                    ? () {
-                        message = 'Item 3 was pressed';
-                      }
-                    : null,
-                shortcut: MenuEntry.itemThree.shortcut,
-                subtitle: _isItemThreeEnabled
-                    ? const Text('Enabled')
-                    : const Text('Disabled'),
-                child: Text(MenuEntry.itemThree.label),
+                trailing: const Icon(CupertinoIcons.add),
+                isDefaultAction: true,
+                onPressed: () {
+                  setState(() {
+                    _pressedItem = 'Default Item';
+                  });
+                },
+                child: const Text('Default Item'),
               ),
+              CupertinoMenuItem(
+                trailing: const Icon(CupertinoIcons.delete),
+                isDestructiveAction: true,
+                child: const Text('Destructive Item'),
+                onPressed: () {
+                  setState(() {
+                    _pressedItem = 'Destructive Item';
+                  });
+                },
+              )
             ],
             builder: (
               BuildContext context,
@@ -137,9 +108,10 @@ class _MyCupertinoMenuState extends State<MyCupertinoMenu> {
               Widget? child,
             ) {
               return TextButton(
+                focusNode: _buttonFocusNode,
                 onPressed: () {
                   if (controller.menuStatus
-                      case MenuStatus.opened || MenuStatus.opening) {
+                      case MenuStatus.opening || MenuStatus.opened) {
                     controller.close();
                   } else {
                     controller.open();
@@ -149,28 +121,15 @@ class _MyCupertinoMenuState extends State<MyCupertinoMenu> {
               );
             },
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class CupertinoMenuApp extends StatelessWidget {
-  const CupertinoMenuApp({super.key});
-
-
-  @override
-  Widget build(BuildContext context) {
-    return const CupertinoApp(
-      localizationsDelegates: <LocalizationsDelegate<dynamic>>[
-        DefaultMaterialLocalizations.delegate,
-        DefaultCupertinoLocalizations.delegate,
-        DefaultWidgetsLocalizations.delegate,
-      ],
-      home: CupertinoPageScaffold(
-        child: MyCupertinoMenu(),
+          if (_pressedItem.isNotEmpty)
+            Text(
+              'You Pressed: $_pressedItem',
+              style: CupertinoTheme.of(context).textTheme.textStyle,
+            ),
+        ],
       ),
     );
   }
 }
+
 

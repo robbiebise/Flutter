@@ -98,6 +98,9 @@ typedef MenuAnchorChildBuilder = Widget Function(
 ///
 /// The `context` is the context that the overlay is being built in.
 ///
+/// The `menuChildren` is the list of children containing the menu items that
+/// was passed to the [MenuAnchor].
+///
 /// The `menuFocusScopeNode` is the [FocusScopeNode] that should be provided to
 /// the [FocusScope.focusNode] for the menu.
 ///
@@ -108,6 +111,7 @@ typedef MenuAnchorChildBuilder = Widget Function(
 /// consume taps outside of the menu.
 typedef MenuOverlayBuilder = Widget Function(
   BuildContext context,
+  List<Widget> menuChildren,
   FocusScopeNode menuFocusScopeNode,
   Offset? menuPosition,
   Object? tapRegionGroupId,
@@ -482,9 +486,10 @@ class _MenuAnchorState extends State<MenuAnchor> {
 
     return widget._overlayBuilder!(
       overlayContext,
+      widget.menuChildren,
       _menuScopeNode,
       _menuPosition,
-      _root._menuScopeNode,
+      _root,
     );
   }
 

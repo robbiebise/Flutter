@@ -8,10 +8,9 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' show DefaultMaterialLocalizations, InkWell, Material, MenuAcceleratorLabel;
+import 'package:flutter/material.dart' show DefaultMaterialLocalizations, InkWell, Material, MaterialLocalizations, MenuAcceleratorLabel;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/src/material/material_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../widgets/semantics_tester.dart';

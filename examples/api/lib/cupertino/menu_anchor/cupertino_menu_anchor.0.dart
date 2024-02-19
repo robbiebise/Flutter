@@ -131,5 +131,3 @@ class _MenuExampleState extends State<MenuExample> {
     );
   }
 }
-
-

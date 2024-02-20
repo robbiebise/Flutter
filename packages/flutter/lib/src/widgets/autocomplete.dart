@@ -439,17 +439,21 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       child: TextFieldTapRegion(
         child: AutocompleteHighlightedOption(
           highlightIndexNotifier: _highlightedOptionIndex,
-          child: Builder(
-            builder: (BuildContext context) {
-              return UnconstrainedBox(
-                constrainedAxis: Axis.vertical,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
+          child: UnconstrainedBox(
+            constrainedAxis: Axis.vertical,
+            alignment: followerAlignment,
+            // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
+            // because its builder isn't called until the layout phase, and
+            // because OverlayPortal lays out its child before its
+            // overlayChildBuilder.
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints boxConstraints) {
+                return SizedBox(
                   width: _fieldBoxConstraints.maxWidth,
                   child: widget.optionsViewBuilder(context, _select, _options),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

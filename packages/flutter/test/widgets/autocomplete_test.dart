@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class User {
@@ -1331,5 +1332,80 @@ void main() {
     final RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
     final RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
     expect(optionsBox.size.width, equals(fieldBox.size.width));
+  });
+
+  testWidgets('options can access constraints of field in the first frame', (WidgetTester tester) async {
+    final GlobalKey autocompleteKey = GlobalKey();
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    final TextEditingController textEditingController = TextEditingController(
+      text: 'a',
+    );
+    bool buildAutocomplete = false;
+    final FocusNode fieldFocusNode = FocusNode();
+    late StateSetter setState;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              children: <Widget>[
+                TextField(
+                  key: fieldKey,
+                  focusNode: fieldFocusNode,
+                  controller: textEditingController,
+                ),
+                StatefulBuilder(
+                  builder: (BuildContext context, StateSetter localSetState) {
+                    setState = localSetState;
+                    if (!buildAutocomplete) {
+                      return const SizedBox.shrink();
+                    }
+                    return RawAutocomplete<String>(
+                      key: autocompleteKey,
+                      focusNode: fieldFocusNode,
+                      textEditingController: textEditingController,
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        return kOptions.where((String option) {
+                          return option.contains(textEditingValue.text.toLowerCase());
+                        });
+                      },
+                      optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                        return SizedBox.shrink(key: optionsKey);
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    expect(fieldFocusNode.hasFocus, isFalse);
+
+    fieldFocusNode.requestFocus();
+    await tester.pump();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    expect(fieldFocusNode.hasFocus, isTrue);
+
+    // Now that the field is focused, build the RawAutocomplete.
+    setState(() {
+      buildAutocomplete = true;
+    });
+    await tester.pump();
+    // TODO(justinmc): This requires two frames to build the overlayChildBuilder,
+    // so I'm not able to cause the _fieldBoxConstraints to be accessed in the
+    // same frame as it's assigned.
+    await tester.pump();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
   });
 }

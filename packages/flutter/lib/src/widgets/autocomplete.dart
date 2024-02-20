@@ -442,16 +442,15 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
           child: UnconstrainedBox(
             constrainedAxis: Axis.vertical,
             alignment: followerAlignment,
-            // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
-            // because its builder isn't called until the layout phase, and
-            // because OverlayPortal lays out its child before its
-            // overlayChildBuilder.
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints boxConstraints) {
+            child: Builder(
+              builder: (BuildContext context) {
                 return SizedBox(
                   // TODO(justinmc): Consider making optional this
                   // width-matching of the field and options, see
                   // https://github.com/flutter/flutter/pull/143249#discussion_r1486968360
+                  // It's safe to access _fieldBoxConstraints here because
+                  // OverlayPortal.overlayChildBuilder always builds in the
+                  // frame after OverlayPortal.child.
                   width: _fieldBoxConstraints.maxWidth,
                   child: widget.optionsViewBuilder(context, _select, _options),
                 );

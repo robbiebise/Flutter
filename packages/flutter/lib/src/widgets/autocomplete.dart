@@ -449,6 +449,9 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints boxConstraints) {
                 return SizedBox(
+                  // TODO(justinmc): Consider making optional this
+                  // width-matching of the field and options, see
+                  // https://github.com/flutter/flutter/pull/143249#discussion_r1486968360
                   width: _fieldBoxConstraints.maxWidth,
                   child: widget.optionsViewBuilder(context, _select, _options),
                 );

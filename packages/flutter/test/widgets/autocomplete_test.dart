@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class User {
@@ -1290,49 +1289,52 @@ void main() {
     expect(find.byKey(optionsKey), findsNothing);
   });
 
-  testWidgets('options width matches field width', (WidgetTester tester) async {
-    final GlobalKey fieldKey = GlobalKey();
-    final GlobalKey optionsKey = GlobalKey();
+  for (final OptionsViewOpenDirection direction in OptionsViewOpenDirection.values) {
+    testWidgets('options width matches field width with open direction $direction', (WidgetTester tester) async {
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: RawAutocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                return kOptions.where((String option) {
-                  return option.contains(textEditingValue.text.toLowerCase());
-                });
-              },
-              fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                return TextField(
-                  key: fieldKey,
-                  focusNode: focusNode,
-                  controller: textEditingController,
-                );
-              },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                return Container(key: optionsKey);
-              },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: RawAutocomplete<String>(
+                optionsViewOpenDirection: direction,
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  return kOptions.where((String option) {
+                    return option.contains(textEditingValue.text.toLowerCase());
+                  });
+                },
+                fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                  return TextField(
+                    key: fieldKey,
+                    focusNode: focusNode,
+                    controller: textEditingController,
+                  );
+                },
+                optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                  return Container(key: optionsKey);
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsNothing);
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
 
-    await tester.tap(find.byType(TextField));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsOneWidget);
-    final RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
-    final RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
-    expect(optionsBox.size.width, equals(fieldBox.size.width));
-  });
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+      final RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
+      final RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
+      expect(optionsBox.size.width, equals(fieldBox.size.width));
+    });
+  }
 
   testWidgets('options can access constraints of field in the first frame', (WidgetTester tester) async {
     final GlobalKey autocompleteKey = GlobalKey();

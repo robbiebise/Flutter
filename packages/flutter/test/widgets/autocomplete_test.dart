@@ -1335,4 +1335,73 @@ void main() {
       expect(optionsBox.size.width, equals(fieldBox.size.width));
     });
   }
+
+  testWidgets('options width matches field width after changing', (WidgetTester tester) async {
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    late StateSetter setState;
+    double width = 100.0;
+
+    final RawAutocomplete<String> autocomplete = RawAutocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        return kOptions.where((String option) {
+          return option.contains(textEditingValue.text.toLowerCase());
+        });
+      },
+      optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+        return Container(key: optionsKey);
+      },
+      fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+        return TextField(
+          key: fieldKey,
+          focusNode: focusNode,
+          controller: textEditingController,
+        );
+      },
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter localStateSetter) {
+                setState = localStateSetter;
+                return SizedBox(
+                  width: width,
+                  child: autocomplete,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
+    expect(fieldBox.size.width, 100.0);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    fieldBox = tester.renderObject(find.byKey(fieldKey));
+    RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
+    expect(fieldBox.size.width, 100.0);
+    expect(optionsBox.size.width, 100.0);
+
+    setState(() {
+      width = 200.0;
+    });
+    await tester.pump();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    fieldBox = tester.renderObject(find.byKey(fieldKey));
+    optionsBox = tester.renderObject(find.byKey(optionsKey));
+    expect(fieldBox.size.width, 200.0);
+    expect(optionsBox.size.width, 200.0);
+  });
 }

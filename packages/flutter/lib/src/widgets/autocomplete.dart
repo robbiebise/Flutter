@@ -442,8 +442,8 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
           child: UnconstrainedBox(
             constrainedAxis: Axis.vertical,
             alignment: followerAlignment,
-            child: Builder(
-              builder: (BuildContext context) {
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints boxConstraints) {
                 return SizedBox(
                   // TODO(justinmc): Consider making optional this
                   // width-matching of the field and options, see
@@ -513,6 +513,10 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
+        // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
+        // because its builder isn't called until the layout phase, and
+        // because OverlayPortal lays out its child before its
+        // overlayChildBuilder.
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             _fieldBoxConstraints = boxConstraints;

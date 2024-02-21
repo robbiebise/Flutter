@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'actions.dart';
@@ -304,7 +305,8 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
 
   // The box constraints that the field was last built with.
-  late BoxConstraints _fieldBoxConstraints;
+  final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
+      ValueNotifier<BoxConstraints>(const BoxConstraints());
 
   TextEditingController? _internalTextEditingController;
   TextEditingController get _textEditingController {
@@ -444,14 +446,8 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
             alignment: followerAlignment,
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints boxConstraints) {
-                return SizedBox(
-                  // TODO(justinmc): Consider making optional this
-                  // width-matching of the field and options, see
-                  // https://github.com/flutter/flutter/pull/143249#discussion_r1486968360
-                  // It's safe to access _fieldBoxConstraints here because
-                  // OverlayPortal.overlayChildBuilder always builds in the
-                  // frame after OverlayPortal.child.
-                  width: _fieldBoxConstraints.maxWidth,
+                return _OptionsView(
+                  fieldBoxConstraints: _fieldBoxConstraints,
                   child: widget.optionsViewBuilder(context, _select, _options),
                 );
               },
@@ -519,7 +515,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         // overlayChildBuilder.
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
-            _fieldBoxConstraints = boxConstraints;
+            _fieldBoxConstraints.value = boxConstraints;
             return Shortcuts(
               shortcuts: _shortcuts,
               child: Actions(
@@ -533,6 +529,59 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
           },
         ),
       ),
+    );
+  }
+}
+
+class _OptionsView extends StatefulWidget {
+  const _OptionsView({
+    required this.fieldBoxConstraints,
+    required this.child,
+  });
+
+  final ValueNotifier<BoxConstraints?> fieldBoxConstraints;
+  final Widget child;
+
+  @override
+  State<_OptionsView> createState() => __OptionsViewState();
+}
+
+class __OptionsViewState extends State<_OptionsView> {
+  void onFieldBoxConstraintsChange() {
+    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+    }, debugLabel: 'OverlayEntry.markDirty');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.fieldBoxConstraints.addListener(onFieldBoxConstraintsChange);
+  }
+
+  @override
+  void dispose() {
+    widget.fieldBoxConstraints.removeListener(onFieldBoxConstraintsChange);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.fieldBoxConstraints.value == null) {
+      return widget.child;
+    }
+    return SizedBox(
+      // TODO(justinmc): Consider making optional this
+      // width-matching of the field and options, see
+      // https://github.com/flutter/flutter/pull/143249#discussion_r1486968360
+      // It's safe to access _fieldBoxConstraints here because
+      // OverlayPortal.overlayChildBuilder always builds in the
+      // frame after OverlayPortal.child.
+      width: widget.fieldBoxConstraints.value!.maxWidth,
+      child: widget.child,
     );
   }
 }

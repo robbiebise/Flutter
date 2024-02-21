@@ -1395,6 +1395,8 @@ void main() {
     setState(() {
       width = 200.0;
     });
+    // Two pumps required due to post frame callback.
+    await tester.pump();
     await tester.pump();
 
     expect(find.byKey(fieldKey), findsOneWidget);

@@ -2992,9 +2992,7 @@ abstract class _PanRegionRegistry {
 }
 
 /// A widget that notifies registered [_PanRegion]s of pan events that occur
-/// inside or outside of their bounds, without participating in the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system.
+/// inside or outside of their bounds.
 ///
 /// The regions are defined by adding [_PanRegion] widgets to the widget tree
 /// around the regions of interest, and they will register with this
@@ -3018,12 +3016,6 @@ abstract class _PanRegionRegistry {
 /// around the entire app. If the entire app isn't covered, then taps outside of
 /// the [_PanRegionSurface] will be ignored and no [_PanRegion.onTapOutside] calls
 /// will be made for those events.
-///
-/// [_PanRegionSurface] does not participate in the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system, so if multiple [_PanRegionSurface]s are active at the same time, they
-/// will all fire, and so will any other gestures recognized by a
-/// [GestureDetector] or other pointer event handlers.
 ///
 /// [_PanRegion]s register only with the nearest ancestor [_PanRegionSurface].
 ///
@@ -3054,10 +3046,7 @@ class _PanRegionSurface extends SingleChildRenderObjectWidget {
 }
 
 /// A render object that notifies registered [_RenderPanRegion]s of pan events
-/// that occur inside or outside of their bounds, without participating in the
-/// [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system.
+/// that occur inside or outside of their bounds.
 ///
 /// Regions are defined by adding [_RenderPanRegion] render objects in the render
 /// tree around the regions of interest, and they will register with this
@@ -3082,11 +3071,6 @@ class _PanRegionSurface extends SingleChildRenderObjectWidget {
 /// outside of the [_RenderPanRegionSurface] will be ignored and no
 /// [_RenderPanRegion.onPanUpdate] calls will be made for those events.
 ///
-/// [_RenderPanRegionSurface] does not participate in the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system, so if multiple [_RenderPanRegionSurface]s are active at the same
-/// time, they will all fire, and so will any other gestures recognized by a
-/// [GestureDetector] or other pointer event handlers.
 ///
 /// [_RenderPanRegion]s register only with the nearest ancestor
 /// [_RenderPanRegionSurface].
@@ -3335,10 +3319,7 @@ typedef _PanRegionUpdateCallback = void Function(DragUpdateDetails details, {boo
 ///
 /// Pan events are defined as a sequence of [PointerEvent]s that start **after**
 /// a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent]. Pan events tracked by this widget do not participate in
-/// the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system.
+/// [PointerCancelEvent].
 ///
 /// This widget indicates to the nearest ancestor [_PanRegionSurface] that the
 /// region occupied by its child will participate in the pan detection for that
@@ -3480,10 +3461,7 @@ class _PanRegion extends SingleChildRenderObjectWidget {
 ///
 /// Panning in this context is defined as a sequence of [PointerEvent]s that
 /// start **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent]. Pan events tracked by this widget do not participate
-/// in the [gesture
-/// disambiguation](https://flutter.dev/gestures/#gesture-disambiguation)
-/// system.
+/// [PointerCancelEvent].
 ///
 /// If this region belongs to a group (by virtue of its [groupId]), all the
 /// regions in the group will call their [_PanRegion.onPanUpdate] callbacks when

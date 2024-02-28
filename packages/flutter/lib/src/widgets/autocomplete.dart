@@ -465,9 +465,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
                                                  ?? (_internalTextEditingController = TextEditingController.fromValue(widget.initialValue));
     initialController.addListener(_onChangedField);
     widget.focusNode?.addListener(_updateOptionsViewVisibility);
-    if (widget.focusNode?.hasFocus ?? false) {
-      _onChangedField();
-    }
   }
 
   @override

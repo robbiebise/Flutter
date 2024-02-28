@@ -540,10 +540,10 @@ class _OptionsView extends StatefulWidget {
   final Widget child;
 
   @override
-  State<_OptionsView> createState() => __OptionsViewState();
+  State<_OptionsView> createState() => _OptionsViewState();
 }
 
-class __OptionsViewState extends State<_OptionsView> {
+class _OptionsViewState extends State<_OptionsView> {
   void onFieldBoxConstraintsChange() {
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
       if (!mounted) {

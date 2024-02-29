@@ -550,7 +550,7 @@ class _OptionsViewState extends State<_OptionsView> {
         return;
       }
       setState(() {});
-    }, debugLabel: 'OverlayEntry.markDirty');
+    }, debugLabel: 'RawAutocomplete.onFieldBoxConstraintsChange');
   }
 
   @override

@@ -433,17 +433,23 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
     }.resolve(textDirection);
 
-    return Positioned( // Removes the Overlay's tight constraints.
-      top: 0.0,
-      left: 0.0,
-      child: CompositedTransformFollower(
-        link: _optionsLayerLink,
-        showWhenUnlinked: false,
-        targetAnchor: targetAnchor,
-        followerAnchor: followerAlignment,
-        child: TextFieldTapRegion(
-          child: AutocompleteHighlightedOption(
-            highlightIndexNotifier: _highlightedOptionIndex,
+    return CompositedTransformFollower(
+      link: _optionsLayerLink,
+      showWhenUnlinked: false,
+      targetAnchor: targetAnchor,
+      followerAnchor: followerAlignment,
+      child: TextFieldTapRegion(
+        child: AutocompleteHighlightedOption(
+          highlightIndexNotifier: _highlightedOptionIndex,
+          child: ConstraintsTransformBox(
+            alignment: followerAlignment,
+            constraintsTransform: (BoxConstraints constraints) {
+              return constraints.loosen();
+            },
+            // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
+            // because its builder isn't called until the layout phase, and
+            // because OverlayPortal lays out its child before its
+            // overlayChildBuilder.
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints boxConstraints) {
                 return _OptionsView(
@@ -506,10 +512,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
-        // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
-        // because its builder isn't called until the layout phase, and
-        // because OverlayPortal lays out its child before its
-        // overlayChildBuilder.
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             _fieldBoxConstraints.value = boxConstraints;

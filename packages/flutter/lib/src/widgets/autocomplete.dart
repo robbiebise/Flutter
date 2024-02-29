@@ -433,17 +433,17 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
     }.resolve(textDirection);
 
-    return CompositedTransformFollower(
-      link: _optionsLayerLink,
-      showWhenUnlinked: false,
-      targetAnchor: targetAnchor,
-      followerAnchor: followerAlignment,
-      child: TextFieldTapRegion(
-        child: AutocompleteHighlightedOption(
-          highlightIndexNotifier: _highlightedOptionIndex,
-          child: UnconstrainedBox(
-            constrainedAxis: Axis.vertical,
-            alignment: followerAlignment,
+    return Positioned( // Removes the Overlay's tight constraints.
+      top: 0.0,
+      left: 0.0,
+      child: CompositedTransformFollower(
+        link: _optionsLayerLink,
+        showWhenUnlinked: false,
+        targetAnchor: targetAnchor,
+        followerAnchor: followerAlignment,
+        child: TextFieldTapRegion(
+          child: AutocompleteHighlightedOption(
+            highlightIndexNotifier: _highlightedOptionIndex,
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints boxConstraints) {
                 return _OptionsView(

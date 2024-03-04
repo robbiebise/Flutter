@@ -422,48 +422,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     }
   }
 
-  Widget _buildOptionsView(BuildContext context) {
-    final TextDirection textDirection = Directionality.of(context);
-    final Alignment followerAlignment = switch (widget.optionsViewOpenDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
-    }.resolve(textDirection);
-    final Alignment targetAnchor = switch (widget.optionsViewOpenDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
-    }.resolve(textDirection);
-
-    return CompositedTransformFollower(
-      link: _optionsLayerLink,
-      showWhenUnlinked: false,
-      targetAnchor: targetAnchor,
-      followerAnchor: followerAlignment,
-      child: TextFieldTapRegion(
-        child: AutocompleteHighlightedOption(
-          highlightIndexNotifier: _highlightedOptionIndex,
-          child: ConstraintsTransformBox(
-            alignment: followerAlignment,
-            constraintsTransform: (BoxConstraints constraints) {
-              return constraints.loosen();
-            },
-            // This LayoutBuilder ensures that _fieldBoxConstraints is assigned
-            // because its builder isn't called until the layout phase, and
-            // because OverlayPortal lays out its child before its
-            // overlayChildBuilder.
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints boxConstraints) {
-                return _OptionsView(
-                  fieldBoxConstraints: _fieldBoxConstraints,
-                  child: widget.optionsViewBuilder(context, _select, _options),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -510,7 +468,17 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
                           ?? const SizedBox.shrink();
     return OverlayPortal.targetsRootOverlay(
       controller: _optionsViewController,
-      overlayChildBuilder: _buildOptionsView,
+      overlayChildBuilder: (BuildContext context) {
+        return _OptionsView<T>(
+          fieldBoxConstraints: _fieldBoxConstraints,
+          highlightedOptionIndex: _highlightedOptionIndex,
+          layerLink: _optionsLayerLink,
+          openDirection: widget.optionsViewOpenDirection,
+          select: _select,
+          options: _options,
+          optionsViewBuilder: widget.optionsViewBuilder,
+        );
+      },
       child: TextFieldTapRegion(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
@@ -532,20 +500,30 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 }
 
-class _OptionsView extends StatefulWidget {
+class _OptionsView<T extends Object> extends StatefulWidget {
   const _OptionsView({
     required this.fieldBoxConstraints,
-    required this.child,
+    required this.highlightedOptionIndex,
+    required this.layerLink,
+    required this.openDirection,
+    required this.options,
+    required this.optionsViewBuilder,
+    required this.select,
   });
 
-  final ValueNotifier<BoxConstraints?> fieldBoxConstraints;
-  final Widget child;
+  final ValueNotifier<BoxConstraints> fieldBoxConstraints;
+  final ValueNotifier<int> highlightedOptionIndex;
+  final LayerLink layerLink;
+  final OptionsViewOpenDirection openDirection;
+  final AutocompleteOptionsViewBuilder<T> optionsViewBuilder;
+  final AutocompleteOnSelected<T> select;
+  final Iterable<T> options;
 
   @override
-  State<_OptionsView> createState() => _OptionsViewState();
+  State<_OptionsView<T>> createState() => _OptionsViewState<T>();
 }
 
-class _OptionsViewState extends State<_OptionsView> {
+class _OptionsViewState<T extends Object> extends State<_OptionsView<T>> {
   void onFieldBoxConstraintsChange() {
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
       if (!mounted) {
@@ -569,18 +547,43 @@ class _OptionsViewState extends State<_OptionsView> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.fieldBoxConstraints.value == null) {
-      return widget.child;
-    }
-    return SizedBox(
-      // TODO(justinmc): Consider making optional this
-      // width-matching of the field and options, see
-      // https://github.com/flutter/flutter/pull/143249#discussion_r1486968360
-      // It's safe to access _fieldBoxConstraints here because
-      // OverlayPortal.overlayChildBuilder always builds in the
-      // frame after OverlayPortal.child.
-      width: widget.fieldBoxConstraints.value!.maxWidth,
-      child: widget.child,
+    final TextDirection textDirection = Directionality.of(context);
+    final Alignment followerAlignment = switch (widget.openDirection) {
+      OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
+      OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
+    }.resolve(textDirection);
+    final Alignment targetAnchor = switch (widget.openDirection) {
+      OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
+      OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
+    }.resolve(textDirection);
+
+    return Positioned(
+      width: widget.fieldBoxConstraints.value.maxWidth,
+      // TODO(justinmc): If I don't give a height, height constraints are
+      // unbounded, and children don't like that.
+      height: 400.0,
+      child: CompositedTransformFollower(
+        link: widget.layerLink,
+        showWhenUnlinked: false,
+        targetAnchor: targetAnchor,
+        followerAnchor: followerAlignment,
+        child: TextFieldTapRegion(
+          child: AutocompleteHighlightedOption(
+            highlightIndexNotifier: widget.highlightedOptionIndex,
+            // optionsViewBuilder must be able to look up
+            // AutocompleteHighlightedOption in its context.
+            child: Builder(
+              builder: (BuildContext context) {
+                return widget.optionsViewBuilder(
+                  context,
+                  widget.select,
+                  widget.options,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

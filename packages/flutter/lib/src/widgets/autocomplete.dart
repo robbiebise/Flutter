@@ -559,9 +559,8 @@ class _OptionsViewState<T extends Object> extends State<_OptionsView<T>> {
 
     return Positioned(
       width: widget.fieldBoxConstraints.value.maxWidth,
-      // TODO(justinmc): If I don't give a height, height constraints are
-      // unbounded, and children don't like that.
-      height: 400.0,
+      top: 0.0,
+      bottom: 0.0,
       child: CompositedTransformFollower(
         link: widget.layerLink,
         showWhenUnlinked: false,

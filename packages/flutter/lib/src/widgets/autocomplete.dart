@@ -17,6 +17,7 @@ import 'layout_builder.dart';
 import 'overlay.dart';
 import 'shortcuts.dart';
 import 'tap_region.dart';
+import 'value_listenable_builder.dart';
 
 // Examples can assume:
 // late BuildContext context;
@@ -422,6 +423,52 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     }
   }
 
+  Widget _buildOptionsView(BuildContext context) {
+    final TextDirection textDirection = Directionality.of(context);
+    final Alignment followerAlignment = switch (widget.optionsViewOpenDirection) {
+      OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
+      OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
+    }.resolve(textDirection);
+    final Alignment targetAnchor = switch (widget.optionsViewOpenDirection) {
+      OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
+      OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
+    }.resolve(textDirection);
+
+    return ValueListenableBuilder<BoxConstraints>(
+      valueListenable: _fieldBoxConstraints,
+      builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
+        return Positioned(
+          width: constraints.maxWidth,
+          top: 0.0,
+          bottom: 0.0,
+          child: child!,
+        );
+      },
+      child: CompositedTransformFollower(
+        link: _optionsLayerLink,
+        showWhenUnlinked: false,
+        targetAnchor: targetAnchor,
+        followerAnchor: followerAlignment,
+        child: TextFieldTapRegion(
+          child: AutocompleteHighlightedOption(
+            highlightIndexNotifier: _highlightedOptionIndex,
+            // optionsViewBuilder must be able to look up
+            // AutocompleteHighlightedOption in its context.
+            child: Builder(
+              builder: (BuildContext context) {
+                return widget.optionsViewBuilder(
+                  context,
+                  _select,
+                  _options,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -468,21 +515,14 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
                           ?? const SizedBox.shrink();
     return OverlayPortal.targetsRootOverlay(
       controller: _optionsViewController,
-      overlayChildBuilder: (BuildContext context) {
-        return _OptionsView<T>(
-          fieldBoxConstraints: _fieldBoxConstraints,
-          highlightedOptionIndex: _highlightedOptionIndex,
-          layerLink: _optionsLayerLink,
-          openDirection: widget.optionsViewOpenDirection,
-          select: _select,
-          options: _options,
-          optionsViewBuilder: widget.optionsViewBuilder,
-        );
-      },
+      overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
-            _fieldBoxConstraints.value = boxConstraints;
+            assert(boxConstraints.hasBoundedWidth);
+            SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+              _fieldBoxConstraints.value = boxConstraints;
+            });
             return Shortcuts(
               shortcuts: _shortcuts,
               child: Actions(
@@ -494,93 +534,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _OptionsView<T extends Object> extends StatefulWidget {
-  const _OptionsView({
-    required this.fieldBoxConstraints,
-    required this.highlightedOptionIndex,
-    required this.layerLink,
-    required this.openDirection,
-    required this.options,
-    required this.optionsViewBuilder,
-    required this.select,
-  });
-
-  final ValueNotifier<BoxConstraints> fieldBoxConstraints;
-  final ValueNotifier<int> highlightedOptionIndex;
-  final LayerLink layerLink;
-  final OptionsViewOpenDirection openDirection;
-  final AutocompleteOptionsViewBuilder<T> optionsViewBuilder;
-  final AutocompleteOnSelected<T> select;
-  final Iterable<T> options;
-
-  @override
-  State<_OptionsView<T>> createState() => _OptionsViewState<T>();
-}
-
-class _OptionsViewState<T extends Object> extends State<_OptionsView<T>> {
-  void onFieldBoxConstraintsChange() {
-    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {});
-    }, debugLabel: 'RawAutocomplete.onFieldBoxConstraintsChange');
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    widget.fieldBoxConstraints.addListener(onFieldBoxConstraintsChange);
-  }
-
-  @override
-  void dispose() {
-    widget.fieldBoxConstraints.removeListener(onFieldBoxConstraintsChange);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final TextDirection textDirection = Directionality.of(context);
-    final Alignment followerAlignment = switch (widget.openDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
-    }.resolve(textDirection);
-    final Alignment targetAnchor = switch (widget.openDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
-    }.resolve(textDirection);
-
-    return Positioned(
-      width: widget.fieldBoxConstraints.value.maxWidth,
-      top: 0.0,
-      bottom: 0.0,
-      child: CompositedTransformFollower(
-        link: widget.layerLink,
-        showWhenUnlinked: false,
-        targetAnchor: targetAnchor,
-        followerAnchor: followerAlignment,
-        child: TextFieldTapRegion(
-          child: AutocompleteHighlightedOption(
-            highlightIndexNotifier: widget.highlightedOptionIndex,
-            // optionsViewBuilder must be able to look up
-            // AutocompleteHighlightedOption in its context.
-            child: Builder(
-              builder: (BuildContext context) {
-                return widget.optionsViewBuilder(
-                  context,
-                  widget.select,
-                  widget.options,
-                );
-              },
-            ),
-          ),
         ),
       ),
     );

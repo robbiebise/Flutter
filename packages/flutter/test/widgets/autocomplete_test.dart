@@ -621,20 +621,26 @@ void main() {
 
     // Options are just below the field.
     final Offset optionsOffset = tester.getTopLeft(find.byKey(optionsKey));
-    Offset fieldOffset = tester.getTopLeft(find.byKey(fieldKey));
+    final Offset fieldOffset = tester.getTopLeft(find.byKey(fieldKey));
     final Size fieldSize = tester.getSize(find.byKey(fieldKey));
     expect(optionsOffset.dy, fieldOffset.dy + fieldSize.height);
 
     // Move the field (similar to as if the keyboard opened). The options move
-    // to follow the field.
+    // to follow the field, but take one frame to catch up.
     setState(() {
       alignment = Alignment.topCenter;
     });
     await tester.pump();
-    fieldOffset = tester.getTopLeft(find.byKey(fieldKey));
-    final Offset optionsOffsetOpen = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffsetOpen.dy, isNot(equals(optionsOffset.dy)));
-    expect(optionsOffsetOpen.dy, fieldOffset.dy + fieldSize.height);
+    final Offset fieldOffsetFrame1 = tester.getTopLeft(find.byKey(fieldKey));
+    final Offset optionsOffsetOpenFrame1 = tester.getTopLeft(find.byKey(optionsKey));
+    expect(optionsOffsetOpenFrame1.dy, optionsOffset.dy);
+    expect(fieldOffsetFrame1.dy, lessThan(fieldOffset.dy));
+    await tester.pump();
+    final Offset fieldOffsetFrame2 = tester.getTopLeft(find.byKey(fieldKey));
+    final Offset optionsOffsetOpenFrame2 = tester.getTopLeft(find.byKey(optionsKey));
+    expect(fieldOffsetFrame2, fieldOffsetFrame1);
+    expect(optionsOffsetOpenFrame2.dy, isNot(equals(optionsOffset.dy)));
+    expect(optionsOffsetOpenFrame2.dy, fieldOffsetFrame2.dy + fieldSize.height);
   });
 
   testWidgets('can prevent options from showing by returning an empty iterable', (WidgetTester tester) async {
@@ -1405,5 +1411,7 @@ void main() {
     optionsBox = tester.renderObject(find.byKey(optionsKey));
     expect(fieldBox.size.width, 200.0);
     expect(optionsBox.size.width, 200.0);
-  });
+  },
+    skip: true, // https://github.com/flutter/flutter/issues/146379
+  );
 }

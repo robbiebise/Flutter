@@ -4,11 +4,13 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'actions.dart';
 import 'basic.dart';
+import 'container.dart';
 import 'editable_text.dart';
 import 'focus_manager.dart';
 import 'framework.dart';
@@ -302,12 +304,10 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
 }
 
 class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> {
+  final GlobalKey _fieldKey = GlobalKey(debugLabel: kReleaseMode ? null : 'AutocompleteFieldView');
+
   final LayerLink _optionsLayerLink = LayerLink();
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
-
-  // The box constraints that the field was last built with.
-  final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
-      ValueNotifier<BoxConstraints>(const BoxConstraints());
 
   TextEditingController? _internalTextEditingController;
   TextEditingController get _textEditingController {
@@ -434,35 +434,62 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
     }.resolve(textDirection);
 
-    return ValueListenableBuilder<BoxConstraints>(
-      valueListenable: _fieldBoxConstraints,
-      builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
-        return Positioned(
-          width: constraints.maxWidth,
-          top: 0.0,
-          bottom: 0.0,
-          child: child!,
-        );
-      },
-      child: CompositedTransformFollower(
-        link: _optionsLayerLink,
-        showWhenUnlinked: false,
-        targetAnchor: targetAnchor,
-        followerAnchor: followerAlignment,
-        child: TextFieldTapRegion(
-          child: AutocompleteHighlightedOption(
-            highlightIndexNotifier: _highlightedOptionIndex,
-            // optionsViewBuilder must be able to look up
-            // AutocompleteHighlightedOption in its context.
-            child: Builder(
-              builder: (BuildContext context) {
-                return widget.optionsViewBuilder(
-                  context,
-                  _select,
-                  _options,
-                );
-              },
-            ),
+    /*
+    return CompositedTransformFollower(
+      link: _optionsLayerLink,
+      showWhenUnlinked: false,
+      targetAnchor: targetAnchor,
+      followerAnchor: followerAlignment,
+      child: UnconstrainedBox(
+        alignment: Alignment.topLeft,
+        child: Container(
+          width: 200.0,
+          height: 100.0,
+          color: const Color(0xffff0000),
+        ),
+      ),
+      */
+      /*
+      child: widget.optionsViewBuilder(
+                context,
+                _select,
+                _options,
+              ),
+              */
+    return CompositedTransformFollower(
+      link: _optionsLayerLink,
+      showWhenUnlinked: false,
+      targetAnchor: targetAnchor,
+      followerAnchor: followerAlignment,
+      child: TextFieldTapRegion(
+        child: AutocompleteHighlightedOption(
+          highlightIndexNotifier: _highlightedOptionIndex,
+          // optionsViewBuilder must be able to look up
+          // AutocompleteHighlightedOption in its context.
+          child: Builder(
+            builder: (BuildContext context) {
+              final Widget options = widget.optionsViewBuilder(
+                context,
+                _select,
+                _options,
+              );
+              if (_optionsLayerLink.leaderSize == null) {
+                return options;
+              }
+              return UnconstrainedBox(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  // TODO(justinmc): This isn't the right width?
+                  //width: _optionsLayerLink.leaderSize!.width,
+                  width: 200.0,
+                  height: 100.0,
+                  //child: options,
+                  child: Container(
+                    color: const Color(0xffff0000),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -511,29 +538,34 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
   @override
   Widget build(BuildContext context) {
+    // TODO(justinmc): Did this need to be built up here?
+    /*
     final Widget fieldView = widget.fieldViewBuilder?.call(context, _textEditingController, _focusNode, _onFieldSubmitted)
                           ?? const SizedBox.shrink();
+    */
     return OverlayPortal.targetsRootOverlay(
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
       child: TextFieldTapRegion(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints boxConstraints) {
-            assert(boxConstraints.hasBoundedWidth);
-            SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
-              _fieldBoxConstraints.value = boxConstraints;
-            });
-            return Shortcuts(
-              shortcuts: _shortcuts,
-              child: Actions(
-                actions: _actionMap,
-                child: CompositedTransformTarget(
-                  link: _optionsLayerLink,
-                  child: fieldView,
-                ),
+        child: Shortcuts(
+          shortcuts: _shortcuts,
+          child: Actions(
+            actions: _actionMap,
+            child: CompositedTransformTarget(
+              link: _optionsLayerLink,
+              child: Builder(
+                key: _fieldKey,
+                builder: (BuildContext context) {
+                  return widget.fieldViewBuilder?.call(
+                    context,
+                    _textEditingController,
+                    _focusNode,
+                    _onFieldSubmitted,
+                  ) ?? const SizedBox.shrink();
+                },
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

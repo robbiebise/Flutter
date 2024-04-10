@@ -493,6 +493,62 @@ void main() {
         offsetMoreOrLessEquals(tester.getBottomLeft(find.text('a'))));
     });
 
+    for (final OptionsViewOpenDirection direction in OptionsViewOpenDirection.values) {
+      testWidgets('correct options alignment for RTL', (WidgetTester tester) async {
+        final GlobalKey fieldKey = GlobalKey();
+        final GlobalKey optionsKey = GlobalKey();
+        const double kOptionsWidth = 100.0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: RawAutocomplete<String>(
+                    optionsViewOpenDirection: direction,
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      return kOptions.where((String option) {
+                        return option.contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                      return TextField(
+                        key: fieldKey,
+                        focusNode: focusNode,
+                        controller: textEditingController,
+                      );
+                    },
+                    optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                      return SizedBox(
+                        width: kOptionsWidth,
+                        key: optionsKey,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.byKey(fieldKey), findsOneWidget);
+        expect(find.byKey(optionsKey), findsNothing);
+
+        await tester.tap(find.byType(TextField));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(fieldKey), findsOneWidget);
+        expect(find.byKey(optionsKey), findsOneWidget);
+        final RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
+        expect(optionsBox.size.width, kOptionsWidth);
+        expect(
+          tester.getTopRight(find.byKey(optionsKey)).dx,
+          tester.getTopRight(find.byKey(fieldKey)).dx,
+        );
+      });
+    }
+
     group('fieldViewBuilder not passed', () {
       testWidgets('down', (WidgetTester tester) async {
         final GlobalKey autocompleteKey = GlobalKey();

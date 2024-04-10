@@ -18,8 +18,10 @@ import 'package:path/path.dart' as path;
 
 import 'allowlist.dart';
 import 'custom_rules/analyze.dart';
+import 'custom_rules/avoid_future_catcherror.dart';
 import 'custom_rules/no_double_clamp.dart';
 import 'custom_rules/no_stop_watches.dart';
+import 'custom_rules/render_box_intrinsics.dart';
 import 'run_command.dart';
 import 'utils.dart';
 
@@ -151,6 +153,9 @@ Future<void> run(List<String> arguments) async {
   printProgress('Taboo words...');
   await verifyTabooDocumentation(flutterRoot);
 
+  printProgress('Lint Kotlin files...');
+  await lintKotlinFiles(flutterRoot);
+
   // Ensure that all package dependencies are in sync.
   printProgress('Package dependencies...');
   await runCommand(flutter, <String>['update-packages', '--verify-only'],
@@ -173,7 +178,7 @@ Future<void> run(List<String> arguments) async {
     // Only run the private lints when the code is free of type errors. The
     // lints are easier to write when they can assume, for example, there is no
     // inheritance cycles.
-    final List<AnalyzeRule> rules = <AnalyzeRule>[noDoubleClamp, noStopwatches];
+    final List<AnalyzeRule> rules = <AnalyzeRule>[noDoubleClamp, noStopwatches, renderBoxIntrinsicCalculation];
     final String ruleNames = rules.map((AnalyzeRule rule) => '\n * $rule').join();
     printProgress('Analyzing code in the framework with the following rules:$ruleNames');
     await analyzeWithRules(flutterRoot, rules,
@@ -186,6 +191,10 @@ Future<void> run(List<String> arguments) async {
     await analyzeWithRules(flutterRoot, testRules,
       includePaths: <String>['packages/flutter/test'],
     );
+    final List<AnalyzeRule> toolRules = <AnalyzeRule>[AvoidFutureCatchError()];
+    final String toolRuleNames = toolRules.map((AnalyzeRule rule) => '\n * $rule').join();
+    printProgress('Analyzing code in the tool with the following rules:$toolRuleNames');
+    await analyzeToolWithRules(flutterRoot, toolRules);
   } else {
     printProgress('Skipped performing further analysis in the framework because "flutter analyze" finished with a non-zero exit code.');
   }
@@ -1964,6 +1973,22 @@ Future<void> verifyTabooDocumentation(String workingDirectory, { int minimumMatc
       '${bold}Similarly, avoid using "note:" or the phrase "note that". See https://github.com/flutter/flutter/wiki/Style-guide-for-Flutter-repo#avoid-empty-prose for details.$reset',
       ...errors,
     ]);
+  }
+}
+
+Future<void> lintKotlinFiles(String workingDirectory) async {
+  const String baselineRelativePath = 'dev/bots/test/analyze-test-input/ktlint-baseline.xml';
+  const String editorConfigRelativePath = 'dev/bots/test/analyze-test-input/.editorconfig';
+  final EvalResult lintResult = await _evalCommand('ktlint',
+      <String>['--baseline=$flutterRoot/$baselineRelativePath', '--editorconfig=$flutterRoot/$editorConfigRelativePath'],
+      workingDirectory: workingDirectory);
+  if (lintResult.exitCode != 0) {
+    final String errorMessage = 'Found lint violations in Kotlin files:\n ${lintResult.stdout}\n\n'
+        'To reproduce this lint locally:\n'
+        '1. Identify the CIPD version tag used to resolve this particular version of ktlint (check the dependencies section of this shard in the ci.yaml). \n'
+        '2. Download that version from https://chrome-infra-packages.appspot.com/p/flutter/ktlint/linux-amd64/+/<version_tag>\n'
+        '3. From the repository root, run `<path_to_ktlint>/ktlint --editorconfig=$editorConfigRelativePath --baseline=$baselineRelativePath`';
+    foundError(<String>[errorMessage]);
   }
 }
 

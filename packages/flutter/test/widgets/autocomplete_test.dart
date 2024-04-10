@@ -1339,8 +1339,87 @@ void main() {
       final RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
       final RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
       expect(optionsBox.size.width, equals(fieldBox.size.width));
+      expect(
+        tester.getTopLeft(find.byKey(optionsKey)).dy,
+        switch (direction) {
+          OptionsViewOpenDirection.down =>
+            tester.getTopLeft(find.byKey(fieldKey)).dy + fieldBox.size.height,
+          OptionsViewOpenDirection.up =>
+            tester.getTopLeft(find.byKey(fieldKey)).dy - optionsBox.size.height,
+        },
+      );
     });
   }
+
+  testWidgets('options width matches field width after rebuilding', (WidgetTester tester) async {
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    late StateSetter setState;
+    double width = 100.0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter localStateSetter) {
+                setState = localStateSetter;
+                return SizedBox(
+                  width: width,
+                  child: RawAutocomplete<String>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      return kOptions.where((String option) {
+                        return option.contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                      return Container(key: optionsKey);
+                    },
+                    fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                      return TextField(
+                        key: fieldKey,
+                        focusNode: focusNode,
+                        controller: textEditingController,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    RenderBox fieldBox = tester.renderObject(find.byKey(fieldKey));
+    expect(fieldBox.size.width, 100.0);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    fieldBox = tester.renderObject(find.byKey(fieldKey));
+    RenderBox optionsBox = tester.renderObject(find.byKey(optionsKey));
+    expect(fieldBox.size.width, 100.0);
+    expect(optionsBox.size.width, 100.0);
+
+    setState(() {
+      width = 200.0;
+    });
+    // Two pumps required due to post frame callback.
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    fieldBox = tester.renderObject(find.byKey(fieldKey));
+    optionsBox = tester.renderObject(find.byKey(optionsKey));
+    expect(fieldBox.size.width, 200.0);
+    expect(optionsBox.size.width, 200.0);
+  });
 
   testWidgets('options width matches field width after changing', (WidgetTester tester) async {
     final GlobalKey fieldKey = GlobalKey();

@@ -206,22 +206,21 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
   /// not null.
   final FocusNode? focusNode;
 
-  // TODO(justinmc): Not using CTF anymore, fix docs.
   /// {@template flutter.widgets.RawAutocomplete.optionsViewBuilder}
   /// Builds the selectable options widgets from a list of options objects.
   ///
-  /// The options are displayed floating below or above the field using a
-  /// [CompositedTransformFollower] inside of an [Overlay], not at the same
-  /// place in the widget tree as [RawAutocomplete]. To control whether it opens
-  /// upward or downward, use [optionsViewOpenDirection].
+  /// The options are displayed floating below or above the field inside of an
+  /// [Overlay], not at the same place in the widget tree as [RawAutocomplete].
+  /// To control whether it opens upward or downward, use
+  /// [optionsViewOpenDirection].
   ///
   /// In order to track which item is highlighted by keyboard navigation, the
   /// resulting options will be wrapped in an inherited
-  /// [AutocompleteHighlightedOption] widget.
-  /// Inside this callback, the index of the highlighted option can be obtained
-  /// from [AutocompleteHighlightedOption.of] to display the highlighted option
-  /// with a visual highlight to indicate it will be the option selected from
-  /// the keyboard.
+  /// [AutocompleteHighlightedOption] widget. Inside this callback, the index of
+  /// the highlighted option can be obtained from
+  /// [AutocompleteHighlightedOption.of] to display the highlighted option with
+  /// a visual highlight to indicate it will be the option selected from the
+  /// keyboard.
   ///
   /// {@endtemplate}
   final AutocompleteOptionsViewBuilder<T> optionsViewBuilder;
@@ -474,11 +473,8 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
   @override
   Widget build(BuildContext context) {
-    // TODO(justinmc): Did this need to be built up here?
-    /*
     final Widget fieldView = widget.fieldViewBuilder?.call(context, _textEditingController, _focusNode, _onFieldSubmitted)
                           ?? const SizedBox.shrink();
-    */
     return OverlayPortal.targetsRootOverlay(
       controller: _optionsViewController,
       overlayChildBuilder: _buildOptionsView,
@@ -486,18 +482,9 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         child: Shortcuts(
           shortcuts: _shortcuts,
           child: Actions(
+            key: _fieldKey,
             actions: _actionMap,
-            child: Builder(
-              key: _fieldKey,
-              builder: (BuildContext context) {
-                return widget.fieldViewBuilder?.call(
-                  context,
-                  _textEditingController,
-                  _focusNode,
-                  _onFieldSubmitted,
-                ) ?? const SizedBox.shrink();
-              },
-            ),
+            child: fieldView,
           ),
         ),
       ),
@@ -517,8 +504,13 @@ class _OptionsView extends StatefulWidget {
   /// The key for the field that the options positions itself based on.
   final GlobalKey fieldKey;
 
+  /// The index of the highlighted option.
+  ///
+  /// Options appear to be selected, but do not use the [Focus] system, since
+  /// focus remains on the field even during option selection.
   final ValueNotifier<int> highlightedOptionIndex;
 
+  /// Builds the options visuals.
   final WidgetBuilder optionsViewBuilder;
 
   /// Whether the options open above or below the anchor.
@@ -534,6 +526,8 @@ class _OptionsView extends StatefulWidget {
 class _OptionsViewState extends State<_OptionsView> {
   late Rect _fieldRect;
 
+  /// Returns the paint bounds of the field given its key, in the coordinate
+  /// system of the options [Overlay].
   static Rect _getRect(GlobalKey fieldKey) {
     final BuildContext fieldContext = fieldKey.currentContext!;
     final RenderBox overlay = Overlay.of(fieldContext).context.findRenderObject()! as RenderBox;
@@ -544,7 +538,9 @@ class _OptionsViewState extends State<_OptionsView> {
     );
   }
 
-  void _checkField() {
+  /// Updates the _fieldRect with its corresponding widget, giving a one frame
+  /// delay to allow the field to lay itself out.
+  void _updateFieldRect() {
     _fieldRect = _getRect(widget.fieldKey);
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
       final Rect nextFieldRect = _getRect(widget.fieldKey);
@@ -559,13 +555,13 @@ class _OptionsViewState extends State<_OptionsView> {
   @override
   void initState() {
     super.initState();
-    _checkField();
+    _updateFieldRect();
   }
 
   @override
   void didUpdateWidget(_OptionsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _checkField();
+    _updateFieldRect();
   }
 
   @override

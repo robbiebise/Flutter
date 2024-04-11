@@ -699,6 +699,53 @@ void main() {
     expect(optionsOffsetOpenFrame2.dy, fieldOffsetFrame2.dy + fieldSize.height);
   });
 
+  testWidgets('options are shown one frame after tapping in field', (WidgetTester tester) async {
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: RawAutocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                return kOptions.where((String option) {
+                  return option.contains(textEditingValue.text.toLowerCase());
+                });
+              },
+              fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
+                return TextFormField(
+                  controller: fieldTextEditingController,
+                  focusNode: fieldFocusNode,
+                  key: fieldKey,
+                );
+              },
+              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                return ListView(
+                  key: optionsKey,
+                  children: options.map((String option) => Text(option)).toList(),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Field is shown but not options.
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    expect(find.text('aardvark'), findsNothing);
+
+    // Enter text to show the options.
+    await tester.tap(find.byKey(fieldKey));
+    await tester.pump();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    expect(find.text('aardvark'), findsOneWidget);
+  });
+
   testWidgets('can prevent options from showing by returning an empty iterable', (WidgetTester tester) async {
     final GlobalKey fieldKey = GlobalKey();
     final GlobalKey optionsKey = GlobalKey();

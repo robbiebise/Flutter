@@ -541,7 +541,9 @@ class _OptionsViewState extends State<_OptionsView> {
   /// Updates the _fieldRect with its corresponding widget, giving a one frame
   /// delay to allow the field to lay itself out.
   void _updateFieldRect() {
-    _fieldRect = _getRect(widget.fieldKey);
+    setState(() {
+      _fieldRect = _getRect(widget.fieldKey);
+    });
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
       final Rect nextFieldRect = _getRect(widget.fieldKey);
       if (nextFieldRect != _fieldRect) {

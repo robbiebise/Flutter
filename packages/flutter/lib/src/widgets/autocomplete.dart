@@ -14,6 +14,7 @@ import 'editable_text.dart';
 import 'focus_manager.dart';
 import 'framework.dart';
 import 'inherited_notifier.dart';
+import 'media_query.dart';
 import 'overlay.dart';
 import 'shortcuts.dart';
 import 'tap_region.dart';
@@ -568,9 +569,14 @@ class _OptionsViewState extends State<_OptionsView> {
 
   @override
   Widget build(BuildContext context) {
+    final Rect screenRect = Offset.zero & MediaQuery.of(context).size;
+    print('justin build ${MediaQuery.of(context).size} vs $_fieldRect');
+    // TODO(justinmc): This doesn't work (one frame late?). I need a programmatic
+    // way to listen to screen size changes...
+    final Rect fieldRectOnScreen = _fieldRect.intersect(screenRect);
     return CustomSingleChildLayout(
       delegate: _OptionsViewLayout(
-        fieldRect: _fieldRect,
+        anchorRect: fieldRectOnScreen,
         optionsViewOpenDirection: widget.optionsViewOpenDirection,
         textDirection: Directionality.of(context),
       ),
@@ -594,13 +600,13 @@ class _OptionsViewState extends State<_OptionsView> {
 // optionsViewOpenDirection.
 class _OptionsViewLayout extends SingleChildLayoutDelegate {
   _OptionsViewLayout({
+    required this.anchorRect,
     required this.optionsViewOpenDirection,
     required this.textDirection,
-    required this.fieldRect,
   });
 
   // Rect of the field that the options should be positioned relative to.
-  final Rect fieldRect;
+  final Rect anchorRect;
 
   // Whether the options open above or below the anchor.
   final OptionsViewOpenDirection optionsViewOpenDirection;
@@ -611,10 +617,10 @@ class _OptionsViewLayout extends SingleChildLayoutDelegate {
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     return BoxConstraints(
-      maxWidth: fieldRect.width,
+      maxWidth: anchorRect.width,
       maxHeight: switch (optionsViewOpenDirection) {
-        OptionsViewOpenDirection.down => constraints.maxHeight - fieldRect.top,
-        OptionsViewOpenDirection.up => fieldRect.top,
+        OptionsViewOpenDirection.down => constraints.maxHeight - anchorRect.top,
+        OptionsViewOpenDirection.up => anchorRect.top,
       },
     );
   }
@@ -623,13 +629,13 @@ class _OptionsViewLayout extends SingleChildLayoutDelegate {
   Offset getPositionForChild(Size size, Size childSize) {
     return switch ((optionsViewOpenDirection, textDirection)) {
       (OptionsViewOpenDirection.down, TextDirection.ltr) =>
-          fieldRect.bottomLeft,
+          anchorRect.bottomLeft,
       (OptionsViewOpenDirection.down, TextDirection.rtl) =>
-          Offset(fieldRect.right - childSize.width, fieldRect.bottom),
+          Offset(anchorRect.right - childSize.width, anchorRect.bottom),
       (OptionsViewOpenDirection.up, TextDirection.ltr) =>
-          Offset(fieldRect.left, fieldRect.top - childSize.height),
+          Offset(anchorRect.left, anchorRect.top - childSize.height),
       (OptionsViewOpenDirection.up, TextDirection.rtl) =>
-          Offset(fieldRect.right - childSize.width, fieldRect.top - childSize.height),
+          Offset(anchorRect.right - childSize.width, anchorRect.top - childSize.height),
     };
   }
 
@@ -637,7 +643,7 @@ class _OptionsViewLayout extends SingleChildLayoutDelegate {
   bool shouldRelayout(_OptionsViewLayout oldDelegate) {
     return optionsViewOpenDirection != oldDelegate.optionsViewOpenDirection
         || textDirection != oldDelegate.textDirection
-        || fieldRect != oldDelegate.fieldRect;
+        || anchorRect != oldDelegate.anchorRect;
   }
 }
 

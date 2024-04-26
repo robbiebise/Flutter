@@ -138,7 +138,7 @@ enum RoutePopDisposition {
 /// The type argument `T` is the route's return type, as used by
 /// [currentResult], [popped], and [didPop]. The type `void` may be used if the
 /// route does not return a value.
-abstract class Route<T> {
+abstract class Route<T> extends _RoutePlaceholder {
   /// Initialize the [Route].
   ///
   /// If the [settings] are not provided, an empty [RouteSettings] object is
@@ -355,7 +355,7 @@ abstract class Route<T> {
   /// will still be called. The `didPop` parameter indicates whether or not the
   /// back navigation actually happened successfully.
   /// {@endtemplate}
-  void onPopInvoked(bool didPop) {}
+  void onPopInvoked(bool didPop, T? result) {}
 
   /// Whether calling [didPop] would return false.
   bool get willHandlePopInternally => false;
@@ -578,10 +578,7 @@ abstract class Route<T> {
   /// rendered. It is even possible for the route to be active but for the stateful
   /// widgets within the route to not be instantiated. See [ModalRoute.maintainState].
   bool get isActive {
-    if (_navigator == null) {
-      return false;
-    }
-    return _navigator!._firstRouteEntryWhereOrNull(_RouteEntry.isRoutePredicate(this))?.isPresent ?? false;
+    return _navigator?._firstRouteEntryWhereOrNull(_RouteEntry.isRoutePredicate(this))?.isPresent ?? false;
   }
 }
 
@@ -706,7 +703,7 @@ class NavigatorObserver {
   /// The [Navigator]'s routes are being moved by a user gesture.
   ///
   /// For example, this is called when an iOS back gesture starts, and is used
-  /// to disabled hero animations during such interactions.
+  /// to disable hero animations during such interactions.
   void didStartUserGesture(Route<dynamic> route, Route<dynamic>? previousRoute) { }
 
   /// User gesture is no longer controlling the [Navigator].
@@ -1576,7 +1573,7 @@ class Navigator extends StatefulWidget {
   ///  * [Navigator], which explains under the heading "state restoration"
   ///    how and under what conditions the navigator restores its state.
   ///  * [Navigator.restorablePush], which includes an example showcasing how
-  ///    to push a restorable route unto the navigator.
+  ///    to push a restorable route onto the navigator.
   /// {@endtemplate}
   final String? restorationScopeId;
 
@@ -1612,7 +1609,7 @@ class Navigator extends StatefulWidget {
   /// The callback must return a list of [Route] objects with which the history
   /// will be primed.
   ///
-  /// When parsing the initialRoute, if there's any chance that the it may
+  /// When parsing the initialRoute, if there's any chance that it may
   /// contain complex characters, it's best to use the
   /// [characters](https://pub.dev/packages/characters) API. This will ensure
   /// that extended grapheme clusters and surrogate pairs are treated as single
@@ -1840,7 +1837,7 @@ class Navigator extends StatefulWidget {
   /// [NavigatorObserver.didReplace]). The removed route is notified once the
   /// new route has finished animating (see [Route.didComplete]). The removed
   /// route's exit animation is not run (see [popAndPushNamed] for a variant
-  /// that does animated the removed route).
+  /// that animates the removed route).
   ///
   /// Ongoing gestures within the current route are canceled when a new route is
   /// pushed.
@@ -2670,7 +2667,7 @@ class Navigator extends StatefulWidget {
   /// this class is given instead. Useful for pushing contents above all
   /// subsequent instances of [Navigator].
   ///
-  /// If there is no [Navigator] in the give `context`, this function will throw
+  /// If there is no [Navigator] in the given `context`, this function will throw
   /// a [FlutterError] in debug mode, and an exception in release mode.
   ///
   /// This method can be expensive (it walks the element tree).
@@ -2804,7 +2801,7 @@ class Navigator extends StatefulWidget {
     // Null route might be a result of gap in initialRouteName
     //
     // For example, routes = ['A', 'A/B/C'], and initialRouteName = 'A/B/C'
-    // This should result in result = ['A', null,'A/B/C'] where 'A/B' produces
+    // This should result in result = ['A', null, 'A/B/C'] where 'A/B' produces
     // the null. In this case, we want to filter out the null and return
     // result = ['A', 'A/B/C'].
     result.removeWhere((Route<dynamic>? route) => route == null);
@@ -2899,10 +2896,9 @@ enum _RouteLifecycle {
 
 typedef _RouteEntryPredicate = bool Function(_RouteEntry entry);
 
-class _NotAnnounced extends Route<void> {
-  // A placeholder for the lastAnnouncedPreviousRoute, the
-  // lastAnnouncedPoppedNextRoute, and the lastAnnouncedNextRoute before any
-  // change has been announced.
+/// Placeholder for a route.
+class _RoutePlaceholder {
+  const _RoutePlaceholder();
 }
 
 class _RouteEntry extends RouteTransitionRecord {
@@ -2940,12 +2936,12 @@ class _RouteEntry extends RouteTransitionRecord {
   /// remove as a result of a page update.
   static const int kDebugPopAttemptLimit = 100;
 
-  static final Route<dynamic> notAnnounced = _NotAnnounced();
+  static const _RoutePlaceholder notAnnounced = _RoutePlaceholder();
 
   _RouteLifecycle currentState;
-  Route<dynamic>? lastAnnouncedPreviousRoute = notAnnounced; // last argument to Route.didChangePrevious
-  WeakReference<Route<dynamic>> lastAnnouncedPoppedNextRoute = WeakReference<Route<dynamic>>(notAnnounced); // last argument to Route.didPopNext
-  Route<dynamic>? lastAnnouncedNextRoute = notAnnounced; // last argument to Route.didChangeNext
+  _RoutePlaceholder? lastAnnouncedPreviousRoute = notAnnounced; // last argument to Route.didChangePrevious
+  WeakReference<_RoutePlaceholder> lastAnnouncedPoppedNextRoute = WeakReference<_RoutePlaceholder>(notAnnounced); // last argument to Route.didPopNext
+  _RoutePlaceholder? lastAnnouncedNextRoute = notAnnounced; // last argument to Route.didChangeNext
   int? lastFocusNode; // The last focused semantic node for the route entry.
 
   /// Restoration ID to be used for the encapsulating route when restoration is
@@ -3113,7 +3109,7 @@ class _RouteEntry extends RouteTransitionRecord {
     assert(isPresent);
     pendingResult = result;
     currentState = _RouteLifecycle.pop;
-    route.onPopInvoked(true);
+    route.onPopInvoked(true, result);
   }
 
   bool _reportRemovalToObserver = true;
@@ -5243,7 +5239,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
         pop(result);
         return true;
       case RoutePopDisposition.doNotPop:
-        lastEntry.route.onPopInvoked(false);
+        lastEntry.route.onPopInvoked(false, result);
         return true;
     }
   }
@@ -5286,7 +5282,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
         assert(entry.route._popCompleter.isCompleted);
         entry.currentState = _RouteLifecycle.pop;
       }
-      entry.route.onPopInvoked(true);
+      entry.route.onPopInvoked(true, result);
     } else {
       entry.pop<T>(result);
       assert (entry.currentState == _RouteLifecycle.pop);
@@ -5651,14 +5647,12 @@ class _NamedRestorationInformation extends _RestorationInformation {
     required this.restorationScopeId,
   }) : super(_RouteRestorationType.named);
 
-  factory _NamedRestorationInformation.fromSerializableData(List<Object?> data) {
-    assert(data.length >= 2);
-    return _NamedRestorationInformation(
-      restorationScopeId: data[0]! as int,
-      name: data[1]! as String,
-      arguments: data.length > 2 ? data[2] : null,
-    );
-  }
+  _NamedRestorationInformation.fromSerializableData(List<Object?> data)
+      : assert(data.length > 1),
+        restorationScopeId = data[0]! as int,
+        name = data[1]! as String,
+        arguments = data.elementAtOrNull(2),
+        super(_RouteRestorationType.named);
 
   @override
   List<Object> computeSerializableData() {
@@ -5689,15 +5683,12 @@ class _AnonymousRestorationInformation extends _RestorationInformation {
     required this.restorationScopeId,
   }) : super(_RouteRestorationType.anonymous);
 
-  factory _AnonymousRestorationInformation.fromSerializableData(List<Object?> data) {
-    assert(data.length > 1);
-    final RestorableRouteBuilder<Object?> routeBuilder = ui.PluginUtilities.getCallbackFromHandle(ui.CallbackHandle.fromRawHandle(data[1]! as int))! as RestorableRouteBuilder;
-    return _AnonymousRestorationInformation(
-      restorationScopeId: data[0]! as int,
-      routeBuilder: routeBuilder,
-      arguments: data.length > 2 ? data[2] : null,
-    );
-  }
+  _AnonymousRestorationInformation.fromSerializableData(List<Object?> data)
+      : assert(data.length > 1),
+        restorationScopeId = data[0]! as int,
+        routeBuilder = ui.PluginUtilities.getCallbackFromHandle(ui.CallbackHandle.fromRawHandle(data[1]! as int))! as RestorableRouteBuilder,
+        arguments = data.elementAtOrNull(2),
+        super(_RouteRestorationType.anonymous);
 
   @override
   // TODO(goderbauer): remove the kIsWeb check when https://github.com/flutter/flutter/issues/33615 is resolved.

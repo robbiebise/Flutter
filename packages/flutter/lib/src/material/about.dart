@@ -1152,10 +1152,11 @@ class _MasterDetailFlowState extends State<_MasterDetailFlow> implements _PageOp
   @override
   void openDetailPage(Object arguments) {
     _cachedDetailArguments = arguments;
-    if (_builtLayout == _LayoutMode.nested) {
-      _navigatorKey.currentState!.pushNamed(_navDetail, arguments: arguments);
-    } else {
-      focus = _Focus.detail;
+    switch (_builtLayout) {
+      case _LayoutMode.nested:
+        _navigatorKey.currentState!.pushNamed(_navDetail, arguments: arguments);
+      case _LayoutMode.lateral || null:
+        focus = _Focus.detail;
     }
   }
 
@@ -1229,9 +1230,9 @@ class _MasterDetailFlowState extends State<_MasterDetailFlow> implements _PageOp
   }
 
   MaterialPageRoute<void> _detailPageRoute(Object? arguments) {
-    return MaterialPageRoute<dynamic>(builder: (BuildContext context) {
-      return PopScope(
-        onPopInvoked: (bool didPop) {
+    return MaterialPageRoute<void>(builder: (BuildContext context) {
+      return PopScope<void>(
+        onPopInvokedWithResult: (bool didPop, void result) {
           // No need for setState() as rebuild happens on navigation pop.
           focus = _Focus.master;
         },

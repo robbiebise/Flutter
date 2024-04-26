@@ -204,12 +204,7 @@ void main() {
 
     // Adding 7 more children overflows onto a third page.
     setState(() {
-      children.add(const TestBox());
-      children.add(const TestBox());
-      children.add(const TestBox());
-      children.add(const TestBox());
-      children.add(const TestBox());
-      children.add(const TestBox());
+      children.addAll(List<TestBox>.filled(6, const TestBox()));
     });
     await tester.pumpAndSettle();
     expect(find.byType(TestBox), findsNWidgets(7));
@@ -471,12 +466,7 @@ void main() {
 
         // Theme brightness is preferred, otherwise MediaQuery brightness is
         // used. If both are null, defaults to light.
-        late final Brightness effectiveBrightness;
-        if (themeBrightness != null) {
-          effectiveBrightness = themeBrightness;
-        } else {
-          effectiveBrightness = mediaBrightness ?? Brightness.light;
-        }
+        final Brightness effectiveBrightness = themeBrightness ?? mediaBrightness ?? Brightness.light;
 
         expect(
           text.style!.color!.value,

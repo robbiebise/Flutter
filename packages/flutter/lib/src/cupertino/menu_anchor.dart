@@ -694,7 +694,9 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
 
   @override
   void dispose() {
+    _animationController.stop();
     _animationController.dispose();
+    _panAnimationController.stop();
     _panAnimationController.dispose();
     _menuController._detach(this);
     _internalMenuController = null;
@@ -2719,6 +2721,7 @@ class _CupertinoMenuItemGestureHandlerState
 
     if (widget.panActivationDelay != null && _longPanPressTimer == null) {
       _longPanPressTimer = Timer(widget.panActivationDelay!, () {
+        _longPanPressTimer?.cancel();
         _longPanPressTimer = null;
         if (mounted) {
           _handleTap();
@@ -2776,6 +2779,7 @@ class _CupertinoMenuItemGestureHandlerState
   @override
   void dispose() {
     _longPanPressTimer?.cancel();
+    _longPanPressTimer = null;
     _focusNode?.removeListener(_handleFocusChange);
     _internalFocusNode?.dispose();
     _internalFocusNode = null;

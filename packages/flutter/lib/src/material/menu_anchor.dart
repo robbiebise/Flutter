@@ -2070,7 +2070,7 @@ final Axis orientation = _anchor?._orientation ?? Axis.vertical;
   }
 
   void _handleFocusChange() {
-    if (_buttonFocusNode.hasPrimaryFocus) {
+    if (_buttonFocusNode.hasFocus) {
       if (!_menuController.isOpen) {
         _menuController.open();
       }

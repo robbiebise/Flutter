@@ -12,7 +12,7 @@ void main() {
   testWidgets('CupertinoBackButtonMenu displays correct number of menu items',
       (WidgetTester tester) async {
     await tester.pumpWidget(
-      const CupertinoApp(home: Center(child: example.CupertinoBackButtonMenu(depth: 3))),
+      const CupertinoApp(home: Center(child: example.CupertinoHistoryMenu(depth: 3))),
     );
 
     final Finder menuItemsFinder = find.byType(CupertinoMenuItem);
@@ -20,7 +20,7 @@ void main() {
     expect(menuItemsFinder, findsNWidgets(0));
     expect(find.text('View 2'), findsOneWidget);
 
-    final Offset center = tester.getCenter(find.byType(example.CupertinoBackButtonMenu));
+    final Offset center = tester.getCenter(find.byType(example.CupertinoHistoryMenu));
 
     // Press down on the back button to open the menu.
     await tester.startGesture(center);
@@ -34,7 +34,7 @@ void main() {
 
   testWidgets('CupertinoBackButtonMenu allows navigation to previous views',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const example.CupertinoNavigationStackMenuApp());
+    await tester.pumpWidget(const example.CupertinoHistoryMenuApp());
 
     final Finder pushButtonFinder = find.text('Push Next View');
     final Finder navBarFinder = find.byType(CupertinoNavigationBar);
@@ -43,7 +43,7 @@ void main() {
     expect(pushButtonFinder, findsOneWidget);
     expect(navBarFinder, findsOneWidget);
     expect(find.text('View 0'), findsOneWidget); // Text in the navigation bar
-    expect(find.byType(example.CupertinoBackButtonMenu), findsNothing);
+    expect(find.byType(example.CupertinoHistoryMenu), findsNothing);
 
     // Push to page 1, which should have a back button and menu.
     await tester.tap(pushButtonFinder);
@@ -52,7 +52,7 @@ void main() {
     expect(pushButtonFinder, findsOneWidget);
     expect(find.text('View 0'), findsOneWidget); // Text in back button menu
     expect(find.text('View 1'), findsOneWidget);
-    expect(find.byType(example.CupertinoBackButtonMenu), findsOneWidget);
+    expect(find.byType(example.CupertinoHistoryMenu), findsOneWidget);
 
     await tester.tap(pushButtonFinder);
     await tester.pumpAndSettle();
@@ -60,7 +60,7 @@ void main() {
     expect(pushButtonFinder, findsOneWidget);
     expect(find.text('View 1'), findsOneWidget);
     expect(find.text('View 2'), findsOneWidget);
-    expect(find.byType(example.CupertinoBackButtonMenu), findsOneWidget);
+    expect(find.byType(example.CupertinoHistoryMenu), findsOneWidget);
 
     // Test regular back button function. This should pop back to page 1.
     await tester.tap(find.text('View 1'));
@@ -74,7 +74,7 @@ void main() {
     expect(find.byType(CupertinoMenuItem), findsNothing);
     expect(find.text('View 0'), findsOneWidget);
     expect(find.text('View 1'), findsOneWidget);
-    expect(find.byType(example.CupertinoBackButtonMenu), findsOneWidget);
+    expect(find.byType(example.CupertinoHistoryMenu), findsOneWidget);
 
     // Test regular back button function. This should pop back to page 0.
     await tester.tap(find.text('View 0'));
@@ -149,6 +149,6 @@ void main() {
     // there should be no back button.
     expect(find.text('View 0'), findsOneWidget);
     expect(find.text('View 1'), findsNothing);
-    expect(find.byType(example.CupertinoBackButtonMenu), findsNothing);
+    expect(find.byType(example.CupertinoHistoryMenu), findsNothing);
   });
 }

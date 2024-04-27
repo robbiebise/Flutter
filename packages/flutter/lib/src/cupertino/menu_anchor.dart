@@ -25,6 +25,7 @@ import '../material/menu_anchor.dart'
 import 'app.dart';
 import 'colors.dart';
 import 'constants.dart';
+import 'icons.dart' show CupertinoIcons;
 import 'scrollbar.dart';
 import 'theme.dart';
 
@@ -154,6 +155,7 @@ enum MenuStatus {
 ///
 /// * [CupertinoMenuAnchor], a widget that displays a Cupertino-style menu when
 ///   pressed.
+
 // [MenuController] is extended so that menu actions, such as
 // [DismissMenuAction], can be used with this controller.
 class CupertinoMenuController implements MenuController {
@@ -223,7 +225,7 @@ class _AnchorScope extends InheritedWidget {
 /// A builder for the widget that this [CupertinoMenuAnchor] surrounds.
 ///
 /// Typically, this is a button that opens the menu by calling
-/// [CupertinoMenuAnchor.open] on the `controller` passed to the builder.
+/// [CupertinoMenuController.open] on the controller passed to the menu.
 ///
 /// If a child is not supplied, then the [CupertinoMenuAnchor] will be the size
 /// that its parent allocates for it.
@@ -236,7 +238,7 @@ typedef CupertinoMenuAnchorChildBuilder = Widget Function(
 /// The menu surface builder used by [CupertinoMenuAnchor].
 ///
 /// - The [context] is the build context of the menu overlay.
-/// - The [child] is the scrollable containing the [menuChildren].
+/// - The [child] is the scrollable containing the menu items.
 /// - The [animation] is the animation that runs as the menu is opening or
 ///   closing.
 /// - The [backgroundColor] is the color passed to
@@ -512,14 +514,16 @@ class CupertinoMenuAnchor extends StatefulWidget {
   ///
   /// If true, the menu will be sized to fit its contents. Otherwise, the menu
   /// surface will grow to fill either the total available vertical space, or
-  /// the value of [constraints.maxHeight], whichever is smaller.
+  /// the maximum height supplied to the menu [constraints], whichever is
+  /// smaller.
   ///
   /// If you are unsure of the total size of your menu items, keeping
   /// [shrinkWrap] set to true will prevent a menu surface that is larger than
   /// it's contents. However, if you are confident that the total size of your
-  /// menu items will always **exceed** the [constraints.maxHeight] you provide,
-  /// or the total height of the screen, setting [shrinkWrap] to false can
-  /// improve performance by allowing the menu to be laid out in advance.
+  /// menu items will always **exceed** the maximum height supplied to the menu
+  /// [constraints], or the total height of the screen, setting [shrinkWrap] to
+  /// false can improve performance by allowing the menu to be laid out in
+  /// advance.
   ///
   /// Defaults to true.
   final bool shrinkWrap;
@@ -1685,8 +1689,8 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 /// ## Layout
 /// The menu item is unconstrained by default and will grow to fit the size of
 /// its container. To constrain the size of a [CupertinoMenuItem], the
-/// [constraints] parameter can be set. Constraints are applied **after**
-/// [padding]. This means that padding will only affect the size of this menu
+/// [constraints] parameter can be set. [BoxConstraints] are applied **above**
+/// [padding]. This means that [padding] will only affect the size of this menu
 /// item if this item's minimum constraints are less than the sum of its
 /// [padding] and the size of its contents.
 ///
@@ -1721,7 +1725,7 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 /// The [hoveredColor], [focusedColor], and [pressedColor] parameters can be
 /// used to change the background color of the menu item when hovered, focused,
 /// or pressed/panned. If these parameters are not set, the menu item will use
-/// the [defaultPressedColor] at `5%`, `7.5%`, and default opacity,
+/// the [defaultPressedColor] at 5%, 7.5%, and default opacity,
 /// respectively.
 ///
 /// The [isDefaultAction] should be set to true if the menu item is the
@@ -1736,44 +1740,20 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 /// ## Shortcuts
 /// {@macro flutter.material.MenuBar.shortcuts_note}
 ///
+/// {@tool dartpad} This example shows a basic [CupertinoMenuAnchor] that wraps
+/// a button.
 ///
-/// ```dart
+/// ** See code in examples/api/lib/cupertino/menu_anchor/cupertino_menu_anchor.0.dart **
+/// {@end-tool}
 ///
-///// Example (Padding ignored)
+/// {@tool dartpad} This example shows how to use a [CupertinoMenuAnchor] to
+/// create a navigation history stack, where the user can navigate back to
+/// previous pages by long-pressing the back button.
 ///
-///              Left-to-right Menu Item
-///Leading                            Trailing
-///Alignment(-0.2, -0.2)              Alignment(0.6, 0.8)
-///   ┌────|────────┬───────────────┬────────|────┐
-///   │    |        │               │        |    │
-///   │    ▼        │    Child      │        |    │
-///   │---►Leading  │               │        |    │
-///   │             ├───────────────┤        |    │
-///   │             │               │        ▼    │
-///   │             │   Subtitle    │------►Trail-│
-///   │             │               │       ing   │
-///   |─────────────|───────────────|─────────────|
-///   ▲   Leading   ▲               ▲   Trailing  ▲
-///        width                         width
+/// ** See code in examples/api/lib/cupertino/menu_anchor/cupertino_menu_anchor.3.dart **
+/// {@end-tool}
 ///
 ///
-///
-///              Right-to-left Menu Item
-///
-///    Trailing                      Leading
-///    Alignment(0.6, 0.8)           Alignment(-0.4, -0.2)
-///   ┌────────|────┬───────────────┬────|────────┐
-///   │        |    │               │    |        │
-///   │        |    │    Child      │    ▼        │
-///   │        |    │               │---►Leading  │
-///   │        |    ├───────────────┤             │
-///   │        ▼    │               │             │
-///   │------►Trail-│   Subtitle    │             │
-///   │       ing   │               │             │
-///   |─────────────|───────────────|─────────────|
-///   ▲   Trailing  ▲               ▲   Leading   ▲
-///        width                         width
-///```
 /// See also:
 /// * [CupertinoMenuAnchor], a Cupertino-style widget that shows a menu of
 ///   actions in a popup
@@ -1832,10 +1812,10 @@ class CupertinoMenuItem extends StatelessWidget with CupertinoMenuEntryMixin {
   /// The padding applied to this menu item.
   final EdgeInsetsGeometry? padding;
 
-  /// The widget shown before the label; typically a [CupertinoIcon].
+  /// The widget shown before the label; typically a [CupertinoIcons].
   final Widget? leading;
 
-  /// The widget shown after the label; typically a [CupertinoIcon].
+  /// The widget shown after the label; typically a [CupertinoIcons].
   final Widget? trailing;
 
   /// A widget displayed underneath the [child]; typically a [Text] widget.
@@ -1946,10 +1926,10 @@ class CupertinoMenuItem extends StatelessWidget with CupertinoMenuEntryMixin {
   @override
   bool get hasLeading => leading != null;
 
-  /// The constraints to apply to the menu item.
+  /// The [BoxConstraints] to apply to the menu item.
   ///
-  /// Because padding is applied to the menu item prior to constraints, padding
-  /// will only affect the size of the menu item if the height of the padding
+  /// Because [padding] is applied to the menu item prior to [constraints], [padding]
+  /// will only affect the size of the menu item if the vertical [padding]
   /// plus the height of the menu item's children exceeds the
   /// [BoxConstraints.minHeight].
   final BoxConstraints? constraints;
@@ -2251,10 +2231,10 @@ class _CupertinoMenuItemLabel extends StatelessWidget
   // If null, defaults to [defaultPadding].
   final EdgeInsetsGeometry? _padding;
 
-  // The widget shown before the title. Typically a [CupertinoIcon].
+  // The widget shown before the title. Typically a [CupertinoIcons].
   final Widget? leading;
 
-  // The widget shown after the title. Typically a [CupertinoIcon].
+  // The widget shown after the title. Typically a [CupertinoIcons].
   final Widget? trailing;
 
   // The width of the leading portion of the menu item.

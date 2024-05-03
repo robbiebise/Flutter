@@ -32,6 +32,36 @@ void main() {
     return rectMoreOrLessEquals(rect, epsilon: 0.1);
   }
 
+  // Generic button that opens a menu. Used insead of a TextButton or
+  // CupertinoButton to avoid flaky tests in the future.
+
+  // TODO(davidhicks980): Replace with a TextButton or CupertinoButton if a
+  // FocusNode is added, https://github.com/flutter/flutter/issues/144385
+  Widget buildAnchor(
+    BuildContext context,
+    CupertinoMenuController controller,
+    Widget? child,
+    [void Function(TestMenu menu)? onPressed]
+  ) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints.tightFor(width: 56, height: 56),
+      child: Material(
+        child: InkWell(
+          onTap: () {
+            if (controller.menuStatus
+                case MenuStatus.opened || MenuStatus.opening) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+            onPressed?.call(TestMenu.anchorButton);
+          },
+          child: TestMenu.anchorButton.text,
+        ),
+      ),
+    );
+  }
+
   void onPressed(TestMenu item) {
     selected.add(item);
   }
@@ -93,57 +123,41 @@ void main() {
     void Function()? onOpen,
     void Function()? onClose,
     CupertinoThemeData theme = const CupertinoThemeData(),
-    MediaQueryData mediaQuery = const MediaQueryData(),
+
   }) {
     final FocusNode focusNode = FocusNode();
     addTearDown(focusNode.dispose);
     return CupertinoApp(
-      home: MediaQuery(
-        data: mediaQuery,
-        child: CupertinoTheme(
+      home: CupertinoTheme(
           data: theme,
           child: Directionality(
             textDirection: textDirection,
-            child: Column(
-              children: <Widget>[
-                GestureDetector(
-                    onTap: () {
-                      onPressed?.call(TestMenu.outsideButton);
-                    },
-                    child: Text(TestMenu.outsideButton.label)),
-                CupertinoMenuAnchor(
-                  childFocusNode: focusNode,
-                  controller: controller,
-                  alignmentOffset: alignmentOffset,
-                  alignment: alignment,
-                  menuAlignment: menuAlignment,
-                  consumeOutsideTap: consumesOutsideTap,
-                  onOpen: onOpen,
-                  onClose: onClose,
-                  menuChildren:
-                      children ?? createTestMenus(onPressed: onPressed),
-                  builder: (
-                    BuildContext context,
-                    CupertinoMenuController controller,
-                    Widget? child,
-                  ) {
-                    return ElevatedButton(
-                      focusNode: focusNode,
+            child:  Stack(
+                children: <Widget>[
+                  ElevatedButton(
                       onPressed: () {
-                        if (controller.isOpen) {
-                          controller.close();
-                        } else {
-                          controller.open();
-                        }
-                        onPressed?.call(TestMenu.anchorButton);
+                        onPressed?.call(TestMenu.outsideButton);
                       },
-                      child: TestMenu.anchorButton.text,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+                      child: Text(TestMenu.outsideButton.label),),
+                  Positioned(
+                    top: 200,
+                    left: 350,
+                    child: CupertinoMenuAnchor(
+                      childFocusNode: focusNode,
+                      controller: controller,
+                      alignmentOffset: alignmentOffset,
+                      alignment: alignment,
+                      menuAlignment: menuAlignment,
+                      consumeOutsideTap: consumesOutsideTap,
+                      onOpen: onOpen,
+                      onClose: onClose,
+                      menuChildren:
+                          children ?? createTestMenus(onPressed: onPressed),
+                      builder: (BuildContext context, CupertinoMenuController controller, Widget? widget) =>buildAnchor(context, controller, widget, onPressed),
+                    ),
+                  ),
+                ],
+              ),
         ),
       ),
     );
@@ -173,7 +187,7 @@ void main() {
       await tester.pumpWidget(
         buildApp(
           CupertinoMenuAnchor(
-            builder: _buildAnchor,
+            builder: buildAnchor,
             controller: controller,
             menuChildren: <Widget>[
               CupertinoMenuItem(
@@ -284,7 +298,7 @@ void main() {
       await tester.pumpWidget(
         buildApp(
           CupertinoMenuAnchor(
-            builder: _buildAnchor,
+            builder: buildAnchor,
             controller: controller,
             menuChildren: <Widget>[
               CupertinoMenuItem(
@@ -488,7 +502,7 @@ void main() {
                 height: 1000,
                 alignment: Alignment.center,
                 child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   onOpen: () {
                     opened = true;
                     closed = false;
@@ -624,7 +638,7 @@ void main() {
                 height: 1000,
                 alignment: Alignment.center,
                 child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   onOpen: () {
                     opened = true;
                     closed = false;
@@ -683,7 +697,7 @@ void main() {
                       (1 + animationController.value),
                 ),
                 child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   onOpen: animationController.forward,
                   onClose: animationController.reverse,
                   menuChildren: createTestMenus(onPressed: (_) {}),
@@ -731,7 +745,7 @@ void main() {
         CupertinoApp(
           home: Center(
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               menuChildren: <Widget>[
                 const CupertinoLargeMenuDivider(),
                 CupertinoMenuItem(
@@ -769,22 +783,22 @@ void main() {
       await gesture.moveTo(rect.topLeft);
       await tester.pump();
 
-      expect(getScale(), 1.0);
+      expect(getScale(), moreOrLessEquals(1.0, epsilon: 0.01));
 
       await gesture.moveTo(rect.topRight);
       await tester.pump();
 
-      expect(getScale(), 1.0);
+      expect(getScale(), moreOrLessEquals(1.0, epsilon: 0.01));
 
       await gesture.moveTo(rect.bottomLeft);
       await tester.pump();
 
-      expect(getScale(), 1.0);
+      expect(getScale(), moreOrLessEquals(1.0, epsilon: 0.01));
 
       await gesture.moveTo(rect.bottomRight);
       await tester.pump();
 
-      expect(getScale(), 1.0);
+      expect(getScale(), moreOrLessEquals(1.0, epsilon: 0.01));
 
       await gesture.moveTo(rect.topLeft - const Offset(50, 50));
       await tester.pump();
@@ -820,7 +834,7 @@ void main() {
         CupertinoApp(
           home: Center(
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               controller: controller,
               enablePan: false,
               menuChildren: <Widget>[
@@ -993,7 +1007,7 @@ void main() {
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
               controller: controller,
-              builder: _buildAnchor,
+              builder: buildAnchor,
               onOpen: () {
                 opened = true;
                 closed = false;
@@ -1066,7 +1080,7 @@ void main() {
           equalsIgnoringHashCodes(<String>[
             'AUTO-CLOSE',
             'focusNode: null',
-            'clipBehavior: hardEdge',
+            'clipBehavior: antiAlias',
             'alignmentOffset: Offset(10.0, 10.0)',
             'child: Text("Sample Text")',
           ]));
@@ -1079,7 +1093,7 @@ void main() {
             children: <Widget>[
               CupertinoMenuAnchor(
                 controller: controller,
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: createTestMenus(
                   onPressed: onPressed,
                 ),
@@ -1153,7 +1167,7 @@ void main() {
           home: Align(
             alignment: AlignmentDirectional.topStart,
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               menuChildren: createTestMenus(
                 onPressed: onPressed,
               ),
@@ -1168,7 +1182,13 @@ void main() {
       await tester.tap(find.byType(CupertinoMenuAnchor));
       await tester.pumpAndSettle();
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      // https://github.com/flutter/flutter/issues/147770
+      if (isBrowser) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      } else {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      }
+
       expect(focusedMenu, equals(TestMenu.item0.debugFocusLabel));
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -1191,16 +1211,17 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       expect(focusedMenu, equals(TestMenu.item6.debugFocusLabel));
     });
+
     testWidgets('keyboard directional RTL traversal works',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.rtl,
-          child: CupertinoApp(
-            home: Align(
+        CupertinoApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Align(
               alignment: AlignmentDirectional.topStart,
               child: CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: createTestMenus(
                   onPressed: onPressed,
                 ),
@@ -1216,7 +1237,14 @@ void main() {
       await tester.tap(find.byType(CupertinoMenuAnchor));
       await tester.pumpAndSettle();
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+
+      // https://github.com/flutter/flutter/issues/147770
+      if (isBrowser) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      } else {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      }
+
       expect(focusedMenu, equals(TestMenu.item0.debugFocusLabel));
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -1240,11 +1268,13 @@ void main() {
       expect(focusedMenu, equals(TestMenu.item6.debugFocusLabel));
     });
 
+
     testWidgets('focus is returned to previous focus before invoking onPressed',
         (WidgetTester tester) async {
       final FocusNode buttonFocus = FocusNode(debugLabel: 'Button Focus');
       addTearDown(buttonFocus.dispose);
       FocusNode? focusInOnPressed;
+
       void onMenuSelected() {
         focusInOnPressed = FocusManager.instance.primaryFocus;
       }
@@ -1254,7 +1284,7 @@ void main() {
           Column(
             children: <Widget>[
               CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: <Widget>[
                   CupertinoMenuItem(
                     onPressed: onMenuSelected,
@@ -1292,7 +1322,7 @@ void main() {
           theme: const CupertinoThemeData(brightness: Brightness.dark),
           home: Center(
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               backgroundColor: CupertinoColors.activeGreen.darkColor,
               menuChildren: createTestMenus(onPressed: onPressed),
             ),
@@ -1305,8 +1335,7 @@ void main() {
 
       // Private painter class is used to paint the background color.
       expect(
-        '${findMenuPanelWidget<CustomPaint>(tester).painter}'
-            .contains('Color(0xff30d158)'),
+        '${findMenuPanelWidget<CustomPaint>(tester).painter}'.contains('Color(0xff30d158)'),
         isTrue,
       );
     });
@@ -1318,7 +1347,7 @@ void main() {
           theme: const CupertinoThemeData(brightness: Brightness.dark),
           home: Center(
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               backgroundColor: CupertinoColors.activeGreen.darkColor,
               menuChildren: createTestMenus(onPressed: onPressed),
             ),
@@ -1342,7 +1371,7 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
-              builder: _buildAnchor,
+              builder: buildAnchor,
               menuChildren: createTestMenus(onPressed: onPressed),
               backgroundColor: const Color.fromRGBO(255, 0, 0, 1),
               surfaceBuilder: (
@@ -1393,7 +1422,7 @@ void main() {
               )
               .first,
         ),
-        rectEquals(const Rect.fromLTRB(8.0, 60.0, 258.0, 383.0)),
+        rectEquals(const Rect.fromLTRB(8.0, 56.0, 258.0, 379.0)),
       );
     });
 
@@ -1406,7 +1435,7 @@ void main() {
                 children: <Widget>[
                   Expanded(
                     child: CupertinoMenuAnchor(
-                      builder: _buildAnchor,
+                      builder: buildAnchor,
                       menuChildren: createTestMenus(onPressed: onPressed),
                     ),
                   ),
@@ -1422,8 +1451,10 @@ void main() {
       await tester.tap(find.byType(CupertinoMenuAnchor));
       await tester.pumpAndSettle();
 
-      expect(tester.getRect(findMenuPanel()),
-          equals(const Rect.fromLTRB(0.0, 0.0, 800.0, 600.0)));
+      expect(
+        tester.getRect(findMenuPanel()),
+        equals(const Rect.fromLTRB(0.0, 0.0, 800.0, 600.0))
+      );
 
       final DecoratedBoxTransition decoratedBox =
               findMenuPanelWidget<DecoratedBoxTransition>(tester);
@@ -1447,6 +1478,7 @@ void main() {
           ),
         ),
       );
+
       expect(
         backdropFilter.filter,
         equals(
@@ -1476,7 +1508,7 @@ void main() {
                 children: <Widget>[
                   Expanded(
                     child: CupertinoMenuAnchor(
-                      builder: _buildAnchor,
+                      builder: buildAnchor,
                       menuChildren: createTestMenus(onPressed: onPressed),
                     ),
                   ),
@@ -1496,6 +1528,7 @@ void main() {
           findMenuPanelWidget<CustomPaint>(tester);
       final BackdropFilter darkBackdropFilter =
           findMenuPanelWidget<BackdropFilter>(tester);
+
       expect(
         darkDecoratedBox.decoration.value,
         equals(
@@ -1511,6 +1544,7 @@ void main() {
           ),
         ),
       );
+
       expect(
         darkBackdropFilter.filter,
         equals(
@@ -1530,7 +1564,123 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    });
+    },
+    // Color filters are not supported on web.
+    skip: isBrowser);
+
+    testWidgets('[web] default surface appearance', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: CupertinoMenuAnchor(
+                      builder: buildAnchor,
+                      menuChildren: createTestMenus(onPressed: onPressed),
+                    ),
+                  ),
+                ],
+              ),
+              const Expanded(child: Placeholder()),
+            ],
+          ),
+        ),
+      );
+
+      // Open and make sure things are the right size.
+      await tester.tap(find.byType(CupertinoMenuAnchor));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getRect(findMenuPanel()),
+        equals(const Rect.fromLTRB(0.0, 0.0, 800.0, 600.0))
+      );
+
+      final DecoratedBoxTransition decoratedBox =
+              findMenuPanelWidget<DecoratedBoxTransition>(tester);
+      final CustomPaint customPaint =
+              findMenuPanelWidget<CustomPaint>(tester);
+      final BackdropFilter backdropFilter =
+              findMenuPanelWidget<BackdropFilter>(tester);
+
+      expect(
+        decoratedBox.decoration.value,
+        equals(const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.12),
+                spreadRadius: 30,
+                blurRadius: 50,
+              ),
+            ],
+        )),
+      );
+      expect(
+        backdropFilter.filter,
+        equals(ImageFilter.blur(sigmaX: 30, sigmaY: 30))
+      );
+      expect(
+        '${customPaint.painter}'.contains('Color(0xc5f3f3f3)'),
+        isTrue,
+      );
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          theme: const CupertinoThemeData(brightness: Brightness.dark),
+          home: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: CupertinoMenuAnchor(
+                      builder: buildAnchor,
+                      menuChildren: createTestMenus(onPressed: onPressed),
+                    ),
+                  ),
+                ],
+              ),
+              const Expanded(child: Placeholder()),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final DecoratedBoxTransition darkDecoratedBox =
+          findMenuPanelWidget<DecoratedBoxTransition>(tester);
+      final CustomPaint darkCustomPaint =
+          findMenuPanelWidget<CustomPaint>(tester);
+      final BackdropFilter darkBackdropFilter =
+          findMenuPanelWidget<BackdropFilter>(tester);
+
+      expect(
+        darkDecoratedBox.decoration.value,
+        equals(const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.12),
+                spreadRadius: 30,
+                blurRadius: 50,
+              ),
+            ],
+        )),
+      );
+
+      expect(
+        darkBackdropFilter.filter,
+        equals(ImageFilter.blur(sigmaX: 30, sigmaY: 30)),
+      );
+
+      expect(
+        '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
+        isTrue,
+      );
+    }, skip: !isBrowser);
 
     testWidgets('panel clip behavior', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -1563,7 +1713,7 @@ void main() {
 
       // Test default clip behavior.
       expect(findMenuPanelWidget<ClipRRect>(tester).clipBehavior,
-          equals(Clip.hardEdge));
+          equals(Clip.antiAlias));
 
       // Close the menu.
       await tester.tapAt(const Offset(10.0, 10.0));
@@ -1573,7 +1723,7 @@ void main() {
           home: Material(
             child: Center(
               child: CupertinoMenuAnchor(
-                clipBehavior: Clip.antiAlias,
+                clipBehavior: Clip.hardEdge,
                 menuChildren: const <Widget>[
                   CupertinoMenuItem(
                     child: Text('Button 1'),
@@ -1598,7 +1748,7 @@ void main() {
 
       // Test custom clip behavior.
       expect(findMenuPanelWidget<ClipRRect>(tester).clipBehavior,
-          equals(Clip.antiAlias));
+          equals(Clip.hardEdge));
     });
 
     testWidgets('forwardSpring can be set', (WidgetTester tester) async {
@@ -1608,7 +1758,7 @@ void main() {
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
               controller: controller,
-              builder: _buildAnchor,
+              builder: buildAnchor,
               forwardSpring: SpringDescription.withDampingRatio(
                   mass: 0.0001, stiffness: 100),
               menuChildren: createTestMenus(onPressed: (TestMenu menu) {}),
@@ -1637,7 +1787,7 @@ void main() {
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
               controller: controller,
-              builder: _buildAnchor,
+              builder: buildAnchor,
               reverseSpring: SpringDescription.withDampingRatio(
                   mass: 0.0001, stiffness: 100),
               menuChildren: createTestMenus(onPressed: (TestMenu menu) {}),
@@ -1668,7 +1818,7 @@ void main() {
             children: <Widget>[
               CupertinoMenuAnchor(
                   constraints: const BoxConstraints.tightFor(height: 200),
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   menuChildren: createTestMenus()),
             ],
           ),
@@ -1715,7 +1865,7 @@ void main() {
                 children: <Widget>[
                   Expanded(
                     child: CupertinoMenuAnchor(
-                      builder: _buildAnchor,
+                      builder: buildAnchor,
                       constraints: const BoxConstraints(),
                       menuChildren: createTestMenus(onPressed: onPressed),
                     ),
@@ -1735,13 +1885,13 @@ void main() {
 
       final List<Rect> actual = collectRects<CupertinoMenuItem>();
       const List<Rect> expected = <Rect>[
-        Rect.fromLTRB(8.0, 60.0, 792.0, 103.7),
-        Rect.fromLTRB(8.0, 104.0, 792.0, 147.7),
-        Rect.fromLTRB(8.0, 155.7, 792.0, 199.4),
-        Rect.fromLTRB(8.0, 199.7, 792.0, 243.4),
-        Rect.fromLTRB(8.0, 243.7, 792.0, 287.4),
-        Rect.fromLTRB(8.0, 295.4, 792.0, 339.0),
-        Rect.fromLTRB(8.0, 339.4, 792.0, 383.0),
+        Rect.fromLTRB(8.0, 56.0, 792.0, 99.7),
+        Rect.fromLTRB(8.0, 100.0, 792.0, 143.7),
+        Rect.fromLTRB(8.0, 151.7, 792.0, 195.4),
+        Rect.fromLTRB(8.0, 195.7, 792.0, 239.4),
+        Rect.fromLTRB(8.0, 239.7, 792.0, 283.4),
+        Rect.fromLTRB(8.0, 291.4, 792.0, 335.0),
+        Rect.fromLTRB(8.0, 335.4, 792.0, 379.0),
       ];
 
       for (int i = 0; i < actual.length; i++) {
@@ -1762,7 +1912,7 @@ void main() {
                   children: <Widget>[
                     Expanded(
                       child: CupertinoMenuAnchor(
-                        builder: _buildAnchor,
+                        builder: buildAnchor,
                         menuChildren: createTestMenus(onPressed: onPressed),
                       ),
                     ),
@@ -1782,13 +1932,13 @@ void main() {
 
       final List<Rect> actual = collectRects<CupertinoMenuItem>();
       const List<Rect> expected = <Rect>[
-        Rect.fromLTRB(275.0, 60.0, 525.0, 103.7),
-        Rect.fromLTRB(275.0, 104.0, 525.0, 147.7),
-        Rect.fromLTRB(275.0, 155.7, 525.0, 199.4),
-        Rect.fromLTRB(275.0, 199.7, 525.0, 243.4),
-        Rect.fromLTRB(275.0, 243.7, 525.0, 287.4),
-        Rect.fromLTRB(275.0, 295.4, 525.0, 339.0),
-        Rect.fromLTRB(275.0, 339.4, 525.0, 383.0),
+        Rect.fromLTRB(275.0, 56.0,  525.0, 99.7),
+        Rect.fromLTRB(275.0, 100.0, 525.0, 143.7),
+        Rect.fromLTRB(275.0, 151.7, 525.0, 195.4),
+        Rect.fromLTRB(275.0, 195.7, 525.0, 239.4),
+        Rect.fromLTRB(275.0, 239.7, 525.0, 283.4),
+        Rect.fromLTRB(275.0, 291.4, 525.0, 335.0),
+        Rect.fromLTRB(275.0, 335.4, 525.0, 379.0),
       ];
 
       for (int i = 0; i < actual.length; i++) {
@@ -1806,7 +1956,7 @@ void main() {
             child: Column(
               children: <Widget>[
                 CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   menuChildren: createTestMenus(onPressed: onPressed),
                 ),
                 const Expanded(child: Placeholder()),
@@ -1845,7 +1995,7 @@ void main() {
             child: Column(
               children: <Widget>[
                 CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   menuChildren: createTestMenus(onPressed: onPressed),
                 ),
                 const Expanded(child: Placeholder()),
@@ -1885,7 +2035,7 @@ void main() {
           child: Column(
             children: <Widget>[
               CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: createTestMenus(onPressed: onPressed),
               ),
               const Expanded(child: Placeholder()),
@@ -1924,7 +2074,7 @@ void main() {
               child: CupertinoMenuAnchor(
                 alignmentOffset: const Offset(30, 30),
                 menuChildren: createTestMenus(onPressed: onPressed),
-                builder: _buildAnchor,
+                builder: buildAnchor,
               ),
             ),
           ),
@@ -1961,7 +2111,7 @@ void main() {
             child: Align(
               alignment: Alignment.topRight,
               child: CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 alignmentOffset: const Offset(30, 30),
                 menuChildren: createTestMenus(onPressed: onPressed),
               ),
@@ -1995,7 +2145,7 @@ void main() {
           home: Align(
             alignment: const Alignment(0.5, 0.5),
             child: CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: <Widget>[
                   CupertinoMenuItem(child: TestMenu.item0.text),
                 ]),
@@ -2008,29 +2158,27 @@ void main() {
 
       expect(find.byType(CupertinoMenuItem), findsOneWidget);
       expect(tester.getRect(find.byType(CupertinoMenuItem)),
-          rectEquals(const Rect.fromLTRB(461.0, 363.8, 711.0, 407.5)));
+          rectEquals(const Rect.fromLTRB(461.0, 364.3, 711.0, 408.0)));
     });
 
-    testWidgets('offset does not affect the growth direction of the menu',
+    testWidgets('offset affects the growth direction of the menu',
         (WidgetTester tester) async {
-      await changeSurfaceSize(tester, const Size(800, 600));
+      await changeSurfaceSize(tester, const Size(800, 800));
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(useMaterial3: false),
-          home: Builder(
-            builder: (BuildContext context) {
-              return Directionality(
-                textDirection: TextDirection.ltr,
-                child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
-                  alignmentOffset: const Offset(0, 450),
-                  menuChildren: <Widget>[
-                    CupertinoMenuItem(
-                        child: TestMenu.item0.text, onPressed: () {}),
-                  ],
-                ),
-              );
-            },
+        CupertinoApp(
+          home: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: CupertinoMenuAnchor(
+                builder: buildAnchor,
+                alignmentOffset: const Offset(0, 450),
+                menuChildren: <Widget>[
+                  CupertinoMenuItem(
+                      child: TestMenu.item0.text, onPressed: () {}),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -2040,8 +2188,8 @@ void main() {
 
       expect(find.byType(CupertinoMenuItem), findsOneWidget);
       expect(
-        tester.getRect(TestMenu.item0.findText),
-        rectEquals(const Rect.fromLTRB(291.0, 559.7, 390.5, 580.7)),
+        tester.getRect(TestMenu.item0.findMenuItem),
+        rectEquals(const Rect.fromLTRB(8.0, 406.3, 258.0, 450.0)),
       );
     });
 
@@ -2055,7 +2203,7 @@ void main() {
                 children: <Widget>[
                   Expanded(
                     child: CupertinoMenuAnchor(
-                      builder: _buildAnchor,
+                      builder: buildAnchor,
                       menuChildren: createTestMenus(onPressed: onPressed),
                     ),
                   ),
@@ -2082,7 +2230,7 @@ void main() {
 
       // The menu just started opening, therefore menu items should be Size.zero
       expect(tester.getRect(TestMenu.item5Disabled.findMenuItem),
-      rectEquals(const Rect.fromLTRB(400.0, 28.0, 400.0, 28.0)));
+      rectEquals(const Rect.fromLTRB(400.0, 56, 400.0, 56)));
 
       await tester.pumpAndSettle();
 
@@ -2090,10 +2238,10 @@ void main() {
       rectEquals(const Rect.fromLTRB(0, 0, 800, 56)));
 
       expect(tester.getRect(TestMenu.item5Disabled.findMenuItem),
-      rectEquals(const Rect.fromLTRB(275.0, 295.4, 525.0, 339.0)));
+      rectEquals(const Rect.fromLTRB(275.0, 291.4, 525.0, 335.0)));
 
       // Decorative surface sizes should match
-      const Rect surfaceSize = Rect.fromLTRB(275.0, 60.0, 525.0, 383.0);
+      const Rect surfaceSize = Rect.fromLTRB(275.0, 56.0, 525.0, 379.0);
       expect(
         tester.getRect(
           find.ancestor(
@@ -2120,7 +2268,7 @@ void main() {
           home: Column(
             children: <Widget>[
               CupertinoMenuAnchor(
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: createTestMenus(onPressed: onPressed),
               ),
               const Expanded(child: Placeholder()),
@@ -2150,7 +2298,7 @@ void main() {
                     Expanded(
                       child: CupertinoMenuAnchor(
                         key: menuKey,
-                        builder: _buildAnchor,
+                        builder: buildAnchor,
                         menuChildren: createTestMenus(onPressed: onPressed),
                       ),
                     ),
@@ -2178,17 +2326,17 @@ void main() {
 
       // The menu just started opening, therefore menu items should be Size.zero
       expect(tester.getRect(TestMenu.item5Disabled.findMenuItem),
-          rectEquals(const Rect.fromLTRB(400.0, 28.0, 400.0, 28.0)));
+          rectEquals(const Rect.fromLTRB(400.0, 56.0, 400.0, 56.0)));
 
       await tester.pumpAndSettle();
 
       expect(tester.getRect(menuAnchor),
           rectEquals(const Rect.fromLTRB(0, 0, 800, 56)));
       expect(tester.getRect(TestMenu.item5Disabled.findMenuItem),
-          rectEquals(const Rect.fromLTRB(275.0, 295.4, 525.0, 339.0)));
+          rectEquals(const Rect.fromLTRB(275.0, 291.4, 525.0, 335.0)));
 
       // Decorative surface sizes should match
-      const Rect surfaceSize = Rect.fromLTRB(275.0, 60.0, 525.0, 383.0);
+      const Rect surfaceSize = Rect.fromLTRB(275.0, 56.0, 525.0, 379.0);
       expect(
         tester.getRect(
           find.ancestor(
@@ -2219,7 +2367,7 @@ void main() {
               child: Column(
                 children: <Widget>[
                   CupertinoMenuAnchor(
-                    builder: _buildAnchor,
+                    builder: buildAnchor,
                     menuChildren: createTestMenus(onPressed: onPressed),
                   ),
                   const Expanded(child: Placeholder()),
@@ -2237,26 +2385,29 @@ void main() {
 
     testWidgets('menu alignment and offset in LTR',
         (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
+
       await tester.pumpWidget(buildTestApp());
 
-      final Finder anchor = find.byType(ElevatedButton);
+      final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
+      final Finder findMenuScope =
+              find.ancestor(
+                of: TestMenu.item1.findText,
+                matching: find.byType(FocusScope),
+              )
+              .first;
 
       expect(tester.getRect(anchor),
-          rectEquals(const Rect.fromLTRB(319.6, 17.0, 480.4, 65.0)));
+          rectEquals(const Rect.fromLTRB(350.0, 200.0, 406.0, 256.0)));
 
-      final Finder findMenuScope = find
-          .ancestor(
-            of: TestMenu.item1.findText,
-            matching: find.byType(FocusScope),
-          )
-          .first;
-
-      // Open the menu and make sure things are the right size, in the right place.
       await tester.tap(anchor);
       await tester.pumpAndSettle();
 
       // Matches the position of the menu given the alignment and menuAlignment.
-      Future<void> testPosition(
+      Future<void> matchPosition(
         Rect position, [
         AlignmentDirectional? alignment,
         AlignmentDirectional? menuAlignment,
@@ -2271,28 +2422,39 @@ void main() {
         expect(tester.getRect(findMenuScope), rectEquals(position));
       }
 
-      await testPosition(const Rect.fromLTRB(275.0, 69.0, 525.0, 390.0));
+      const Rect defaultPosition = Rect.fromLTRB(253.0, 256.0, 503.0, 579.0);
 
-      await testPosition(
-        const Rect.fromLTRB(69.6, 17.0, 319.6, 338.0),
+      // Top center alignment (default)
+      await matchPosition(defaultPosition);
+
+      // Validate the default menu position matches the alignment and
+      // menuAlignment.
+      await matchPosition(
+        defaultPosition,
+        AlignmentDirectional.bottomCenter,
+        AlignmentDirectional.topCenter,
+      );
+
+      await matchPosition(
+        const Rect.fromLTRB(100.0, 200.0, 350.0, 523.0),
         AlignmentDirectional.topStart,
         AlignmentDirectional.topEnd,
       );
 
-      await testPosition(
-        const Rect.fromLTRB(275.0, 8.0, 525.0, 329.0),
+      await matchPosition(
+        const Rect.fromLTRB(253.0, 66.5, 503.0, 389.5),
         AlignmentDirectional.center,
         AlignmentDirectional.center,
       );
 
-      await testPosition(
-        const Rect.fromLTRB(480.4, 8.0, 730.4, 329.0),
+      await matchPosition(
+        const Rect.fromLTRB(406.0, 8.0, 656.0, 331.0),
         AlignmentDirectional.bottomEnd,
         AlignmentDirectional.bottomStart,
       );
 
-      await testPosition(
-        const Rect.fromLTRB(69.6, 17.0, 319.6, 338.0),
+      await matchPosition(
+        const Rect.fromLTRB(100.0, 200.0, 350.0, 523.0),
         AlignmentDirectional.topStart,
         AlignmentDirectional.topEnd,
       );
@@ -2305,8 +2467,6 @@ void main() {
           alignmentOffset: const Offset(10, 20),
         ),
       );
-
-      await tester.pump();
 
       expect(
         tester.getRect(findMenuScope).topLeft - menuRect.topLeft,
@@ -2316,62 +2476,79 @@ void main() {
 
     testWidgets('menu alignment and offset in RTL',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        buildTestApp(
-          textDirection: TextDirection.rtl,
-        ),
-      );
+     await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
 
-      final Finder anchor = find.byType(ElevatedButton);
+      await tester.pumpWidget(buildTestApp(
+        textDirection: TextDirection.rtl,
+      ));
+
+      final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
+      final Finder findMenuScope =
+              find.ancestor(
+                of: TestMenu.item1.findText,
+                matching: find.byType(FocusScope),
+              )
+              .first;
 
       expect(tester.getRect(anchor),
-      rectEquals(const Rect.fromLTRB(319.6, 17.0, 480.4, 65.0)));
+          rectEquals(const Rect.fromLTRB(350.0, 200.0, 406.0, 256.0)));
 
-      final Finder findMenuScope =
-            find.ancestor(
-              of: TestMenu.item1.findText,
-              matching: find.byType(FocusScope),
-            )
-            .first;
-
-      // Open the menu and make sure things are the right size, in the right place.
       await tester.tap(anchor);
       await tester.pumpAndSettle();
 
       // Matches the position of the menu given the alignment and menuAlignment.
-      Future<void> testPosition(
+      Future<void> matchPosition(
         Rect position, [
         AlignmentDirectional? alignment,
         AlignmentDirectional? menuAlignment,
       ]) async {
-        await tester.pumpWidget(buildTestApp(
-          textDirection: TextDirection.rtl,
-          alignment: alignment,
-          menuAlignment: menuAlignment,
-        ));
-
+        await tester.pumpWidget(
+          buildTestApp(
+            textDirection: TextDirection.rtl,
+            alignment: alignment,
+            menuAlignment: menuAlignment,
+          ),
+        );
         await tester.pump();
         expect(tester.getRect(findMenuScope), rectEquals(position));
       }
 
-      await testPosition(const Rect.fromLTRB(275.0, 69.0, 525.0, 390.0));
-      await testPosition(
-        const Rect.fromLTRB(480.4, 17.0, 730.4, 338.0),
+      const Rect defaultPosition = Rect.fromLTRB(253.0, 256.0, 503.0, 579.0);
+
+      // Top center alignment (default)
+      await matchPosition(defaultPosition);
+
+      // Validate the default menu position matches the alignment and
+      // menuAlignment.
+      await matchPosition(
+        defaultPosition,
+        AlignmentDirectional.bottomCenter,
+        AlignmentDirectional.topCenter,
+      );
+
+      await matchPosition(
+        const Rect.fromLTRB(406.0, 200.0, 656.0, 523.0),
         AlignmentDirectional.topStart,
         AlignmentDirectional.topEnd,
       );
-      await testPosition(
-        const Rect.fromLTRB(275.0, 8.0, 525.0, 329.0),
+
+      await matchPosition(
+        const Rect.fromLTRB(253.0, 66.5, 503.0, 389.5),
         AlignmentDirectional.center,
         AlignmentDirectional.center,
       );
-      await testPosition(
-        const Rect.fromLTRB(69.6, 8.0, 319.6, 329.0),
+
+      await matchPosition(
+        const Rect.fromLTRB(100.0, 8.0, 350.0, 331.0),
         AlignmentDirectional.bottomEnd,
         AlignmentDirectional.bottomStart,
       );
-      await testPosition(
-        const Rect.fromLTRB(480.4, 17.0, 730.4, 338.0),
+
+      await matchPosition(
+        const Rect.fromLTRB(406.0, 200.0, 656.0, 523.0),
         AlignmentDirectional.topStart,
         AlignmentDirectional.topEnd,
       );
@@ -2385,7 +2562,6 @@ void main() {
           alignmentOffset: const Offset(10, 20),
         ),
       );
-      await tester.pump();
 
       expect(
         tester.getRect(findMenuScope).topLeft - menuRect.topLeft,
@@ -2394,12 +2570,15 @@ void main() {
     });
 
     testWidgets('menu position in LTR', (WidgetTester tester) async {
-      await tester
-          .pumpWidget(buildTestApp(alignmentOffset: const Offset(100, 50)));
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
 
-      final Rect buttonRect = tester.getRect(find.byType(ElevatedButton));
-      expect(buttonRect,
-          rectEquals(const Rect.fromLTRB(319.6, 17.0, 480.4, 65.0)));
+      await tester.pumpWidget(buildTestApp());
+      final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
+      expect(tester.getRect(anchor),
+          rectEquals(const Rect.fromLTRB(350.0, 200.0, 406.0, 256.0)));
 
       final Finder findMenuScope = find
           .ancestor(
@@ -2407,52 +2586,89 @@ void main() {
               matching: find.byType(FocusScope))
           .first;
 
-      // Open the menu and make sure things are the right size, in the right place.
+      // Open the menu and make sure things are positioned correctly.
       await tester.tap(find.text('Press Me'));
       await tester.pumpAndSettle();
+
+      final Rect basePosition = tester.getRect(findMenuScope);
+
+       expect(tester.getRect(findMenuScope),
+          rectEquals(const Rect.fromLTRB(253.0, 256.0, 503.0, 579.0)));
+
+      await tester.pumpWidget(
+        buildTestApp(alignmentOffset: const Offset(100, 50))
+      );
+
       expect(tester.getRect(findMenuScope),
-          rectEquals(const Rect.fromLTRB(375.0, 119.0, 625.0, 440.0)));
+          rectEquals(basePosition.shift(const Offset(100, 50))));
 
       // Now move the menu by calling open() again with a local position on the
       // anchor.
-      controller.open(position: const Offset(200, 200));
-      await tester.pumpAndSettle();
-      expect(tester.getRect(findMenuScope),
-          rectEquals(const Rect.fromLTRB(494.6, 271.0, 744.6, 592.0)));
-    });
+      controller.open(position: const Offset(50, 75));
 
-    testWidgets('menu position in RTL', (WidgetTester tester) async {
-      await tester.pumpWidget(buildTestApp(
-        alignmentOffset: const Offset(100, 50),
-        textDirection: TextDirection.rtl,
-      ));
-
-      final Rect buttonRect = tester.getRect(find.byType(ElevatedButton));
-
-      expect(buttonRect,
-          rectEquals(const Rect.fromLTRB(319.6, 17.0, 480.4, 65.0)));
-
-      final Finder findMenuScope =
-          find.ancestor(
-            of: find.text(TestMenu.item1.label),
-            matching: find.byType(FocusScope),
-          )
-          .first;
-
-      // Open the menu and make sure things are the right size, in the right place.
-      await tester.tap(find.byType(ElevatedButton));
-      await tester.pumpAndSettle();
-
-      expect(tester.getRect(findMenuScope),
-          rectEquals(const Rect.fromLTRB(375.0, 119.0, 625.0, 440.0)));
-
-      // Now move the menu by calling open() again with a local position on the
-      // anchor.
-      controller.open(position: const Offset(400, 200));
       await tester.pump();
 
       expect(tester.getRect(findMenuScope),
-          rectEquals(const Rect.fromLTRB(719.6, 217.0, 719.6, 217.0)));
+          rectEquals(basePosition.shift(const Offset(50, 75))));
+    });
+
+    testWidgets('menu position in RTL', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
+
+      await tester.pumpWidget(
+        buildTestApp(textDirection: TextDirection.rtl)
+      );
+      final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
+      expect(tester.getRect(anchor),
+          rectEquals(const Rect.fromLTRB(350.0, 200.0, 406.0, 256.0)));
+
+      final Finder findMenuScope = find
+          .ancestor(
+              of: find.text(TestMenu.item1.label),
+              matching: find.byType(FocusScope))
+          .first;
+
+      // Open the menu and make sure things are positioned correctly.
+      await tester.tap(find.text('Press Me'));
+      await tester.pumpAndSettle();
+
+      final Rect basePosition = tester.getRect(findMenuScope);
+
+      expect(tester.getRect(findMenuScope),
+          rectEquals(const Rect.fromLTRB(253.0, 256.0, 503.0, 579.0)));
+
+      await tester.pumpWidget(buildTestApp(
+        textDirection: TextDirection.rtl,
+        alignmentOffset: const Offset(100, 50),
+      ));
+
+      // Because the menu is RTL but no directional alignment is provided, the
+      // menu will be positioned as if it were LTR.
+      expect(tester.getRect(findMenuScope),
+          rectEquals(basePosition.shift(const Offset(100, 50))));
+
+      await tester.pumpWidget(buildTestApp(
+        textDirection: TextDirection.rtl,
+        alignment: AlignmentDirectional.bottomCenter,
+        alignmentOffset: const Offset(100, 50),
+      ));
+
+      // Now the menu should be positioned as if it were RTL: the horizontal
+      // offset is negative.
+      expect(tester.getRect(findMenuScope),
+          rectEquals(basePosition.translate(-100, 50)));
+
+      // Now move the menu by calling open() again with a local position on the
+      // anchor.
+      controller.open(position: const Offset(50, 75));
+
+      await tester.pump();
+
+      expect(tester.getRect(findMenuScope),
+          rectEquals(basePosition.shift(const Offset(-50, 75))));
     });
 
     testWidgets('app and anchor padding LTR', (WidgetTester tester) async {
@@ -2467,18 +2683,25 @@ void main() {
       // DOES affect the anchor position
       await tester.pumpWidget(
         Padding(
-          padding: const EdgeInsets.only(left: 20, right: 10.0, bottom: 8.0),
+          padding: const EdgeInsets.only(
+            left: 20,
+            right: 10.0,
+            bottom: 8.0,
+          ),
           child: CupertinoApp(
             home: Column(
               children: <Widget>[
                 Padding(
-                  padding:
-                      const EdgeInsets.only(left: 23, right: 13.0, top: 8.0),
+                  padding: const EdgeInsets.only(
+                    left: 23,
+                    right: 13.0,
+                    top: 8.0,
+                  ),
                   child: Row(
                     children: <Widget>[
                       Expanded(
                         child: CupertinoMenuAnchor(
-                          builder: _buildAnchor,
+                          builder: buildAnchor,
                           menuChildren: createTestMenus(onPressed: onPressed),
                         ),
                       ),
@@ -2503,8 +2726,8 @@ void main() {
 
       expect(tester.getRect(anchor),
           rectEquals(const Rect.fromLTRB(43.0, 8.0, 777.0, 64.0)));
-      expect(tester.getRect(TestMenu.item0.findText),
-          rectEquals(const Rect.fromLTRB(317.0, 79.4, 416.5, 100.4)));
+      expect(tester.getRect(TestMenu.item0.findMenuItem),
+          rectEquals(const Rect.fromLTRB(285.0, 64.0, 535.0, 107.7)));
 
       expect(
         tester.getRect(find
@@ -2512,7 +2735,7 @@ void main() {
                 of: TestMenu.item6.findText,
                 matching: find.byType(DecoratedBoxTransition))
             .first),
-        rectEquals(const Rect.fromLTRB(285.0, 68.0, 535.0, 391.0)),
+        rectEquals(const Rect.fromLTRB(285.0, 64.0, 535.0, 387.0)),
       );
 
       // Close and make sure it goes back where it was.
@@ -2545,7 +2768,7 @@ void main() {
                       children: <Widget>[
                         Expanded(
                           child: CupertinoMenuAnchor(
-                            builder: _buildAnchor,
+                            builder: buildAnchor,
                             menuChildren: createTestMenus(onPressed: onPressed),
                           ),
                         ),
@@ -2571,8 +2794,8 @@ void main() {
 
       expect(tester.getRect(anchor),
           rectEquals(anchorPosition));
-      expect(tester.getRect(TestMenu.item6.findText),
-          rectEquals(const Rect.fromLTRB(403.5, 358.7, 503.0, 379.7)));
+      expect(tester.getRect(TestMenu.item6.findMenuItem),
+          rectEquals(const Rect.fromLTRB(285.0, 343.3, 535.0, 387.0)));
 
       expect(
         tester.getRect(
@@ -2583,7 +2806,7 @@ void main() {
               )
               .first,
         ),
-        rectEquals(const Rect.fromLTRB(285.0, 68.0, 535.0, 391.0)),
+        rectEquals(const Rect.fromLTRB(285.0, 64.0, 535.0, 387.0)),
       );
 
       // Close and make sure it goes back where it was.
@@ -2643,7 +2866,7 @@ void main() {
               data: const MediaQueryData(textScaler: TextScaler.linear(1.25)),
               child: Center(
                 child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   menuChildren: <Widget>[
                     CupertinoMenuItem(
                       child: TestMenu.item0.text,
@@ -2665,7 +2888,7 @@ void main() {
               data: const MediaQueryData(textScaler: TextScaler.linear(1.26)),
               child: Center(
                 child: CupertinoMenuAnchor(
-                  builder: _buildAnchor,
+                  builder: buildAnchor,
                   menuChildren: <Widget>[
                     CupertinoMenuItem(
                       child: TestMenu.item0.text,
@@ -2685,13 +2908,14 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
-                builder: _buildAnchor,
-                menuChildren: <Widget>[
-                  CupertinoMenuItem(
-                    child: TestMenu.item0.text,
-                    onPressed: () {},
-                  ),
-                ]),
+              builder: buildAnchor,
+              menuChildren: <Widget>[
+                CupertinoMenuItem(
+                  child: TestMenu.item0.text,
+                  onPressed: () {},
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -2708,7 +2932,7 @@ void main() {
               )
               .first,
         ),
-        rectEquals(const Rect.fromLTRB(8.0, 56.5, 258.0, 100.2)),
+        rectEquals(const Rect.fromLTRB(8.0, 56.0, 258.0, 99.7)),
       );
 
       await tester.pumpWidget(
@@ -2717,7 +2941,7 @@ void main() {
             alignment: Alignment.topLeft,
             child: CupertinoMenuAnchor(
                 shrinkWrap: false,
-                builder: _buildAnchor,
+                builder: buildAnchor,
                 menuChildren: <Widget>[
                   CupertinoMenuItem(
                     child: TestMenu.item0.text,
@@ -2765,6 +2989,7 @@ List<Widget> createTestMenus({
       leading: leadingIcon,
       trailing: trailingIcon,
       child: menu.text,
+
     );
   }
 
@@ -2807,32 +3032,12 @@ enum TestMenu {
     );
   }
 
-  Text get text => Text(label);
+  // Override the default font size for web because text layout is different.
+  // https://github.com/flutter/flutter/issues/102332
+  Text get text =>
+      Text(
+        label,
+        style: kIsWeb ? const TextStyle(fontSize: 16) : null,
+      );
   String get debugFocusLabel =>  '$CupertinoMenuItem($text)';
-}
-
-
-// Generic button that opens a menu. Used insead of a TextButton or
-// CupertinoButton to avoid flaky tests in the future.
-Widget _buildAnchor(
-  BuildContext context,
-  CupertinoMenuController controller,
-  Widget? child,
-) {
-  return ConstrainedBox(
-    constraints: const BoxConstraints.tightFor(width: 56, height: 56),
-    child: Material(
-      child: InkWell(
-        onTap: () {
-          if (controller.menuStatus
-              case MenuStatus.opened || MenuStatus.opening) {
-            controller.close();
-          } else {
-            controller.open();
-          }
-        },
-        child: TestMenu.anchorButton.text,
-      ),
-    ),
-  );
 }

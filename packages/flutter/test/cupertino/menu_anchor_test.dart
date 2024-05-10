@@ -1564,7 +1564,7 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    }, skip: isBrowser); // Web does not support ColorFilter.matrix.
+    }, skip: isBrowser); // https://github.com/flutter/flutter/issues/108688
 
     testWidgets('[web] default surface appearance', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -1678,7 +1678,7 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    }, skip: !isBrowser); // Web does not support ColorFilter.matrix.
+    }, skip: !isBrowser); // https://github.com/flutter/flutter/issues/108688
 
     testWidgets('panel clip behavior', (WidgetTester tester) async {
       await tester.pumpWidget(

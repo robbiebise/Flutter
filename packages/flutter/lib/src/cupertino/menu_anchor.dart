@@ -1961,12 +1961,14 @@ class CupertinoMenuItem extends StatelessWidget with CupertinoMenuEntryMixin {
           darkHighContrastColor: Color.fromRGBO(255, 255, 255, 0.2),
         );
 
-  /// The maximum number of lines for the [child] widget when [textScale] is
-  /// less than or equal to 1.25.
+  /// The maximum number of lines for the [child] widget when
+  /// [MediaQuery.textScalerOf] returns a [TextScaler] that is less than or
+  /// equal to 1.25.
   static const int defaultTextMaxLines = 2;
 
-  /// The maximum number of lines for the [child] widget when [textScale] is
-  /// greater than 1.25.
+  /// The maximum number of lines for the [child] widget when
+  /// [MediaQuery.textScalerOf] returns a [TextScaler] that is greater than
+  /// 1.25.
   static const int defaultLargeTextMaxLines = 100;
 
   /// Resolves the title [TextStyle] in response to [CupertinoThemeData.brightness],

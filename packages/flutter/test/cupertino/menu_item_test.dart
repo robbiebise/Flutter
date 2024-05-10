@@ -2451,10 +2451,8 @@ void main() {
         // consistent, https://github.com/flutter/flutter/issues/147770
         if (kIsWeb) {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-          await tester.pump();
         } else {
           await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-          await tester.pump();
         }
         await tester.pump();
 

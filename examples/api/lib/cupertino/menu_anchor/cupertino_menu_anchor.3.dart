@@ -39,7 +39,7 @@ class CupertinoHistoryMenu extends StatelessWidget {
     final CupertinoMenuController controller = CupertinoMenuController();
 
     // Close the menu if the route is popped.
-    return PopScope<void>(
+    return PopScope(
       onPopInvoked: (bool popped) {
         if (popped) {
           controller.close();
@@ -153,5 +153,3 @@ class RecursiveView extends StatelessWidget {
     );
   }
 }
-
-

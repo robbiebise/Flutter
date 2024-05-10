@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/src/material/material_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+
 /// Record that groups together the styles of various parts of a menu item.
 typedef _MenuPartsStyle = ({
   TextStyle? leadingIconStyle,
@@ -846,18 +847,11 @@ void main() {
         // respond.
         int interactions = 0;
         final FocusNode focusNode = FocusNode();
-        final TestGesture gesture = await tester.createGesture(
-          kind: PointerDeviceKind.mouse,
-          pointer: 1,
-        );
-
         focusNode.addListener(() {
           interactions++;
         });
 
-        await gesture.addPointer(location: Offset.zero);
 
-        addTearDown(gesture.removePointer);
         addTearDown(focusNode.dispose);
 
         await tester.pumpWidget(
@@ -882,6 +876,13 @@ void main() {
         controller.open();
         await tester.pumpAndSettle();
 
+        final TestGesture gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+          pointer: 1,
+        );
+
+        addTearDown(gesture.removePointer);
+
         // Test focus
         focusNode.requestFocus();
         await tester.pumpAndSettle();
@@ -901,7 +902,7 @@ void main() {
         );
 
         // Test pan
-        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpAndSettle(const Duration(milliseconds: 200));
         await gesture.up();
 
         expect(controller.isOpen, isTrue);
@@ -948,9 +949,8 @@ void main() {
           kind: PointerDeviceKind.mouse,
           pointer: 1,
         );
-        await gesture.addPointer(location: Offset.zero);
 
-        addTearDown(() => gesture.removePointer());
+        addTearDown(gesture.removePointer);
 
         // None hovered
         expect(findDescendentDecoration(TestItem.item0.findWidget), findsNothing);
@@ -961,7 +961,7 @@ void main() {
         // Enabled button
         // Pressed color @ 5% opacity is used when hovered color is not specified
         await gesture.moveTo(tester.getCenter(TestItem.item0.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item0.findWidget),
@@ -973,7 +973,7 @@ void main() {
         // Hovered button with custom hoverColor and pressedColor
         // Specified hovered color takes priority over pressed color
         await gesture.moveTo(tester.getCenter(TestItem.item1.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item1.findWidget),
@@ -983,7 +983,7 @@ void main() {
         // Hovered button with custom pressedColor
         // Pressed color @ 5% opacity is used when hovered color is not specified
         await gesture.moveTo(tester.getCenter(TestItem.item2.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item2.findWidget),
@@ -992,7 +992,7 @@ void main() {
 
         // Disabled button
         await gesture.moveTo(tester.getCenter(TestItem.item3.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(findDescendentDecoration(TestItem.item0.findWidget), findsNothing);
         expect(findDescendentDecoration(TestItem.item1.findWidget), findsNothing);
@@ -1013,7 +1013,8 @@ void main() {
           );
         final FocusNode focusNode = FocusNode(debugLabel: 'TestNode ${TestItem.item1}');
         addTearDown(focusNode.dispose);
-        await tester.pumpWidget(buildTestApp(
+        await tester.pumpWidget(
+          buildTestApp(
             theme: const CupertinoThemeData(brightness: Brightness.dark),
             children: <Widget>[
               CupertinoMenuItem(
@@ -1036,8 +1037,12 @@ void main() {
                 child: TestItem.item2.text,
               ),
               CupertinoMenuItem(
-                  requestFocusOnHover: true, child: TestItem.item3.text),
-            ]));
+                requestFocusOnHover: true,
+                child: TestItem.item3.text,
+              ),
+            ],
+          ),
+        );
 
         await tester.tap(find.byType(CupertinoMenuAnchor));
         await tester.pumpAndSettle();
@@ -1046,8 +1051,7 @@ void main() {
           pointer: 1,
         );
 
-        await gesture.addPointer(location: Offset.zero);
-        addTearDown(() => gesture.removePointer());
+        addTearDown(gesture.removePointer);
 
         // None hovered
         expect(findDescendentDecoration(TestItem.item0.findWidget), findsNothing);
@@ -1058,7 +1062,7 @@ void main() {
         // Enabled button
         // Pressed color @ 5% opacity is used when hovered color is not specified
         await gesture.moveTo(tester.getCenter(TestItem.item0.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item0.findWidget),
@@ -1069,7 +1073,7 @@ void main() {
         // Hovered button with custom hoverColor and pressedColor
         // Specified hovered color takes priority over pressed color
         await gesture.moveTo(tester.getCenter(TestItem.item1.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item1.findWidget),
@@ -1079,7 +1083,7 @@ void main() {
         // Hovered button with custom pressedColor
         // Pressed color @ 5% opacity is used when hovered color is not specified
         await gesture.moveTo(tester.getCenter(TestItem.item2.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(
           findDescendentDecoratedBoxColor(tester, TestItem.item2.findWidget),
@@ -1089,7 +1093,7 @@ void main() {
 
         // Disabled button
         await gesture.moveTo(tester.getCenter(TestItem.item3.findWidget));
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(findDescendentDecoration(TestItem.item0.findWidget), findsNothing);
         expect(findDescendentDecoration(TestItem.item1.findWidget), findsNothing);
@@ -1122,17 +1126,9 @@ void main() {
 
         // ignore: prefer_final_locals
         int pressedCount = 0;
-        final TestGesture gesture = await tester.createGesture(
-          kind: PointerDeviceKind.mouse,
-          pointer: 1,
-        );
 
-        await gesture.addPointer(location: Offset.zero);
-        addTearDown(() => gesture.removePointer());
-
-        // Because the app defaults to light mode, I only test
-        // dark mode here. Should light mode be tested as well?
-        await tester.pumpWidget(buildTestApp(
+        await tester.pumpWidget(
+          buildTestApp(
             theme: const CupertinoThemeData(brightness: Brightness.dark),
             children: <Widget>[
               const CupertinoLargeMenuDivider(),
@@ -1154,7 +1150,9 @@ void main() {
                 child: TestItem.item2.text,
               ),
               CupertinoMenuItem(child: TestItem.item3.text),
-            ]));
+            ],
+          ),
+        );
 
         controller.open();
         await tester.pumpAndSettle();
@@ -1164,6 +1162,13 @@ void main() {
         expect(findDescendentDecoration(TestItem.item1.findWidget), findsNothing);
         expect(findDescendentDecoration(TestItem.item2.findWidget), findsNothing);
         expect(findDescendentDecoration(TestItem.item3.findWidget), findsNothing);
+
+        final TestGesture gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+          pointer: 1,
+        );
+
+        addTearDown(gesture.removePointer);
 
         await gesture.down(tester.getCenter(
           find.byType(CupertinoLargeMenuDivider),
@@ -1251,6 +1256,8 @@ void main() {
           findDescendentDecoratedBoxColor(tester, TestItem.item1.findWidget),
           isSameColorAs(customPressedColor.darkColor),
         );
+
+        await gesture.up();
       });
 
       testWidgets('mouse cursor can be set and is inherited',
@@ -1398,6 +1405,11 @@ void main() {
       });
 
       testWidgets('applyInsetScaling can be set', (WidgetTester tester) async {
+        final UniqueKey leading = UniqueKey();
+        final UniqueKey trailing = UniqueKey();
+        final UniqueKey child = UniqueKey();
+        final UniqueKey subtitle = UniqueKey();
+
         // applyInsetScaling, when true, increases the size of the padding,
         // leading and trailing width, and the constraints by a factor of the
         // square root of the textScaler. This behavior was observed on the iOS
@@ -1831,7 +1843,6 @@ void main() {
             ),
           ],
         ));
-
         controller.open();
         await tester.pumpAndSettle();
 
@@ -2451,8 +2462,10 @@ void main() {
         // consistent, https://github.com/flutter/flutter/issues/147770
         if (kIsWeb) {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
         } else {
           await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          await tester.pump();
         }
         await tester.pump();
 
@@ -2543,9 +2556,7 @@ void main() {
         );
 
         final TestGesture gesture = await tester.createGesture(pointer: 10, kind: PointerDeviceKind.mouse);
-        addTearDown(() async {
-          await gesture.removePointer();
-        });
+        addTearDown(gesture.removePointer);
         controller.open();
         await tester.pumpAndSettle();
 
@@ -2638,17 +2649,22 @@ void main() {
         expect(pressed, 2);
       });
       testWidgets('HitTestBehavior can be set', (WidgetTester tester) async {
-        await tester.pumpWidget(buildTestApp(children: <Widget>[
-          CupertinoMenuItem(
-            onPressed: () {},
-            child: TestItem.item0.text,
+        await tester.pumpWidget(
+          buildTestApp(
+            children: <Widget>[
+              CupertinoMenuItem(
+                onPressed: () {},
+                child: TestItem.item0.text,
+              ),
+              CupertinoMenuItem(
+                onPressed: () {},
+                behavior: HitTestBehavior.translucent,
+                child: TestItem.item1.text,
+              ),
+            ],
           ),
-          CupertinoMenuItem(
-            onPressed: () {},
-            behavior: HitTestBehavior.translucent,
-            child: TestItem.item1.text,
-          ),
-        ]));
+        );
+
         controller.open();
         await tester.pumpAndSettle();
 
@@ -2737,20 +2753,13 @@ void main() {
 
         expect(controller.isOpen, isFalse);
         expect(pressed, TestItem.item2);
+
+        await gesture.up();
       });
 
       testWidgets('respects requestFocusOnHover property',
           (WidgetTester tester) async {
-        final TestGesture gesture = await tester.createGesture(
-          kind: PointerDeviceKind.mouse,
-          pointer: 7,
-        );
 
-       await  gesture.down(Offset.zero);
-
-        addTearDown( () async {
-          await gesture.removePointer();
-        });
         final List<(TestItem, bool)> focusChanges = <(TestItem, bool)>[];
         await tester.pumpWidget(
           buildTestApp(
@@ -2798,6 +2807,15 @@ void main() {
             ],
           ),
         );
+
+        final TestGesture gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+          pointer: 7,
+        );
+
+        await gesture.down(Offset.zero);
+        addTearDown(gesture.removePointer);
+
         controller.open();
         await tester.pumpAndSettle();
 

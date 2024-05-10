@@ -731,10 +731,7 @@ void main() {
     });
 
     testWidgets('panning scales the menu', (WidgetTester tester) async {
-
-
       await changeSurfaceSize(tester, const Size(1000, 1000));
-
       await tester.pumpWidget(
         CupertinoApp(
           home: Center(
@@ -1567,7 +1564,7 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    }, skip: isBrowser);
+    }, skip: isBrowser); // Web does not support ColorFilter.matrix.
 
     testWidgets('[web] default surface appearance', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -1681,7 +1678,7 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    }, skip: !isBrowser);
+    }, skip: !isBrowser); // Web does not support ColorFilter.matrix.
 
     testWidgets('panel clip behavior', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -2029,8 +2026,6 @@ void main() {
     testWidgets('parent constraints do not affect menu size',
         (WidgetTester tester) async {
       await changeSurfaceSize(tester, const Size(220, 200));
-      const ValueKey<TestMenu> anchorKey =
-          ValueKey<TestMenu>(TestMenu.anchorButton);
       await tester.pumpWidget(MaterialApp(
         theme: ThemeData(useMaterial3: false),
         home: ConstrainedBox(

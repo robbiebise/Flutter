@@ -280,11 +280,11 @@ typedef CupertinoMenuStatusChangedCallback = void Function(MenuStatus status);
 ///  CupertinoMenuAnchor(
 ///    menuChildren: <Widget>[
 ///      CupertinoMenuItem(
-///        child: const Text('Item 1'),
 ///        trailing: const Icon(Icons.add),
 ///        onPressed: () {
 ///          print('Item 1 pressed!');
 ///        },
+///        child: const Text('Item 1'),
 ///      )
 ///    ],
 ///    builder: (
@@ -293,7 +293,6 @@ typedef CupertinoMenuStatusChangedCallback = void Function(MenuStatus status);
 ///      Widget? child,
 ///    ) {
 ///      return CupertinoButton.filled(
-///        child: const Text('Open'),
 ///        onPressed: () {
 ///          if (controller.menuStatus
 ///              case MenuStatus.opening || MenuStatus.opened) {
@@ -302,6 +301,7 @@ typedef CupertinoMenuStatusChangedCallback = void Function(MenuStatus status);
 ///            controller.open();
 ///          }
 ///        },
+///        child: const Text('Open'),
 ///      );
 ///    },
 ///  );
@@ -663,7 +663,7 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
   @override
   void didUpdateWidget(CupertinoMenuAnchor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if(oldWidget.alignmentOffset != widget.alignmentOffset) {
+    if (oldWidget.alignmentOffset != widget.alignmentOffset) {
       _menuPosition = widget.alignmentOffset;
     }
 
@@ -1638,11 +1638,11 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 ///  CupertinoMenuAnchor(
 ///    menuChildren: <Widget>[
 ///      CupertinoMenuItem(
-///        child: const Text('Item 1'),
 ///        trailing: const Icon(Icons.add),
 ///        onPressed: () {
 ///          print('Item 1 pressed!');
 ///        },
+///        child: const Text('Item 1'),
 ///      )
 ///    ],
 ///    builder: (
@@ -1651,7 +1651,6 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 ///      Widget? child,
 ///    ) {
 ///      return CupertinoButton.filled(
-///        child: const Text('Open'),
 ///        onPressed: () {
 ///          if (controller.menuStatus
 ///              case MenuStatus.opening || MenuStatus.opened) {
@@ -1660,6 +1659,7 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 ///            controller.open();
 ///          }
 ///        },
+///        child: const Text('Open'),
 ///      );
 ///    },
 ///  );

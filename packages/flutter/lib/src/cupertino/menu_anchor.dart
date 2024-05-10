@@ -32,9 +32,6 @@ import 'theme.dart';
 const Duration _kMenuPanReboundDuration = Duration(milliseconds: 600);
 const bool _kDebugMenus = false;
 
-// Enable if you want verbose logging about pan region changes.
-const bool _kDebugPanRegion = false;
-
 /// Whether [defaultTargetPlatform] is an Apple platform (Mac or iOS).
 bool get _isApple {
   switch (defaultTargetPlatform) {
@@ -130,7 +127,7 @@ mixin CupertinoMenuEntryMixin {
   bool get hasLeading => false;
 }
 
-/// The reveal status of a [CupertinoMenuAnchor].
+/// The visibility status of a [CupertinoMenuAnchor].
 enum MenuStatus {
   /// The menu is closed, and the menu animation status is [AnimationStatus.dismissed]
   closed,
@@ -155,10 +152,7 @@ enum MenuStatus {
 ///
 /// * [CupertinoMenuAnchor], a widget that displays a Cupertino-style menu when
 ///   pressed.
-
-// [MenuController] is extended so that menu actions, such as
-// [DismissMenuAction], can be used with this controller.
-class CupertinoMenuController implements MenuController {
+class CupertinoMenuController {
   /// The anchor that this controller controls.
   ///
   /// This is set automatically when a [CupertinoMenuController] is given to the
@@ -168,7 +162,10 @@ class CupertinoMenuController implements MenuController {
   /// The [AnimationStatus] of the animation that reveals this controller's menu.
   MenuStatus get menuStatus => _anchor!._menuStatus;
 
-  @override
+  /// Whether the menu that this controller is associated with is open.
+  ///
+  /// When this, the menu is at least partially visible, meaning its
+  /// is not [MenuStatus.closed].
   bool get isOpen => _anchor!._menuStatus != MenuStatus.closed;
 
   /// Close the menu that this menu controller is associated with.
@@ -176,7 +173,6 @@ class CupertinoMenuController implements MenuController {
   /// If the menu's anchor point (a [CupertinoMenuAnchor]) is
   /// scrolled by an ancestor, or the view changes size, then any open menu will
   /// automatically close.
-  @override
   void close() {
     assert(_anchor != null, 'CupertinoMenuController is not attached to an anchor');
     _anchor!._animateClosed();
@@ -184,7 +180,7 @@ class CupertinoMenuController implements MenuController {
 
   /// Open the menu that this controller is associated with.
   ///
-  /// If `position` is given, then the menu will open at the position given, in
+  /// If `position` is provided, then the menu will open at the position given, in
   /// the coordinate space of the [CupertinoMenuAnchor] this controller is
   /// attached to.
   ///
@@ -194,7 +190,6 @@ class CupertinoMenuController implements MenuController {
   /// If the menu's anchor point (the [CupertinoMenuAnchor]) is scrolled by an
   /// ancestor, or the view changes size, then any open menu will automatically
   /// close.
-  @override
   void open({ui.Offset? position}) {
     assert(_anchor != null, 'CupertinoMenuController is not attached to an anchor');
     _anchor!._animateOpen(position: position);
@@ -814,7 +809,7 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
   }
 
   // Scales the menu panel when the user drags their pointer away from the menu.
-  void _handlePanUpdate(DragUpdateDetails update, {bool isInside = false}) {
+  void _handlePanUpdate(DragUpdateDetails update, {bool onTarget = false}) {
     final BuildContext? panelContext = _panelScrollableKey.currentContext;
     if (!mounted || panelContext?.mounted != true) {
       return;
@@ -925,9 +920,6 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
         animation: _animationController.view,
         menuController: _menuController,
         scaleAnimation: _scaleAnimation,
-        onPanEnd: _handlePanEnd,
-        onPanUpdate: _handlePanUpdate,
-        enablePan: widget.enablePan,
         backgroundColor: widget.backgroundColor,
         shrinkWrap: widget.shrinkWrap,
         overlaySize: overlay.paintBounds.size,
@@ -943,6 +935,7 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
         menuAlignment: widget.menuAlignment,
         surfaceBuilder: widget.surfaceBuilder,
         screenInsets: widget.screenInsets,
+        enablePan: widget.enablePan,
         children: children,
       ),
     );
@@ -953,16 +946,10 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
     MenuController controller,
     Widget? child,
   ) {
-    final Widget anchorChild =
-                  widget.builder?.call(context, _menuController, child)
-                    ?? child
-                    ?? const SizedBox.shrink();
-    return widget.enablePan
-        ? _PanRegion(
-            groupId: _PanRegionRegistry.of(context),
-            child: anchorChild,
-          )
-        : anchorChild;
+    final Widget anchor = widget.builder?.call(context, _menuController, child)
+                            ?? child
+                            ?? const SizedBox.shrink();
+    return widget.enablePan ? _PanSurface(child: anchor) : anchor;
   }
 
   @override
@@ -984,7 +971,11 @@ class _CupertinoMenuAnchorState extends State<CupertinoMenuAnchor>
     );
 
     if (widget.enablePan && CupertinoMenuAnchor._maybeOf(context) == null) {
-      scope = _PanRegionSurface(child: scope);
+      scope = _PanRegion(
+        onPanUpdate: _handlePanUpdate,
+        onPanEnd: _handlePanEnd,
+        child: scope,
+      );
     }
 
     return scope;
@@ -1001,8 +992,6 @@ class _MenuPanel extends StatelessWidget {
     required this.menuScopeNode,
     required this.children,
     required this.panelScrollableKey,
-    required this.onPanUpdate,
-    required this.onPanEnd,
     required this.scaleAnimation,
     required this.overlaySize,
     required this.consumeOutsideTaps,
@@ -1019,8 +1008,8 @@ class _MenuPanel extends StatelessWidget {
     this.tapRegionGroupId,
   });
 
-  final Color backgroundColor;
   final bool enablePan;
+  final Color backgroundColor;
   final BuildContext context;
   final bool consumeOutsideTaps;
   final CupertinoMenuController menuController;
@@ -1030,8 +1019,6 @@ class _MenuPanel extends StatelessWidget {
   final Animation<double> animation;
   final List<Widget> children;
   final GlobalKey panelScrollableKey;
-  final _PanRegionUpdateCallback onPanUpdate;
-  final void Function([DragEndDetails? details]) onPanEnd;
   final ScrollPhysics? scrollPhysics;
   final BoxConstraints? constraints;
   final Clip clipBehavior;
@@ -1082,18 +1069,13 @@ class _MenuPanel extends StatelessWidget {
       child,
       animation,
       backgroundColor,
-      clipBehavior
+      clipBehavior,
     );
 
     if (enablePan) {
-      child = _PanRegion(
-        groupId: _PanRegionRegistry.of(context),
-        onPanUpdate: onPanUpdate,
-        onPanEnd: onPanEnd,
-        onPanCancel: onPanEnd,
-        child: child,
-      );
+      child = _PanSurface(child: child);
     }
+
 
     return ConstrainedBox(
       constraints: BoxConstraints.loose(overlaySize),
@@ -1692,7 +1674,7 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 /// item if this item's minimum constraints are less than the sum of its
 /// [padding] and the size of its contents.
 ///
-/// The [leading] and [trailing] widgets will display before and after the
+/// The [leading] and [trailing] widgets display before and after the
 /// [child] widget, respectively. The [leadingWidth] and [trailingWidth]
 /// parameters control the horizontal space that these widgets occupy. The
 /// [leadingAlignment] and [trailingAlignment] parameters control the alignment
@@ -1709,7 +1691,7 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 ///
 /// The [requestCloseOnActivate] parameter can be set to false to prevent the
 /// menu from closing when the item is activated. By default, the menu will
-/// close when the item is pressed.
+/// close when an item is pressed.
 ///
 /// The [requestFocusOnHover] parameter, when true, focuses the menu item when
 /// the item is hovered.
@@ -1733,7 +1715,6 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 /// The [isDestructiveAction] parameter should be set to true if the menu item
 /// will perform a destructive action, and will color the text of the menu item
 /// [CupertinoColors.systemRed].
-///
 ///
 /// ## Shortcuts
 /// {@macro flutter.material.MenuBar.shortcuts_note}
@@ -1980,7 +1961,12 @@ class CupertinoMenuItem extends StatelessWidget with CupertinoMenuEntryMixin {
           darkHighContrastColor: Color.fromRGBO(255, 255, 255, 0.2),
         );
 
+  /// The maximum number of lines for the [child] widget when [textScale] is
+  /// less than or equal to 1.25.
   static const int defaultTextMaxLines = 2;
+
+  /// The maximum number of lines for the [child] widget when [textScale] is
+  /// greater than 1.25.
   static const int defaultLargeTextMaxLines = 100;
 
   /// Resolves the title [TextStyle] in response to [CupertinoThemeData.brightness],
@@ -2144,6 +2130,8 @@ class CupertinoMenuItem extends StatelessWidget with CupertinoMenuEntryMixin {
   }
 }
 
+
+// Fade transition between two children.
 class _AnimatedTitleSwitcher extends StatelessWidget {
   const _AnimatedTitleSwitcher({required this.child});
   final Widget child;
@@ -2221,6 +2209,11 @@ class _CupertinoMenuItemLabel extends StatelessWidget
                   EdgeInsetsDirectional.symmetric(vertical: 11.5);
   static const AlignmentDirectional defaultLeadingAlignment = AlignmentDirectional(1 / 6, 0.0);
   static const AlignmentDirectional defaultTrailingAlignment = AlignmentDirectional(-3 / 11, 0.0);
+
+  // Minimum default constraints of a menu item before one physical pixel is
+  // subtracted from the height. If the pixel ratio is 2, then the final
+  // vertical minHeight will be 43.5. Height retrieved from the iOS 17.2 simulator
+  // debug view.
   static const BoxConstraints defaultConstraints = BoxConstraints(
     minHeight: kMinInteractiveDimensionCupertino,
   );
@@ -2331,7 +2324,7 @@ class _CupertinoMenuItemLabel extends StatelessWidget
             // The leading and trailing widgets are wrapped in SizedBoxes and
             // then aligned, rather than just padded, because the alignment
             // behavior of the SizedBoxes appears to be more consistent with
-            // AutoLayout (iOS).
+            // the iOS simulator.
             SizedBox(
               width: leadingWidth,
               child: showLeadingWidget
@@ -2360,7 +2353,6 @@ class _CupertinoMenuItemLabel extends StatelessWidget
               Padding(
                   padding: const EdgeInsetsDirectional.only(start: 8),
                   child: Text(
-                    // Should CupertinoLocalizations be used here?
                     LocalizedShortcutLabeler.instance.getShortcutLabel(
                       shortcut!,
                       MaterialLocalizations.of(context),
@@ -2671,7 +2663,7 @@ class _CupertinoMenuItemGestureHandler extends StatefulWidget {
 
 class _CupertinoMenuItemGestureHandlerState
     extends State<_CupertinoMenuItemGestureHandler>
-    with _PanTarget<_CupertinoMenuItemGestureHandler> {
+    with _PanTarget {
   late final Map<Type, Action<Intent>> _actionMap = <Type, Action<Intent>>{
     ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: _simulateTap),
     ButtonActivateIntent: CallbackAction<ButtonActivateIntent>(onInvoke: _simulateTap),
@@ -2699,7 +2691,6 @@ class _CupertinoMenuItemGestureHandlerState
   @override
   bool didPanEnter() {
     assert(widget.enabled, 'Disabled items should not call didPanEnter.');
-
     if (widget.panActivationDelay != null && _longPanPressTimer == null) {
       _longPanPressTimer = Timer(widget.panActivationDelay!, () {
         _longPanPressTimer?.cancel();
@@ -2719,7 +2710,7 @@ class _CupertinoMenuItemGestureHandlerState
   }
 
   @override
-  void didPanLeave({required bool pointerUp}) {
+  void didPanLeave({bool pointerUp = false}) {
     _longPanPressTimer?.cancel();
     _longPanPressTimer = null;
     if (mounted) {
@@ -2738,8 +2729,7 @@ class _CupertinoMenuItemGestureHandlerState
   void didUpdateWidget(_CupertinoMenuItemGestureHandler oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.focusNode != oldWidget.focusNode) {
-      (oldWidget.focusNode ?? _internalFocusNode)
-          ?.removeListener(_handleFocusChange);
+      (oldWidget.focusNode ?? _internalFocusNode)?.removeListener(_handleFocusChange);
       if (widget.focusNode != null) {
         _internalFocusNode?.dispose();
         _internalFocusNode = null;
@@ -2915,711 +2905,6 @@ class _CupertinoMenuItemGestureHandlerState
   }
 }
 
-/// Can be mixed into a [State] to receive callbacks when a pointer enters or
-/// leaves a [_PanTarget]. The [_PanTarget] should be an ancestor of a
-/// [_PanRegion].
-@optionalTypeArgs
-mixin _PanTarget<T extends StatefulWidget> on State<T> {
-  /// Called when a pointer enters the [_PanTarget].
-  ///
-  /// Return true if the pointer should be considered "on" the [_PanTarget], and
-  /// false otherwise (for example, when the [_PanTarget] is disabled).
-  bool didPanEnter();
-
-  /// Called when the pointer leaves the [_PanTarget]. If [pointerUp] is true,
-  /// then the pointer left the screen while over this menu item.
-  void didPanLeave({required bool pointerUp});
-}
-
-
-/// An interface for registering and unregistering a [_RenderPanRegion]
-/// (typically created with a [_PanRegion] widget) with a
-/// [_RenderPanRegionSurface] (typically created with a [_PanRegionSurface]
-/// widget).
-abstract class _PanRegionRegistry {
-  /// Register the given [_RenderPanRegion] with the registry.
-  void registerPanRegion(_RenderPanRegion region);
-
-  /// Unregister the given [_RenderPanRegion] with the registry.
-  void unregisterPanRegion(_RenderPanRegion region);
-
-  /// Forwards a [PointerDownEvent] from a hit [_PanRegion] to the nearest
-  /// [_RenderPanRegionSurface].
-  ///
-  /// The `result` parameter is the result of a box hit test that hit a
-  /// [_PanRegion].
-  void beginPan(PointerDownEvent event, BoxHitTestResult result);
-
-  /// Allows finding of the nearest [_PanRegionRegistry], such as a
-  /// [_RenderPanRegionSurface].
-  ///
-  /// Will throw if a [_PanRegionRegistry] isn't found.
-  static _PanRegionRegistry of(BuildContext context) {
-    final _PanRegionRegistry? registry = maybeOf(context);
-    assert(() {
-      if (registry == null) {
-        throw FlutterError(
-          'PanRegionRegistry.of() was called with a context that does not contain a PanRegionSurface widget.\n'
-          'The context used was:\n'
-          '  $context',
-        );
-      }
-      return true;
-    }());
-    return registry!;
-  }
-
-  /// Allows finding of the nearest [_PanRegionRegistry], such as a
-  /// [_RenderPanRegionSurface].
-  static _PanRegionRegistry? maybeOf(BuildContext context) {
-    return context.findAncestorRenderObjectOfType<_RenderPanRegionSurface>();
-  }
-}
-
-/// A widget that notifies registered [_PanRegion]s of pan events that occur
-/// inside or outside of their bounds.
-///
-/// The regions are defined by adding [_PanRegion] widgets to the widget tree
-/// around the regions of interest, and they will register with this
-/// [_PanRegionSurface]. Each of the tap regions can optionally belong to a group
-/// by assigning a [_PanRegion.groupId], where all the regions with the same
-/// groupId act as if they were all one region.
-///
-/// Pan events are defined as a sequence of [PointerEvent]s that start **after**
-/// a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent]. Pan callbacks, such as [_PanRegion.onPanUpdate],
-/// will only be called by a [_PanRegion] if that region, or a group member
-/// of that region, is hit by the [PointerDownEvent] that initiates the pan.
-///
-/// Once a pan is initiated, pan events that occur within the bounds of a
-/// [_PanRegion] will make that region and it's group members call
-/// [_PanRegion.onPanUpdate] with the `isInside` parameter set to true. If
-/// the pan occurred outside all members of a group, `isInside` is set to false.
-///
-/// The [_PanRegionSurface] should be defined at the highest level needed to
-/// encompass the entire area where taps should be monitored. This is typically
-/// around the entire app. If the entire app isn't covered, then taps outside of
-/// the [_PanRegionSurface] will be ignored and no [_PanRegion.onTapOutside] calls
-/// will be made for those events.
-///
-/// [_PanRegion]s register only with the nearest ancestor [_PanRegionSurface].
-///
-/// See also:
-///
-///  * [_RenderPanRegionSurface], the render object that is inserted into the
-///    render tree by this widget.
-///  * <https://flutter.dev/gestures/#gesture-disambiguation> for more
-///    information about the gesture system and how it disambiguates inputs.
-class _PanRegionSurface extends SingleChildRenderObjectWidget {
-  /// Creates a const [_RenderPanRegionSurface].
-  ///
-  /// The [child] attribute is required.
-  const _PanRegionSurface({
-    required super.child,
-  });
-
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return _RenderPanRegionSurface();
-  }
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    RenderProxyBox renderObject,
-  ) {}
-}
-
-/// A render object that notifies registered [_RenderPanRegion]s of pan events
-/// that occur inside or outside of their bounds.
-///
-/// Regions are defined by adding [_RenderPanRegion] render objects in the render
-/// tree around the regions of interest, and they will register with this
-/// [_RenderPanRegionSurface]. Each of the [_RenderPanRegion]s can optionally
-/// belong to a group by assigning a [_RenderPanRegion.groupId], where all the
-/// regions sharing a groupId act as if they were all one region.
-///
-/// Pan events are defined as a sequence of [PointerEvent]s that start **after**
-/// a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent]. Pan callbacks, such as [_RenderPanRegion.onPanUpdate],
-/// will only be called by a [_RenderPanRegion] if that region, or a group member
-/// of that region, is hit by the [PointerDownEvent] that initiates the pan.
-///
-/// Once a pan is initiated, pan events that occur within the bounds of a
-/// [_RenderPanRegion] will make that region and it's group members call
-/// [_RenderPanRegion.onPanUpdate] with the `isInside` parameter set to true. If
-/// the pan occurred outside all members of a group, `isInside` is set to false.
-///
-/// The [_RenderPanRegionSurface] should be defined at the highest level needed
-/// to encompass the entire area where pans should be monitored. This is
-/// typically around the entire app. If the entire app isn't covered, then taps
-/// outside of the [_RenderPanRegionSurface] will be ignored and no
-/// [_RenderPanRegion.onPanUpdate] calls will be made for those events.
-///
-///
-/// [_RenderPanRegion]s register only with the nearest ancestor
-/// [_RenderPanRegionSurface].
-///
-/// See also:
-///
-/// * [_PanRegionSurface], a widget that inserts a [_RenderPanRegionSurface] into
-///   the render tree.
-/// * [_PanRegionRegistry.of], which can find the nearest ancestor
-///   [_RenderPanRegionSurface], which is a [_PanRegionRegistry].
-class _RenderPanRegionSurface extends RenderProxyBox implements _PanRegionRegistry {
-  /// Regions grouped by their [_PanRegion.groupId]s.
-  final Map<Object?, Set<_RenderPanRegion>> _groupIdToRegions = <Object?, Set<_RenderPanRegion>>{};
-
-  /// [_PanRegion]s that are participating in the current pan gesture.
-  final Set<_RenderPanRegion> _pannedRegions = <_RenderPanRegion>{};
-
-  /// [_PanRegion]s that have been registered with this surface.
-  final Set<_RenderPanRegion> _registeredRegions = <_RenderPanRegion>{};
-
-  /// The most recently panned [_PanTarget]s, in the order they were panned.
-  final List<_PanTarget> _enteredTargets = <_PanTarget>[];
-
-  late final PanGestureRecognizer _pan = PanGestureRecognizer()
-    ..onUpdate = _handlePanUpdate
-    ..onEnd = _handlePanEnd
-    ..onCancel = _handlePanCancel;
-
-  Offset? _panPosition;
-  BoxHitTestResult? _pannedHitTestResults;
-  Set<_RenderPanRegion> _hitRegions = <_RenderPanRegion>{};
-
-  @override
-  void registerPanRegion(_RenderPanRegion region) {
-    assert(_debugPanRegion('Region $region registered.'));
-    assert(!_registeredRegions.contains(region));
-    _registeredRegions.add(region);
-    if (region.groupId != null) {
-      _groupIdToRegions[region.groupId] ??= <_RenderPanRegion>{};
-      _groupIdToRegions[region.groupId]!.add(region);
-    }
-    _updatePannedRegions();
-  }
-
-  @override
-  void unregisterPanRegion(_RenderPanRegion region) {
-    assert(_debugPanRegion('Region $region unregistered.'));
-    assert(_registeredRegions.contains(region));
-    _registeredRegions.remove(region);
-    if (region.groupId != null) {
-      assert(_groupIdToRegions.containsKey(region.groupId));
-      _groupIdToRegions[region.groupId]!.remove(region);
-      if (_groupIdToRegions[region.groupId]!.isEmpty) {
-        _groupIdToRegions.remove(region.groupId);
-      }
-    }
-    _updatePannedRegions();
-  }
-
-  @override
-  void beginPan(PointerDownEvent event, BoxHitTestResult result) {
-    // Block multiple pan initiations (overlapping regions that were hit).
-     if (_pannedHitTestResults?.path == result.path) {
-      assert(_debugPanRegion('Pan is already initiated: $_pannedRegions'));
-      return;
-    }
-
-    assert(
-      _registeredRegions.every((_RenderPanRegion element) => element.enabled),
-      'A disabled RenderPanRegion was registered.',
-    );
-
-    if (_registeredRegions.isEmpty) {
-      assert(_debugPanRegion('Ignored pan event because no regions were registered.'));
-      return;
-    }
-
-    // Collect the regions that were hit.
-    _hitRegions = _filterHitRegions(result.path).cast<_RenderPanRegion>().toSet();
-
-    assert(_debugPanRegion('PointerDown event hit ${_hitRegions.length} regions.'));
-
-    _updatePannedRegions();
-
-    assert(_pannedRegions.isNotEmpty);
-
-    _panPosition = event.position;
-    _pan.addPointer(event);
-  }
-
-  @override
-  void dispose() {
-    _pan.dispose();
-    super.dispose();
-  }
-
-  void _updatePannedRegions() {
-    final Set<_RenderPanRegion> registeredHitRegions =
-        _hitRegions.intersection(_registeredRegions);
-    _pannedRegions.clear();
-    for (final _RenderPanRegion region in registeredHitRegions) {
-      if (region.groupId == null) {
-        _pannedRegions.add(region);
-        continue;
-      }
-
-      // Add all grouped regions to the insideRegions so that groups act as a
-      // single region.
-      _pannedRegions.addAll(_groupIdToRegions[region.groupId]!);
-    }
-  }
-
-  // Returns the registered regions that are in the hit path.
-  Iterable<HitTestTarget> _filterHitRegions(Iterable<HitTestEntry> hitTestPath) {
-    final Set<HitTestTarget> hitRegions = <HitTestTarget>{};
-    for (final HitTestEntry<HitTestTarget> entry in hitTestPath) {
-      final HitTestTarget target = entry.target;
-      if (_registeredRegions.contains(target)) {
-        hitRegions.add(target);
-      }
-    }
-    return hitRegions;
-  }
-
-  void _handlePanUpdate(DragUpdateDetails details) {
-    _panPosition = details.globalPosition;
-    _updatePan(details);
-  }
-
-  void _handlePanEnd(DragEndDetails details) {
-    _leaveAllEntered(pointerUp: true);
-    for (final _RenderPanRegion region in _pannedRegions) {
-      region.onPanEnd?.call(details);
-    }
-    assert(_debugPanRegion('Pan ended at ${details.globalPosition}.'));
-    _panPosition = null;
-    _pannedRegions.clear();
-  }
-
-  void _handlePanCancel() {
-    _leaveAllEntered();
-    for (final _RenderPanRegion region in _pannedRegions) {
-      region.onPanCancel?.call();
-    }
-    assert(_debugPanRegion('Pan canceled at $_panPosition.'));
-    _panPosition = null;
-    _pannedRegions.clear();
-  }
-
-  void _updatePan(DragUpdateDetails details) {
-    final Set<_RenderPanRegion> hitRegions = <_RenderPanRegion>{};
-    final BoxHitTestResult result = BoxHitTestResult();
-
-    // Hit test and collect each [RenderPanRegion] and it's children. If a
-    // region is hit, regions in the same group are marked as hit.
-    for (final _RenderPanRegion region in _pannedRegions) {
-      final ui.Offset localPosition = region.globalToLocal(_panPosition!);
-      if (region.hitTest(result, position: localPosition)) {
-        if (region.groupId == null) {
-          hitRegions.add(region);
-          continue;
-        }
-
-        hitRegions.addAll(_groupIdToRegions[region.groupId]!);
-      }
-    }
-
-    // Notify the regions that were hit, and the regions that were not.
-    for (final _RenderPanRegion region in _pannedRegions) {
-      region.onPanUpdate?.call(details, isInside: hitRegions.contains(region));
-    }
-
-    // Collect RenderMetaData children that were hit.
-    final Iterator<HitTestEntry<HitTestTarget>> hitPath = result.path.iterator;
-    final List<_PanTarget> targets = <_PanTarget>[];
-    while (hitPath.moveNext()) {
-      final HitTestTarget target = hitPath.current.target;
-
-      // If the [MetaData] that is hit contains a [_PanTarget] in the same group,
-      // then add it to the list of targets.
-      if (target case RenderMetaData(:final _PanTarget metaData)) {
-        targets.add(metaData);
-      }
-    }
-
-    bool listsMatch = false;
-
-    // Check if the panned targets are the same as the last pan event
-    // (_enteredTargets contains the previous targets).
-    if (
-      targets.length >= _enteredTargets.length &&
-      _enteredTargets.isNotEmpty
-    ) {
-      listsMatch = true;
-      for (int i = 0; i < _enteredTargets.length; i++) {
-        if (targets[i] != _enteredTargets[i]) {
-          listsMatch = false;
-          break;
-        }
-      }
-    }
-
-    // If everything is the same, bail early.
-    if (listsMatch) {
-      return;
-    }
-
-    // Leave old targets.
-    _leaveAllEntered();
-
-    // Enter new targets.
-    final Iterator<_PanTarget> iterator = targets.iterator;
-    while (iterator.moveNext()) {
-      final _PanTarget target = iterator.current;
-      _enteredTargets.add(target);
-      if (target.didPanEnter()) {
-        HapticFeedback.selectionClick();
-        return;
-      }
-    }
-  }
-
-  void _leaveAllEntered({bool pointerUp = false}) {
-    for (final _PanTarget target in _enteredTargets) {
-      target.didPanLeave(pointerUp: pointerUp);
-    }
-
-    _enteredTargets.clear();
-  }
-}
-
-/// A handler for pan events that occur inside or outside of a [_PanRegion].
-///
-/// Pan events are defined as a sequence of [PointerEvent]s that start **after**
-/// a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent].
-///
-/// Once a pan is initiated, pan events that occur within the bounds of a
-/// [_RenderPanRegion] will make that region and it's group members call
-/// [_RenderPanRegion.onPanUpdate] with the `isInside` parameter set to true. If
-/// the pan occurred outside all members of a group, `isInside` is set to false.
-typedef _PanRegionUpdateCallback = void Function(DragUpdateDetails details, {bool isInside});
-
-/// A widget that defines a region that will begin tracking pan events upon
-/// receiving a [PointerDownEvent] with the bounds of itself or a group member.
-///
-/// Pan events are defined as a sequence of [PointerEvent]s that start **after**
-/// a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent].
-///
-/// This widget indicates to the nearest ancestor [_PanRegionSurface] that the
-/// region occupied by its child will participate in the pan detection for that
-/// surface.
-///
-/// If this region belongs to a group (by virtue of its [groupId]), all the
-/// regions in the group will call their [_PanRegion.onPanUpdate] callbacks when
-/// a pan is detected by any member of the group.
-///
-/// If there is no [_PanRegionSurface] ancestor, [_PanRegion] will do nothing.
-class _PanRegion extends SingleChildRenderObjectWidget {
-  /// Creates a const [_PanRegion].
-  ///
-  /// The [child] argument is required.
-  const _PanRegion({
-    required super.child,
-    // ignore: unused_element
-    this.enabled = true,
-    // ignore: unused_element
-    this.behavior = HitTestBehavior.deferToChild,
-    this.onPanUpdate,
-    this.onPanEnd,
-    this.onPanCancel,
-    this.groupId,
-    String? debugLabel,
-  }) : debugLabel = kReleaseMode ? null : debugLabel;
-
-  /// Whether or not this [_PanRegion] is enabled as part of the composite region.
-  final bool enabled;
-
-  /// How to behave during hit testing when deciding how the hit test propagates
-  /// to children and whether to consider targets behind this [_PanRegion].
-  ///
-  /// Defaults to [HitTestBehavior.deferToChild].
-  ///
-  /// See [HitTestBehavior] for the allowed values and their meanings.
-  final HitTestBehavior behavior;
-
-  /// A callback to be invoked when a pan is detected by this [_PanRegion], or
-  /// any other pan region with the same [groupId], if any.
-  ///
-  /// The [DragUpdateDetails] passed to the function is the event that was
-  /// emitted by the [PanGestureRecognizer].
-  ///
-  /// Pan events are defined as a sequence of [PointerEvent]s that start
-  /// **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
-  /// [PointerCancelEvent]. If this region and it's group members do not
-  /// receive the [PointerDownEvent] that initiates a pan, then this callback
-  /// will not be called.
-  ///
-  /// Once a pan is initiated, pan events that occur within the bounds of a
-  /// [_RenderPanRegion] will make that region and it's group members call
-  /// [_RenderPanRegion.onPanUpdate] with the `isInside` parameter set to true.
-  /// If the pan occurred outside all members of a group, `isInside` is set to
-  /// false.
-  final _PanRegionUpdateCallback? onPanUpdate;
-
-  /// A callback invoked when the pointer that initiated a pan leaves the
-  /// screen.
-  ///
-  /// Pan events are defined as a sequence of [PointerEvent]s that start
-  /// **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
-  /// [PointerCancelEvent]. If neither this region nor it's group members
-  /// receive the [PointerDownEvent] that initiates the pan, then this callback
-  /// will not be called.
-  final GestureDragEndCallback? onPanEnd;
-
-  /// A callback invoked when the pan is interrupted (for example, by a system modal
-  /// appearing).
-  ///
-  /// Pan events are defined as a sequence of [PointerEvent]s that start
-  /// **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
-  /// [PointerCancelEvent]. If neither this region nor it's group members
-  /// receive the [PointerDownEvent] that initiates the pan, then this callback
-  /// will not be called.
-  final GestureDragCancelCallback? onPanCancel;
-
-  /// An optional group ID that groups [_PanRegion]s together so that they
-  /// operate as one region. If any member of a group is hit by the
-  /// [PointerDownEvent] that initiates a pan, then all members will be notified
-  /// of subsequent pan events.
-  ///
-  /// If the group id is null, then only this region is hit tested.
-  final Object? groupId;
-
-  /// An optional debug label to help with debugging in debug mode.
-  ///
-  /// Will be null in release mode.
-  final String? debugLabel;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return _RenderPanRegion(
-      registry: _PanRegionRegistry.maybeOf(context),
-      enabled: enabled,
-      behavior: behavior,
-      onPanUpdate: onPanUpdate,
-      onPanEnd: onPanEnd,
-      onPanCancel: onPanCancel,
-      groupId: groupId,
-      debugLabel: debugLabel,
-    );
-  }
-
-  @override
-  void updateRenderObject(BuildContext context, covariant _RenderPanRegion renderObject) {
-    renderObject
-      ..registry = _PanRegionRegistry.maybeOf(context)
-      ..enabled = enabled
-      ..behavior = behavior
-      ..groupId = groupId
-      ..onPanUpdate = onPanUpdate
-      ..onPanEnd = onPanEnd
-      ..onPanCancel = onPanCancel;
-    assert((){
-      renderObject.debugLabel = debugLabel;
-      return true;
-    }());
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(FlagProperty('enabled', value: enabled, ifFalse: 'DISABLED', defaultValue: true));
-    properties.add(DiagnosticsProperty<HitTestBehavior>('behavior', behavior, defaultValue: HitTestBehavior.deferToChild));
-    properties.add(DiagnosticsProperty<Object?>('debugLabel', debugLabel, defaultValue: null));
-    properties.add(DiagnosticsProperty<Object?>('groupId', groupId, defaultValue: null));
-  }
-}
-
-/// A render object that defines a region that begins tracking pan events upon
-/// receiving a [PointerDownEvent] within it's own bounds or the bounds of a
-/// group member.
-///
-/// This render object indicates to the nearest ancestor [_PanRegionSurface]
-/// that the region occupied by this render object's child (or the render object
-/// itself, if [behavior] is [HitTestBehavior.opaque]) will participate in the
-/// pan detection.
-///
-/// Panning in this context is defined as a sequence of [PointerEvent]s that
-/// start **after** a [PointerDownEvent] and end with a [PointerUpEvent] or
-/// [PointerCancelEvent].
-///
-/// If this region belongs to a group (by virtue of its [groupId]), all the
-/// regions in the group will call their [_PanRegion.onPanUpdate] callbacks when
-/// a pan is detected by any member of the group.
-///
-/// If there is no [_PanRegionSurface] ancestor, [_PanRegion] will do nothing.
-///
-/// See also:
-///
-///  * [_PanRegion], a widget that inserts a [_RenderPanRegion] into the render
-///    tree.
-class _RenderPanRegion extends RenderProxyBoxWithHitTestBehavior {
-  /// Creates a [_RenderPanRegion].
-  _RenderPanRegion({
-    // ignore: library_private_types_in_public_api
-    _PanRegionRegistry? registry,
-    bool enabled = true,
-    this.onPanUpdate,
-    this.onPanCancel,
-    this.onPanEnd,
-    super.behavior = HitTestBehavior.deferToChild,
-    Object? groupId,
-    String? debugLabel,
-  })  : _registry = registry,
-        _enabled = enabled,
-        _groupId = groupId,
-        debugLabel = kReleaseMode ? null : debugLabel;
-
-  /// A callback to be invoked when a tap is detected outside of this
-  /// [_RenderPanRegion] and any other region with the same [groupId], if any.
-  ///
-  /// The [PointerDownEvent] passed to the function is the event that caused the
-  /// notification. If this region is part of a group (i.e. [groupId] is set),
-  /// then it's possible that the event may be outside of this immediate region,
-  /// although it will be within the region of one of the group members.
-  _PanRegionUpdateCallback? onPanUpdate;
-
-  /// Called when the pointer leaves the region encompassed by all [_PanRegion]s
-  /// in this group.
-  GestureDragEndCallback? onPanEnd;
-
-  /// Called when the pan is interrupted (for example, by a system modal
-  /// appearing).
-  GestureDragCancelCallback? onPanCancel;
-
-  /// A label used in debug builds. Will be null in release builds.
-  String? debugLabel;
-
-  /// The most recent [BoxHitTestResult] that hit this region.
-  // ignore: use_late_for_private_fields_and_variables
-  BoxHitTestResult? _cachedHit;
-
-  bool _isRegistered = false;
-
-  /// Whether or not this region should participate in the composite region.
-  bool get enabled => _enabled;
-  bool _enabled;
-  set enabled(bool value) {
-    if (_enabled != value) {
-      _enabled = value;
-      markNeedsLayout();
-    }
-  }
-
-  /// An optional group ID that groups [_RenderPanRegion]s together so that they
-  /// operate as one region. If any member of a group is hit by a particular
-  /// pan, then the [onPanUpdate] will not be called for any members of the
-  /// group. If any member of the group is panned, then all members will have their
-  /// [onPanUpdate] called.
-  ///
-  /// If the group id is null, then only this region is hit tested.
-  Object? get groupId => _groupId;
-  Object? _groupId;
-  set groupId(Object? value) {
-    if (_groupId != value) {
-      // If the group changes, we need to unregister and re-register under the
-      // new group. The re-registration happens automatically in layout().
-      if (_isRegistered) {
-        _registry!.unregisterPanRegion(this);
-        _isRegistered = false;
-      }
-      _groupId = value;
-      markNeedsLayout();
-    }
-  }
-
-  /// The registry that this [_RenderPanRegion] should register with.
-  ///
-  /// If the [registry] is null, then this region will not be registered
-  /// anywhere, and will not do any pan detection.
-  ///
-  /// A [_RenderPanRegionSurface] is a [_PanRegionRegistry].
-  // ignore: library_private_types_in_public_api
-  _PanRegionRegistry? get registry => _registry;
-  _PanRegionRegistry? _registry;
-  // ignore: library_private_types_in_public_api
-  set registry(_PanRegionRegistry? value) {
-    if (_registry != value) {
-      if (_isRegistered) {
-        _registry!.unregisterPanRegion(this);
-        _isRegistered = false;
-      }
-      _registry = value;
-      markNeedsLayout();
-    }
-  }
-
-  @override
-  bool hitTest(BoxHitTestResult result, {required ui.Offset position}) {
-    final bool hit = super.hitTest(result, position: position);
-    if (hit) {
-      _cachedHit = result;
-    }
-    return hit;
-  }
-
-
-  @override
-  void handleEvent(PointerEvent event, HitTestEntry<HitTestTarget> entry) {
-    // Forward [PointerDownEvent]s to the nearest ancestor
-    // [RenderPanRegionSurface].
-    if (event is PointerDownEvent && _isRegistered) {
-      registry!.beginPan(event, _cachedHit!);
-    }
-  }
-
-  @override
-  void layout(Constraints constraints, {bool parentUsesSize = false}) {
-    super.layout(constraints, parentUsesSize: parentUsesSize);
-    if (_registry == null) {
-      return;
-    }
-
-    // This region should be registered when enabled, and unregistered when
-    // disabled.
-    //
-    // NOTE: The logic for [RenderTapRegion] unregisters/registers every time
-    // layout occurs, whereas [RenderPanRegion] only registers when the enabled
-    // and _isRegistered states change. It's not clear why [RenderTapRegion]
-    // behaves this way.
-    if (_isRegistered == _enabled) {
-      return;
-    }
-
-    if (_enabled) {
-      _registry!.registerPanRegion(this);
-    } else {
-      _registry!.unregisterPanRegion(this);
-    }
-
-    _isRegistered = _enabled;
-  }
-
-  @override
-  void dispose() {
-    if (_isRegistered) {
-      _registry!.unregisterPanRegion(this);
-    }
-
-    super.dispose();
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<String?>('debugLabel', debugLabel, defaultValue: null));
-    properties.add(DiagnosticsProperty<Object?>('groupId', groupId, defaultValue: null));
-    properties.add(FlagProperty('enabled', value: enabled, ifFalse: 'DISABLED', defaultValue: true));
-  }
-}
-
-
-
 /// A debug print function, which should only be called within an assert, like
 /// so:
 ///
@@ -3645,15 +2930,269 @@ bool _debugMenuInfo(String message, [Iterable<String>? details]) {
   return true;
 }
 
-bool _debugPanRegion(String message, [Iterable<String>? details]) {
-  if (_kDebugPanRegion) {
-    debugPrint('PAN REGION: $message');
-    if (details != null && details.isNotEmpty) {
-      for (final String detail in details) {
-        debugPrint('    $detail');
+
+/// Called when a [_PanTarget] is entered or exited.
+///
+/// The [position] describes the global position of the pointer.
+///
+/// The [onTarget] parameter is true when the pointer is on a [_PanTarget].
+typedef _CupertinoPanUpdateCallback = void Function(DragUpdateDetails position, {bool onTarget});
+
+class _PanScope extends InheritedWidget {
+  const _PanScope({required super.child, required this.data});
+  final _PanRouter data;
+
+  @override
+  bool updateShouldNotify(_PanScope oldWidget) {
+    return oldWidget.data != data;
+  }
+}
+
+@optionalTypeArgs
+mixin _PanRouter<T extends StatefulWidget> on State<T> {
+  void routePointer(PointerDownEvent event);
+}
+
+
+class _PanRegion extends StatefulWidget {
+  /// Creates [_PanRegion] that wraps a Cupertino menu and notifies the layer's children during user swiping.
+  const _PanRegion({
+    required this.child,
+     this.onPanUpdate,
+     this.onPanEnd,
+  });
+
+  /// Called when a [_PanTarget] is entered or exited.
+  ///
+  /// The [position] describes the global position of the pointer.
+  ///
+  /// The [onTarget] parameter is true when the pointer is on a [_PanTarget].
+  final _CupertinoPanUpdateCallback? onPanUpdate;
+
+  /// Called when the user stops panning.
+  ///
+  /// The [position] describes the global position of the pointer.
+  final GestureDragEndCallback? onPanEnd;
+
+  /// The widget below this widget in the tree.
+  final Widget child;
+
+  static _PanRouter? _maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<_PanScope>()?.data;
+  }
+
+  static _PanRouter _of(BuildContext context) {
+    final _PanRouter? result = _maybeOf(context);
+    assert(result != null, 'No PanRegion found in context');
+    return result!;
+  }
+
+  /// Creates a [ImmediateMultiDragGestureRecognizer] to recognize the start of
+  /// a pan gesture.
+  ImmediateMultiDragGestureRecognizer createRecognizer(
+    GestureMultiDragStartCallback onStart,
+  ) => ImmediateMultiDragGestureRecognizer()..onStart = onStart;
+
+  @override
+  State<_PanRegion> createState() => _PanRegionState();
+
+}
+
+class _PanRegionState extends State<_PanRegion> with _PanRouter {
+  ImmediateMultiDragGestureRecognizer? _recognizer;
+  bool _isPanning = false;
+
+  @override
+  void routePointer(PointerDownEvent event) {
+    assert(_recognizer != null);
+    assert(!_isPanning);
+    _recognizer?.addPointer(event);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recognizer = widget.createRecognizer(_beginPan);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _recognizer!.gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
+  }
+
+  @override
+  void dispose() {
+    _disposeInactiveRecognizer();
+    super.dispose();
+  }
+
+  void _disposeInactiveRecognizer() {
+    if (!_isPanning && _recognizer != null) {
+      _recognizer!.dispose();
+      _recognizer = null;
+    }
+  }
+
+  void _completePan() {
+    if (mounted) {
+      setState(() {
+        _isPanning = false;
+      });
+    } else {
+      _isPanning = false;
+      _disposeInactiveRecognizer();
+    }
+  }
+
+  void _handlePanEnd(DragEndDetails position) {
+    _completePan();
+    widget.onPanEnd?.call(position);
+  }
+
+  Drag? _beginPan(ui.Offset position) {
+    assert(!_isPanning, 'A new pan should not begin while a pan is active.');
+    _isPanning = true;
+    return _PanHandler(
+      router: this,
+      viewId: View.of(context).viewId,
+      initialPosition: position,
+      onPanUpdate: widget.onPanUpdate,
+      onPanEnd: _handlePanEnd,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanScope(data: this, child: widget.child);
+  }
+}
+
+/// An area that can initiate panning.
+///
+/// This widget will report [PointerDownEvent]s it receives to the nearest
+/// ancestor [_PanRegion].
+class _PanSurface extends StatelessWidget {
+  const _PanSurface({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (PointerDownEvent event) {
+        // Placed inside anonymous function to avoid _PanRegion lookup unless
+        // necessary.
+        _PanRegion._of(context).routePointer(event);
+      },
+      child: child,
+    );
+  }
+}
+
+/// Mix into [State] to receive callbacks when a pointer enters or leaves while
+/// down. The [StatefulWidget] this class is mixed into must be a descendant of
+/// a [_PanRegion].
+@optionalTypeArgs
+mixin _PanTarget<T extends StatefulWidget> on State<T> {
+  /// Called when a pointer enters the [_PanTarget]. Return true if the pointer
+  /// should be considered "on" the [_PanTarget], and false otherwise (for
+  /// example, when the [_PanTarget] is disabled).
+  @mustCallSuper
+  bool didPanEnter();
+
+  /// Called when the pan is ended or canceled. If `pointerUp` is true,
+  /// then the pointer was removed from the screen while over this [_PanTarget].
+  void didPanLeave({bool pointerUp = false});
+}
+
+/// Handles panning events for a [_PanRegion].
+// This class was adapted from _DragAvatar.
+class _PanHandler extends Drag {
+  /// Creates a [_PanHandler] that handles panning events for a [_PanRegion].
+  _PanHandler({
+    required Offset initialPosition,
+    required this.viewId,
+    required this.router,
+    this.onPanEnd,
+    this.onPanUpdate,
+  }) : _position = initialPosition {
+    _updatePan();
+  }
+
+  final int viewId;
+  final List<_PanTarget> _enteredTargets = <_PanTarget>[];
+  final _CupertinoPanUpdateCallback? onPanUpdate;
+  final GestureDragEndCallback? onPanEnd;
+  final _PanRouter router;
+  Offset _position;
+
+  @override
+  void update(DragUpdateDetails details) {
+    final Offset oldPosition = _position;
+    _position += details.delta;
+    if (_position != oldPosition) {
+      _updatePan();
+      onPanUpdate?.call(details, onTarget: _enteredTargets.isNotEmpty);
+    }
+  }
+
+  @override
+  void end(DragEndDetails details) {
+    _leaveAllEntered(pointerUp: true);
+    onPanEnd?.call(details);
+  }
+
+  void _updatePan() {
+    final HitTestResult result = HitTestResult();
+    WidgetsBinding.instance.hitTestInView(result, _position, viewId);
+    // Look for the RenderBoxes that corresponds to the hit target
+    final List<_PanTarget> targets = <_PanTarget>[];
+    for (final HitTestEntry entry in result.path) {
+      if (entry.target case RenderMetaData(:final _PanTarget metaData)) {
+        if (_PanRegion._maybeOf(metaData.context) == router) {
+          targets.add(metaData);
+        }
+      }
+    }
+
+    bool listsMatch = false;
+    if (
+      targets.length >= _enteredTargets.length &&
+      _enteredTargets.isNotEmpty
+    ) {
+      listsMatch = true;
+      for (int i = 0; i < _enteredTargets.length; i++) {
+        if (targets[i] != _enteredTargets[i]) {
+          listsMatch = false;
+          break;
+        }
+      }
+    }
+
+    // If everything is the same, bail early.
+    if (listsMatch) {
+      return;
+    }
+
+    // Leave old targets.
+    _leaveAllEntered();
+
+    // Enter new targets.
+    for (final _PanTarget? target in targets) {
+      if (target != null) {
+        _enteredTargets.add(target);
+        if (target.didPanEnter()) {
+          HapticFeedback.selectionClick();
+          return;
+        }
       }
     }
   }
-  // Return true so that it can be easily used inside of an assert.
-  return true;
+
+  void _leaveAllEntered({bool pointerUp = false}) {
+    for (int i = 0; i < _enteredTargets.length; i += 1) {
+      _enteredTargets[i].didPanLeave(pointerUp: pointerUp);
+    }
+    _enteredTargets.clear();
+  }
 }

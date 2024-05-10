@@ -35,8 +35,8 @@ void main() {
   // Generic button that opens a menu. Used insead of a TextButton or
   // CupertinoButton to avoid flaky tests in the future.
 
-  // TODO(davidhicks980): Replace with a TextButton or CupertinoButton if a
-  // FocusNode is added, https://github.com/flutter/flutter/issues/144385
+  // TODO(davidhicks980): Replace with a CupertinoButton when a FocusNode is
+  // added, https://github.com/flutter/flutter/issues/144385
   Widget buildAnchor(
     BuildContext context,
     CupertinoMenuController controller,
@@ -88,7 +88,7 @@ void main() {
     focusedMenu = null;
   });
 
-  Future<void> setSurfaceSize(WidgetTester tester, Size size) async {
+  Future<void> changeSurfaceSize(WidgetTester tester, Size size) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() async {
       await tester.binding.setSurfaceSize(null);
@@ -666,7 +666,7 @@ void main() {
       expect(closed, isFalse);
 
       const Size smallSize = Size(200, 200);
-      await setSurfaceSize(tester, smallSize);
+      await changeSurfaceSize(tester, smallSize);
       await tester.pumpWidget(build(smallSize));
 
       expect(opened, isFalse);
@@ -739,7 +739,7 @@ void main() {
       await gesture.addPointer(location: Offset.zero);
       addTearDown(gesture.removePointer);
 
-      await setSurfaceSize(tester, const Size(1000, 1000));
+      await changeSurfaceSize(tester, const Size(1000, 1000));
 
       await tester.pumpWidget(
         CupertinoApp(
@@ -829,7 +829,7 @@ void main() {
       final TestGesture gesture = await tester.createGesture(pointer: 1);
       await gesture.addPointer(location: Offset.zero);
       addTearDown(gesture.removePointer);
-      await setSurfaceSize(tester, const Size(1000, 1000));
+      await changeSurfaceSize(tester, const Size(1000, 1000));
       await tester.pumpWidget(
         CupertinoApp(
           home: Center(
@@ -1564,9 +1564,7 @@ void main() {
         '${darkCustomPaint.painter}'.contains('Color(0xbb373737)'),
         isTrue,
       );
-    },
-    // Color filters are not supported on web.
-    skip: isBrowser);
+    }, skip: isBrowser);
 
     testWidgets('[web] default surface appearance', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -1856,7 +1854,7 @@ void main() {
 
     testWidgets('unconstrained menus show up in the right place in LTR',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 600));
+      await changeSurfaceSize(tester, const Size(800, 600));
       await tester.pumpWidget(
         CupertinoApp(
           home: Column(
@@ -1901,7 +1899,7 @@ void main() {
 
     testWidgets('unconstrained menus show up in the right place in RTL',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 600));
+      await changeSurfaceSize(tester, const Size(800, 600));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -1948,7 +1946,7 @@ void main() {
 
     testWidgets('constrained menus show up in the right place in LTR',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(220, 200));
+      await changeSurfaceSize(tester, const Size(220, 200));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -1987,7 +1985,7 @@ void main() {
 
     testWidgets('constrained menus show up in the right place in RTL',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(220, 200));
+      await changeSurfaceSize(tester, const Size(220, 200));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -2027,7 +2025,9 @@ void main() {
 
     testWidgets('parent constraints do not affect menu size',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(220, 200));
+      await changeSurfaceSize(tester, const Size(220, 200));
+      const ValueKey<TestMenu> anchorKey =
+          ValueKey<TestMenu>(TestMenu.anchorButton);
       await tester.pumpWidget(MaterialApp(
         theme: ThemeData(useMaterial3: false),
         home: ConstrainedBox(
@@ -2064,7 +2064,7 @@ void main() {
     testWidgets(
         'constrained menus show up in the right place with offset in LTR',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(220, 200));
+      await changeSurfaceSize(tester, const Size(220, 200));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -2103,7 +2103,7 @@ void main() {
     testWidgets(
         'constrained menus show up in the right place with offset in RTL',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(220, 200));
+      await changeSurfaceSize(tester, const Size(220, 200));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -2139,7 +2139,7 @@ void main() {
     testWidgets(
         'menus anchored below the halfway point of the screen grow upwards',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 600));
+      await changeSurfaceSize(tester, const Size(800, 600));
       await tester.pumpWidget(
         CupertinoApp(
           home: Align(
@@ -2163,7 +2163,7 @@ void main() {
 
     testWidgets('offset affects the growth direction of the menu',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 800));
+      await changeSurfaceSize(tester, const Size(800, 800));
       await tester.pumpWidget(
         CupertinoApp(
           home: Directionality(
@@ -2194,7 +2194,7 @@ void main() {
     });
 
     testWidgets('geometry LTR', (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 600));
+      await changeSurfaceSize(tester, const Size(800, 600));
       await tester.pumpWidget(
         CupertinoApp(
           home: Column(
@@ -2385,7 +2385,11 @@ void main() {
 
     testWidgets('menu alignment and offset in LTR',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 800));
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
+
       await tester.pumpWidget(buildTestApp());
 
       final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
@@ -2472,7 +2476,11 @@ void main() {
 
     testWidgets('menu alignment and offset in RTL',
         (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 800));
+     await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
+
       await tester.pumpWidget(buildTestApp(
         textDirection: TextDirection.rtl,
       ));
@@ -2562,7 +2570,10 @@ void main() {
     });
 
     testWidgets('menu position in LTR', (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 800));
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
 
       await tester.pumpWidget(buildTestApp());
       final Finder anchor = TestMenu.anchorButton.findAncestor<Material>();
@@ -2602,7 +2613,11 @@ void main() {
     });
 
     testWidgets('menu position in RTL', (WidgetTester tester) async {
-      await setSurfaceSize(tester, const Size(800, 800));
+      await tester.binding.setSurfaceSize(const Size(800, 800));
+      addTearDown(() async {
+        await tester.binding.setSurfaceSize(null);
+      });
+
       await tester.pumpWidget(
         buildTestApp(textDirection: TextDirection.rtl)
       );

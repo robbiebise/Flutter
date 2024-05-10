@@ -2587,7 +2587,7 @@ void main() {
         ));
         controller.open();
 
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
           await tester.pump(const Duration(milliseconds: 16));
         }
 
@@ -2615,7 +2615,7 @@ void main() {
 
         controller.close();
 
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
           await tester.pump(const Duration(milliseconds: 16));
         }
 

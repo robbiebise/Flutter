@@ -37,8 +37,12 @@ void main() {
     // Finish animating
     await tester.pumpAndSettle();
 
-    expect(tester.getRect(findMenu()),
-    rectMoreOrLessEquals(const Rect.fromLTRB(8.0, 51.8, 258.0, 355.5), epsilon: 0.1));
+    // TODO(davidhicks980): Remove this conditional if/when layout differences
+    // are resolved. https://github.com/flutter/flutter/issues/102332
+    if (!isBrowser) {
+      expect(tester.getRect(findMenu()),
+          rectMoreOrLessEquals(const Rect.fromLTRB(8.0, 48.0, 258.0, 351.7), epsilon: 0.1));
+    }
 
     // Tap outside the menu to close it
     await tester.tapAt(Offset.zero);
@@ -55,8 +59,15 @@ void main() {
     await tester.tap(find.byType(TextButton));
     await tester.pumpAndSettle();
 
+
     // About
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    // TODO(davidhicks980): Remove conditional when focus differences are
+    // resolved, https://github.com/flutter/flutter/issues/147770
+    if (isBrowser) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    }
 
     // Show Message
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);

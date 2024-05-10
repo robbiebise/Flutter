@@ -21,21 +21,25 @@ void main() {
     await tester.pumpWidget(const example.CupertinoSimpleMenuApp());
     await tester.tap(find.byType(TextButton));
 
-    // Pump one frame: the menu should mount
+    // Pump one frame: the menu should mount.
     await tester.pump();
     expect(find.text('Regular Item'), findsOneWidget);
     expect(find.text('Colorful Item'), findsOneWidget);
     expect(find.text('Default Item'), findsOneWidget);
     expect(find.text('Destructive Item'), findsOneWidget);
-    expect(tester.getRect(findMenu()), const Rect.fromLTRB(400.0, 322.0, 400.0, 322.0));
+    expect(tester.getRect(findMenu()), const Rect.fromLTRB(400.0, 298.0, 400.0, 298.0));
 
-    // Finish animating
+    // Finish animating.
     await tester.pumpAndSettle();
 
-    expect(tester.getRect(findMenu()),
-    rectMoreOrLessEquals(const Rect.fromLTRB(275.0, 57.4, 525.0, 295.0), epsilon: 0.1));
+    // TODO(davidhicks980): Remove this conditional if/when layout differences
+    // are resolved. https://github.com/flutter/flutter/issues/102332
+    if (!isBrowser) {
+      expect(tester.getRect(findMenu()),
+          rectMoreOrLessEquals(const Rect.fromLTRB(275.0, 60.3, 525.0, 298.0), epsilon: 0.1));
+    }
 
-    // Tap outside the menu to close it
+    // Tap outside the menu to close.
     await tester.tapAt(Offset.zero);
     await tester.pumpAndSettle();
 
@@ -49,7 +53,14 @@ void main() {
     // Tap the 'OPEN MENU' button and trigger a frame.
     await tester.tap(find.text('OPEN MENU'));
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+
+    // TODO(davidhicks980): Remove conditional when focus differences are
+    // resolved, https://github.com/flutter/flutter/issues/147770
+    if (isBrowser) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    }
 
     // Verify that setFirstFocus worked.
     expect(primaryFocus?.debugLabel, '$CupertinoMenuItem(Text("Regular Item"))');

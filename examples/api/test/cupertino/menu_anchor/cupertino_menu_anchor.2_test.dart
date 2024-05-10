@@ -23,21 +23,30 @@ void main() {
     await tester.tapAt(const Offset(100, 200), buttons: kSecondaryButton);
     await tester.pumpAndSettle();
 
-    expect(tester.getRect(findMenu()),
-    rectMoreOrLessEquals(const Rect.fromLTRB(103.1, 201.1, 353.1, 288.8), epsilon: 0.1));
+
+    final Rect rect = tester.getRect(findMenu());
+    // TODO(davidhicks980): Remove this conditional if/when layout differences
+    // are resolved. https://github.com/flutter/flutter/issues/102332
+    if (!isBrowser) {
+      expect(rect,
+          rectMoreOrLessEquals(const Rect.fromLTRB(453.1, 201.1, 703.1, 288.8), epsilon: 0.1));
+    }
 
     // Make sure tapping in a different place causes the menu to move.
-    await tester.tapAt(const Offset(200, 100), buttons: kSecondaryButton);
+    await tester.tapAt(const Offset(150, 225), buttons: kSecondaryButton);
     await tester.pump();
 
-    // Should start closed and then animate open.
-    expect(tester.getRect(findMenu()),
-    rectMoreOrLessEquals(const Rect.fromLTRB(200.0, 100.0, 200.0, 100.0), epsilon: 0.1));
+    final Rect newRect = tester.getRect(findMenu());
+    // TODO(davidhicks980): Remove this conditional if/when layout differences
+    // are resolved. https://github.com/flutter/flutter/issues/102332
+    if (!isBrowser) {
+      // Should move without closing.
+      expect(newRect,
+          rectMoreOrLessEquals(const Rect.fromLTRB(503.1, 226.1, 753.1, 313.8), epsilon: 0.1));
+    }
 
-    await tester.pumpAndSettle();
-
-    expect(tester.getRect(findMenu()),
-    rectMoreOrLessEquals(const Rect.fromLTRB(203.1, 101.1, 453.1, 188.8), epsilon: 0.1));
+    // The menu should move 50 pixels to the right and 25 pixels down.
+    expect(newRect.center - rect.center, offsetMoreOrLessEquals(const Offset(50, 25), epsilon: 0.1));
   });
 
   testWidgets('showMessage shows a message', (WidgetTester tester) async {
@@ -62,7 +71,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // The message should be visible after two frames.
+    // The message should be visible after two frames. This allows focus
+    // to move to the previously focused item.
     expect(find.text(example.CupertinoContextMenuApp.kMessage), findsOneWidget);
 
     // Let the animation finish.
@@ -79,7 +89,14 @@ void main() {
 
     // Move focus to the "hideMessage" item hit enter. This should close the
     // menu and hide the message.
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+
+    // TODO(davidhicks980): Remove conditional when focus differences are
+    // resolved, https://github.com/flutter/flutter/issues/147770
+    if (isBrowser) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    }
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();

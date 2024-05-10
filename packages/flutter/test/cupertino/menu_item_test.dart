@@ -904,6 +904,7 @@ void main() {
         // Test pan
         await tester.pumpAndSettle(const Duration(milliseconds: 200));
         await gesture.up();
+        await tester.pump();
 
         expect(controller.isOpen, isTrue);
         expect(TestItem.item0.findWidget, findsOneWidget);
@@ -1258,6 +1259,7 @@ void main() {
         );
 
         await gesture.up();
+        await tester.pump();
       });
 
       testWidgets('mouse cursor can be set and is inherited',
@@ -1405,11 +1407,6 @@ void main() {
       });
 
       testWidgets('applyInsetScaling can be set', (WidgetTester tester) async {
-        final UniqueKey leading = UniqueKey();
-        final UniqueKey trailing = UniqueKey();
-        final UniqueKey child = UniqueKey();
-        final UniqueKey subtitle = UniqueKey();
-
         // applyInsetScaling, when true, increases the size of the padding,
         // leading and trailing width, and the constraints by a factor of the
         // square root of the textScaler. This behavior was observed on the iOS
@@ -1543,14 +1540,10 @@ void main() {
               rectEquals(const Rect.fromLTRB(44.5, 20.9, 174.6, 48.9)));
           expect(tester.getRect(find.text(superLongText)),
               rectEquals(const Rect.fromLTRB(44.5, 100.1, 339.8, 2900.1)));
-        },
-        // https://github.com/flutter/flutter/issues/99933
-        skip: isBrowser,
-      );
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('child layout RTL', (WidgetTester tester) async {
         final String superLongText = 'super long text' * 1000;
-
         // Maxlines should be 2 when the TextScaler < 1.25.
         await tester.pumpWidget(
           buildTestApp(
@@ -1604,9 +1597,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(191.4, 20.9, 321.5, 48.9)));
         expect(tester.getRect(find.text(superLongText)),
             rectEquals(const Rect.fromLTRB(26.2, 100.1, 321.5, 2900.1)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser);  // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('leading layout LTR', (WidgetTester tester) async {
         await tester.pumpWidget(
@@ -1644,9 +1635,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(8.0, 123.3, 40.0, 165.3)));
         expect(tester.getRect(find.text('leading50')),
             rectEquals(const Rect.fromLTRB(8.0, 188.3, 58.0, 230.3)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser);  // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('leading layout RTL', (WidgetTester tester) async {
         await tester.pumpWidget(
@@ -1685,9 +1674,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(226.0, 123.3, 258.0, 165.3)));
         expect(tester.getRect(find.text('leading50')),
             rectEquals(const Rect.fromLTRB(208.0, 188.3, 258.0, 230.3)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('trailing layout LTR', (WidgetTester tester) async {
         await tester.pumpWidget(
@@ -1725,9 +1712,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(214.0, 123.3, 258.0, 165.3)));
         expect(tester.getRect(find.text('trailing50')),
             rectEquals(const Rect.fromLTRB(208.0, 188.3, 258.0, 230.3)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
       testWidgets('trailing layout RTL', (WidgetTester tester) async {
          await tester.pumpWidget(
           buildTestApp(
@@ -1765,9 +1750,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(8.0, 123.3, 52.0, 165.3)));
         expect(tester.getRect(find.text('trailing50')),
             rectEquals(const Rect.fromLTRB(8.0, 188.3, 58.0, 230.3)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('subtitle layout LTR', (WidgetTester tester) async {
         final String longSubtitle = 'subtitle' * 1000;
@@ -1820,9 +1803,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(44.5, 49.9, 198.8, 73.9)));
         expect(tester.getRect(find.text(longSubtitle)),
             rectEquals(const Rect.fromLTRB(44.5, 129.1, 339.8, 2529.1)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
       testWidgets('subtitle layout RTL', (WidgetTester tester) async {
         final String longSubtitle = 'subtitle' * 1000;
 
@@ -1875,9 +1856,7 @@ void main() {
             rectEquals(const Rect.fromLTRB(167.2, 49.9, 321.5, 73.9)));
         expect(tester.getRect(find.text(longSubtitle)),
             rectEquals(const Rect.fromLTRB(26.2, 129.1, 321.5, 2529.1)));
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
 
       testWidgets('default layout', (WidgetTester tester) async {
         await tester.pumpWidget(
@@ -2227,9 +2206,8 @@ void main() {
           tester.getSize(TestItem.item1.findWidget),
           within(distance: 0.05, from: const Size(250, 53)),
         );
-      },
-      // https://github.com/flutter/flutter/issues/99933
-      skip: isBrowser);
+      }, skip: isBrowser); // https://github.com/flutter/flutter/issues/99933
+
       testWidgets('horizontal padding LTR', (WidgetTester tester) async {
         T findEdgeInsets<T extends EdgeInsetsGeometry>(Finder finder) {
           return (find
@@ -2460,12 +2438,10 @@ void main() {
 
         // TODO(davidhicks980): - Remove conditional when focus behavior is
         // consistent, https://github.com/flutter/flutter/issues/147770
-        if (kIsWeb) {
+        if (isBrowser) {
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-          await tester.pump();
         } else {
           await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-          await tester.pump();
         }
         await tester.pump();
 
@@ -2519,10 +2495,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(focusChanges, <bool>[true, false, true, false, true, false]);
-      },
-      // TODO(davidhicks980): - Remove conditional when focus behavior is
-      // consistent, https://github.com/flutter/flutter/issues/147770
-      variant: TargetPlatformVariant.all());
+      });
 
       testWidgets('onHover is called on enabled items',
           (WidgetTester tester) async {
@@ -2586,7 +2559,7 @@ void main() {
       });
       testWidgets('onPressed is called when set', (WidgetTester tester) async {
         int pressed = 0;
-        final CupertinoApp widget = CupertinoApp(
+        await tester.pumpWidget(CupertinoApp(
           home: Column(
             children: <Widget>[
               Align(
@@ -2611,11 +2584,12 @@ void main() {
               ),
             ],
           ),
-        );
-        await tester.pumpWidget(widget);
-
+        ));
         controller.open();
-        await tester.pumpFrames(widget, const Duration(milliseconds: 200));
+
+        for(int i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
 
         expect(controller.menuStatus, MenuStatus.opening);
 
@@ -2640,7 +2614,10 @@ void main() {
         await tester.pumpAndSettle();
 
         controller.close();
-        await tester.pumpFrames(widget, const Duration(milliseconds: 50));
+
+        for(int i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
 
         // Do not tap if closing.
         await tester.tap(TestItem.item0.findWidget);
@@ -2755,6 +2732,7 @@ void main() {
         expect(pressed, TestItem.item2);
 
         await gesture.up();
+        await tester.pump();
       });
 
       testWidgets('respects requestFocusOnHover property',
@@ -2848,6 +2826,8 @@ void main() {
           (TestItem.item4, true),
         ]);
 
+        await gesture.up();
+        await tester.pump();
       });
       testWidgets('respects closeOnActivate property',
           (WidgetTester tester) async {

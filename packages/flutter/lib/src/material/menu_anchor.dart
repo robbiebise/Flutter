@@ -945,7 +945,7 @@ class MenuItemButton extends StatefulWidget {
     this.trailingIcon,
     this.closeOnActivate = true,
     this.overflowAxis = Axis.horizontal,
-    required this.child,
+    this.child,
   });
 
   /// Called when the button is tapped or otherwise activated.
@@ -1230,7 +1230,7 @@ class _MenuItemButtonState extends State<MenuItemButton> {
         trailingIcon: widget.trailingIcon,
         hasSubmenu: false,
         overflowAxis: _anchor?._orientation ?? widget.overflowAxis,
-        child: widget.child!,
+        child: widget.child,
       ),
     );
 
@@ -2075,7 +2075,7 @@ final Axis orientation = _anchor?._orientation ?? Axis.vertical;
                 trailingIcon: widget.trailingIcon,
                 hasSubmenu: true,
                 showDecoration: (controller._anchor!._parent?._orientation ?? Axis.horizontal) == Axis.vertical,
-                child: child ?? const SizedBox(),
+                child: child,
               ),
             ),
           ),
@@ -3072,7 +3072,7 @@ class _MenuItemLabel extends StatelessWidget {
     this.shortcut,
     this.semanticsLabel,
     this.overflowAxis = Axis.vertical,
-    required this.child,
+    this.child,
   });
 
   /// Whether or not this menu has a submenu.
@@ -3102,8 +3102,8 @@ class _MenuItemLabel extends StatelessWidget {
   /// The direction in which the menu item expands.
   final Axis overflowAxis;
 
-  /// The required label child widget.
-  final Widget child;
+  /// An optional child widget that is displayed in the label.
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
@@ -3120,14 +3120,15 @@ class _MenuItemLabel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (leadingIcon != null) leadingIcon!,
-              Expanded(
-                child: ClipRect(
-                  child: Padding(
-                    padding: leadingIcon != null ? EdgeInsetsDirectional.only(start: horizontalPadding) : EdgeInsets.zero,
-                    child: child,
+              if (child != null)
+                Expanded(
+                  child: ClipRect(
+                    child: Padding(
+                      padding: leadingIcon != null ? EdgeInsetsDirectional.only(start: horizontalPadding) : EdgeInsets.zero,
+                      child: child,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -3137,10 +3138,11 @@ class _MenuItemLabel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           if (leadingIcon != null) leadingIcon!,
-          Padding(
-            padding: leadingIcon != null ? EdgeInsetsDirectional.only(start: horizontalPadding) : EdgeInsets.zero,
-            child: child,
-          ),
+          if (child != null)
+            Padding(
+              padding: leadingIcon != null ? EdgeInsetsDirectional.only(start: horizontalPadding) : EdgeInsets.zero,
+              child: child,
+            ),
         ],
       );
     }

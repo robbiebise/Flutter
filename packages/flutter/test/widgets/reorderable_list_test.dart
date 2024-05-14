@@ -1528,6 +1528,60 @@ void main() {
     await testFor(prototypeItem: const SizedBox(height: 100, width: 100, child: Text('prototype')));
     await testFor(itemExtent: 100);
   });
+
+  testWidgets('ReorderableDragBoundary defines the boundary for ReorderableList.', (WidgetTester tester) async {
+    Future<void> pumpFor({Rect Function(SliverReorderableListState reorderableListCurrentState)? dragBoundingRect}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.only(top: 100),
+              child: ReorderableDragBoundary(
+                dragBoundingRect: dragBoundingRect,
+                child: CustomScrollView(
+                  slivers: <Widget>[
+                    SliverReorderableList(
+                      itemBuilder: (BuildContext context, int index) {
+                        return ReorderableDragStartListener(
+                          key: ValueKey<int>(index),
+                          index: index,
+                          child: Text('$index'),
+                        );
+                      },
+                      itemCount: 5,
+                      onReorder: (int fromIndex, int toIndex) {},
+                    ),
+                  ],
+                )
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    // Use the `ReorderableDragBoundary` widget itself as the drag boundary.
+    await pumpFor();
+    TestGesture drag = await tester.startGesture(tester.getCenter(find.text('0')));
+    await tester.pump(kLongPressTimeout);
+    await drag.moveBy(const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('0')), const Offset(0, 100));
+    await drag.up();
+    await tester.pumpAndSettle();
+
+    // Define the boundary for the drag
+    await pumpFor(dragBoundingRect:(_) => const Rect.fromLTRB(0, 50, 500, 100));
+    drag = await tester.startGesture(tester.getCenter(find.text('0')));
+    await tester.pump(kLongPressTimeout);
+    await drag.moveBy(const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('0')), const Offset(0, 50));
+    await drag.moveBy(const Offset(0, 300));
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(find.text('0')), const Offset(0, 100));
+    await drag.up();
+    await tester.pumpAndSettle();
+  });
 }
 
 class TestList extends StatelessWidget {

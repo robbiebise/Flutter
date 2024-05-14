@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
@@ -1333,9 +1335,10 @@ class _DragInfo extends Drag {
     index = item.index;
     child = item.widget.child;
     capturedThemes = item.widget.capturedThemes;
-    dragPosition = initialPosition;
     dragOffset = itemRenderBox.globalToLocal(initialPosition);
     itemSize = item.context.size!;
+    _rawDragPosition = initialPosition;
+    dragPosition = _adjustedDragOffset(initialPosition);
     itemExtent = _sizeExtent(itemSize, scrollDirection);
     scrollable = Scrollable.of(item.context);
   }
@@ -1358,6 +1361,7 @@ class _DragInfo extends Drag {
   late CapturedThemes capturedThemes;
   ScrollableState? scrollable;
   AnimationController? _proxyAnimation;
+  late Offset _rawDragPosition;
 
   void dispose() {
     if (kFlutterMemoryAllocationsEnabled) {
@@ -1382,7 +1386,8 @@ class _DragInfo extends Drag {
   @override
   void update(DragUpdateDetails details) {
     final Offset delta = _restrictAxis(details.delta, scrollDirection);
-    dragPosition += delta;
+    _rawDragPosition += delta;
+    dragPosition = _adjustedDragOffset(_rawDragPosition);
     onUpdate?.call(this, dragPosition, details.delta);
   }
 
@@ -1397,6 +1402,24 @@ class _DragInfo extends Drag {
     _proxyAnimation?.dispose();
     _proxyAnimation = null;
     onCancel?.call(this);
+  }
+
+  Offset _adjustedDragOffset(Offset offset) {
+    final Rect? boundingRects = ReorderableDragBoundary._boundingRectsOf(listState)?.shift(dragOffset);
+    if (boundingRects != null) {
+      final double adjustedX = clampDouble(
+        offset.dx,
+        boundingRects.left,
+        math.max(boundingRects.left, boundingRects.right - itemSize.width),
+      );
+      final double adjustedY = clampDouble(
+        offset.dy,
+        boundingRects.top,
+        math.max(boundingRects.top, boundingRects.bottom - itemSize.height),
+      );
+      return Offset(adjustedX, adjustedY);
+    }
+    return offset;
   }
 
   void _dropCompleted() {
@@ -1540,4 +1563,44 @@ class _ReorderableItemGlobalKey extends GlobalObjectKey {
 
   @override
   int get hashCode => Object.hash(subKey, index, state);
+}
+
+/// [ReorderableDragBoundary] is a widget that limits the drag boundary of a [ReorderableList].
+///
+/// When this widget wraps a [ReorderableList], the drag boundary of the [ReorderableList] is confined within this widget.
+/// If the [dragBoundingRect] property is provided, the drag boundary is limited to the rectangle returned by [dragBoundingRect].
+/// The boundary is specified in global coordinates.
+class ReorderableDragBoundary extends InheritedWidget {
+  /// Create a [ReorderableDragBoundary] to set the drag boundary for the [ReorderableList].
+  ///
+  /// The [dragBoundingRect] needs to return a rectangle in global coordinates.
+  const ReorderableDragBoundary({
+      required super.child,
+      this.dragBoundingRect,
+      super.key,
+  });
+
+  /// Return the drag boundary of [ReorderableList].
+  final Rect Function(SliverReorderableListState reorderableListCurrentState)? dragBoundingRect;
+
+  @override
+  bool updateShouldNotify(covariant ReorderableDragBoundary oldWidget) {
+    return oldWidget.dragBoundingRect != dragBoundingRect;
+  }
+
+  static Rect? _boundingRectsOf(SliverReorderableListState listState) {
+    final InheritedElement? element = listState.context.getElementForInheritedWidgetOfExactType<ReorderableDragBoundary>();
+    if (element == null) {
+      return null;
+    }
+    final ReorderableDragBoundary dragBoundary = element.widget as ReorderableDragBoundary;
+    final Rect boundingRect;
+    if (dragBoundary.dragBoundingRect != null) {
+      boundingRect = dragBoundary.dragBoundingRect!.call(listState);
+    } else {
+      final RenderBox renderBox = element.findRenderObject()! as RenderBox;
+      boundingRect = renderBox.localToGlobal(Offset.zero) & renderBox.size;
+    }
+    return boundingRect;
+  }
 }

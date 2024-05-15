@@ -33,7 +33,7 @@ const Duration _kMenuPanReboundDuration = Duration(milliseconds: 600);
 const bool _kDebugMenus = false;
 
 /// Whether [defaultTargetPlatform] is an Apple platform (Mac or iOS).
-bool get _isApple {
+bool get _isCupertino {
   switch (defaultTargetPlatform) {
     case TargetPlatform.iOS:
     case TargetPlatform.macOS:
@@ -51,7 +51,7 @@ bool get _platformSupportsAccelerators {
   // different set of characters to be generated, and the native menus don't
   // support accelerators anyhow, so we just disable accelerators on these
   // platforms.
-  return !_isApple;
+  return !_isCupertino;
 }
 
 const Map<ShortcutActivator, Intent> _kMenuTraversalShortcuts =

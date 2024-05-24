@@ -4623,10 +4623,11 @@ class PositionedDirectional extends StatelessWidget {
 /// [Flex] to be any larger than the total size of all its children.
 ///
 /// [MainAxisAlignment] : How to align, center, or apply spacing
-/// between the children in the direction in the main axis.
+/// between the children in the direction of the main axis.
 ///
 /// [CrossAxisAlignment] : How to align, or stretch, the children in
 /// the direction of the cross axis.
+///
 /// The multi-child layout algorithm proceeds in six steps:
 ///
 /// 1. Lay out each child that is not a [Flexible] or an [Expanded],
@@ -4689,7 +4690,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    add to 100, the process remains the same. Making them total 100
 ///    is simply easier to visualize.
 ///
-/// 3. _Keep in mind that all of step 3 only applies to the main axis._
+/// 3. _Keep in mind that all of step 3 applies only to the main axis._
 ///    Nothing in Step 3 affects the size of the children in the cross axis.
 ///
 ///    Lay out the [Flexible] and [Expanded] children, and use
@@ -4720,7 +4721,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    Though you could use a [Flexible] and set its fit to tight, it makes
 ///    the code less readable. Just as [Row] and [Column] are easier to read
 ///    than [Flex], [Expanded] is easier to read than [Flexible] that has a
-///    tight fit.
+///    tight fit parameter.
 ///
 ///    Regarding the edge case using a [Flexible]
 ///    and an [Expanded] in the same [Flex], what happens is the
@@ -4803,12 +4804,12 @@ class PositionedDirectional extends StatelessWidget {
 ///    If even one child tries to be as large as possible but the parent of
 ///    the [Flex] did not set a maximum value for the main axis size in the
 ///    constraints it passed to the [Flex], then that child will try to be
-///    infinitely high and there is nothing to limit it. This results in
-///    the error:
+///    infinitely large in the main axis and there is nothing to limit it.
+///    This results in the error:
 ///
 ///    _"RenderFlex children have non-zero flex but incoming (height or
 ///    width) constraints are unbounded"_. The direction of the error will
-///    be in the same direction as the main axis.
+///    be in the main axis.
 ///
 ///    The reason the error refers to the [RenderFlex] instead of the [Flex]
 ///    is because the error doesn't occur until the Render Layer attempts
@@ -4849,7 +4850,8 @@ class PositionedDirectional extends StatelessWidget {
 ///      touch the ends of the [Flex]. You can think:
 ///      _"[spaceBetween] = Spaces are only between children."_
 ///
-///    - [MainAxisAlignment.spaceEvenly]: Make every space the same size,
+///    - [MainAxisAlignment.spaceEvenly]: Essentially the reverse of
+///    [spaceBetween]. Make every space the same size,
 ///      but instead of placing spaces only between the children
 ///      [MainAxisAlignment.spaceEvenly] will place a space on each end,
 ///      too. This looks like [spaceAround] except that the end spaces are
@@ -4891,9 +4893,9 @@ class PositionedDirectional extends StatelessWidget {
 ///    - [CrossAxisAlignment.stretch]: All children will be given tight
 ///      constraints in the cross axis, and those constraints will force
 ///      all children to be as large as possible in the cross axis. The
-///      children will be the sizes calculated above in the main axis,
-///      potentially distorting the children by stretching them in only
-///      one direction.
+///      main axis sizes of the children will be the sizes calculated
+///      above in the main axis, potentially distorting the children by
+///      stretching them in only one direction.
 ///
 ///    - [CrossAxisAlignment.baseline]: Baseline is unique and tricky.
 ///      For a [Row], the largest child is aligned with its top edge
@@ -4918,14 +4920,14 @@ class PositionedDirectional extends StatelessWidget {
 /// if overused, could impact performance significantly. It should be used
 /// only when necessary:
 ///
-///  You can use [CrossAxisAlignment.stretch] but then wrap
-///  a [Column] in an [IntrinsicWidth], or a [Row] in an
-///  [IntrinsicHeight]. The intrinsic passes loose constraints to the
-///  [Flex], but only in the specified direction. This way, it does
-///  not have to be larger than its largest child (in the cross axis),
-///  but using [CrossAxisAlignment.stretch] tells the children
-///  to all be as big as the [Flex] will allow, in this case as big
-///  as the largest child.
+/// You can use [CrossAxisAlignment.stretch] but then wrap
+/// a [Column] in an [IntrinsicWidth], or a [Row] in an
+/// [IntrinsicHeight]. The intrinsic passes loose constraints to the
+/// [Flex], but only in the specified direction. This way, it does
+/// not have to be larger than its largest child (in the cross axis),
+/// but using [CrossAxisAlignment.stretch] tells the children
+/// to all be as big as the [Flex] will allow, in this case as big
+/// as the largest child.
 ///
 /// For example:
 ///
@@ -4944,16 +4946,16 @@ class PositionedDirectional extends StatelessWidget {
 /// _"RenderFlex children have non-zero flex but incoming (height or
 /// width) constraints are unbounded."_
 ///
-/// This will always trace back to an issue with
-/// a [Row] or [Column] having a child that wants to be as large as it can,
-/// and there is nothing limiting its size. That combination makes it
-/// impossible for the algorithm to lay the [Row] or [Column] out, since the
-/// size is trying to be infinity. A [Row] or [Column] is used in the widget
-/// layer, but this error occurs in the render layer and that layer uses a
-/// different class called a [RenderFlex]. This is why you see an error
-/// about a [RenderFlex] instead of a [Row] or [Column]. Understanding
-/// the Layout algorithm documentation above will help you understand
-/// what is happening, and how you can approach fixing it.
+/// This will always trace back to an issue with a [Row] or [Column] having
+/// a child that wants to be as large as it can, and there is nothing limiting
+/// its size. That combination makes it impossible for the algorithm to lay
+/// the [Row] or [Column] out, since the size is trying to be infinity. A
+/// [Row] or [Column] is used in the widget layer, but this error occurs
+/// in the render layer and that layer uses a different class called a
+/// [RenderFlex]. This is why you see an error about a [RenderFlex] instead
+/// of a [Row] or [Column]. Understanding the Layout algorithm documentation
+/// above will help you understand what is happening, and how you can
+/// approach fixing it.
 ///
 /// See also:
 ///

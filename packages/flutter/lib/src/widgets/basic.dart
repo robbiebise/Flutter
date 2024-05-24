@@ -4530,8 +4530,8 @@ class PositionedDirectional extends StatelessWidget {
 /// or wrap to the next line. If you try to squeeze in too many children,
 /// you'll see an "overflow error" (during development black and yellow
 /// stripes, but a production app just cuts off the content). For content
-/// that should wrap to a new line, use [Wrap]. For scrolling content,
-/// prefer [SliverList] over [ListView] a [SingleChildScrollView], for
+/// that should wrap to a new line, use [Wrap]. For scrolling content
+/// prefer [SliverList] over [ListView] or [SingleChildScrollView], for
 /// better performance.
 ///
 /// * **Performance:** It is recommended to check your app's

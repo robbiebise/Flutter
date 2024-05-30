@@ -4825,7 +4825,7 @@ class PositionedDirectional extends StatelessWidget {
 ///      the top of the [Column]. For a [Row], aligns the children to the
 ///      same side as the start of a sentence in the user's default language.
 ///      If the user's language reads left-to-right (LTR), then start is on
-///      the left, end is on the right. If the user's language reads rtl,
+///      the left, end is on the right. If the user's language reads RTL,
 ///      start will be on the right and end on the left.
 ///
 ///    - [MainAxisAlignment.center]: This will center all of the
@@ -4835,8 +4835,8 @@ class PositionedDirectional extends StatelessWidget {
 ///    - [MainAxisAlignment.end]: For a [Column], aligns the children to
 ///      the bottom of the [Column]. For a [Row], aligns the children to the
 ///      same side as the end of a sentence in the user's default language.
-///      If the user's language reads left-to-right (ltr), then start is on
-///      the left, end is on the right. If the user's language reads rtl,
+///      If the user's language reads left-to-right (LTR), then start is on
+///      the left, end is on the right. If the user's language reads RTL,
 ///      start will be on the right and end on the left.
 ///
 ///    - [MainAxisAlignment.spaceBetween]: The first and last children
@@ -4871,8 +4871,8 @@ class PositionedDirectional extends StatelessWidget {
 ///    - [CrossAxisAlignment.start]: Similar to [MainAxisAlignment.start],
 ///      the children will be aligned to the top for a [Row], and for a
 ///      [Column] the child will be aligned to the left if the user's
-///      language reads ltr and to the right if the user's language reads
-///      rtl.
+///      language reads LTR and to the right if the user's language reads
+///      RTL.
 ///
 ///    - [CrossAxisAlignment.center]: Similar to [MainAxisAlignment.center],
 ///      the children will be centered in the cross axis. The largest child
@@ -4886,8 +4886,8 @@ class PositionedDirectional extends StatelessWidget {
 ///
 ///    - [CrossAxisAlignment.end]: Similar to [MainAxisAlignment.end],
 ///      the children will be aligned to the bottom for a [Row], to the
-///      right if the user's language reads ltr and to the left if the
-///      user's language reads rtl.
+///      right if the user's language reads LTR and to the left if the
+///      user's language reads RTL.
 ///
 ///    - [CrossAxisAlignment.stretch]: All children will be given tight
 ///      constraints in the cross axis, and those constraints will force

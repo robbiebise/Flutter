@@ -4549,7 +4549,7 @@ class PositionedDirectional extends StatelessWidget {
 /// constrained or loosely constrained. "Tightly
 /// constrained" means the size of the child is tightly controlled by its
 /// parent [Widget], and this is achieved by setting the same value for
-/// both the minimum and maximum sizes. In this way, the size is fixed as it
+/// both the minimum and maximum sizes. With tight constraints the size is fixed, as it
 /// cannot be more or less than the value set for minimum and maximum. If the
 /// minimum and maximum values are not the same, it is said the child has
 /// "loose constraints", and so can be any size (in that axis) as long as it

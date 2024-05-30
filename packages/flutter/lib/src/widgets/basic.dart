@@ -4536,7 +4536,7 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// * **Performance:** It is recommended to check your app's
 /// performance using the Flutter DevTools, but make sure to do this in
-/// "release mode" for accurate results. Development builds will always
+/// "profile mode" for accurate results. Development builds will always
 /// seem slow.
 ///
 ///

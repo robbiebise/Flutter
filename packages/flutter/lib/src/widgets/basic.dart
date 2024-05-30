@@ -4516,7 +4516,7 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// If you only have one child, consider using [Align] or [Center] to
 /// position it.
-
+///
 /// **Key Features:**
 
 /// * **[direction]:**  Determines whether children are placed

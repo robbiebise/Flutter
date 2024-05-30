@@ -4542,8 +4542,7 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// ## Layout algorithm
 ///
-/// There are several terms that need defining before going into the
-/// explanation of the layout algorithm:
+/// For reference, here are several terms used below to describe the layout algorithm:
 ///
 /// [BoxConstraints] : These are the minimum and maximum sizes a parent
 /// [Widget] dictates its child must be. It can be said a child is tightly

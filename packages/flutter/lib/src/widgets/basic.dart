@@ -4949,7 +4949,7 @@ class PositionedDirectional extends StatelessWidget {
 /// This will always trace back to an issue with a [Row] or [Column] having
 /// a child that wants to be as large as it can, and there is nothing limiting
 /// its size. That combination makes it impossible for the algorithm to lay
-/// the [Row] or [Column] out, since the size is trying to be infinity. A
+/// the [Row] or [Column] out, since the size is trying to be infinite. A
 /// [Row] or [Column] is used in the widget layer, but this error occurs
 /// in the render layer and that layer uses a different class called a
 /// [RenderFlex]. This is why you see an error about a [RenderFlex] instead

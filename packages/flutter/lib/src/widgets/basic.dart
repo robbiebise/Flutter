@@ -4824,7 +4824,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    - [MainAxisAlignment.start]: For a [Column], aligns the children to
 ///      the top of the [Column]. For a [Row], aligns the children to the
 ///      same side as the start of a sentence in the user's default language.
-///      If the user's language reads left-to-right (ltr), then start is on
+///      If the user's language reads left-to-right (LTR), then start is on
 ///      the left, end is on the right. If the user's language reads rtl,
 ///      start will be on the right and end on the left.
 ///

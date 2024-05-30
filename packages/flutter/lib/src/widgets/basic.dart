@@ -4563,7 +4563,7 @@ class PositionedDirectional extends StatelessWidget {
 /// [Flexible.flex] : A property of a [Flexible] that should not be
 /// confused with a [Flex]. It determines how much "strength" (in
 /// some frameworks this is called "gravity") a [Flexible] has compared
-/// to other [Flexible]s. More on this in step 2 of the layout algorithm,
+/// to other [Flexible]s. More on this in step two of the layout algorithm,
 /// below.
 ///
 /// Main axis: The main direction of the [Flex]. This is vertical

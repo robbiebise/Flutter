@@ -4722,7 +4722,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    than [Flex], [Expanded] is easier to read than [Flexible] that has a
 ///    tight fit parameter.
 ///
-///    Regarding the edge case using a [Flexible]
+///    Regarding the edge case of using a [Flexible]
 ///    and an [Expanded] in the same [Flex], what happens is the
 ///    [Expanded] will use all of the space reserved for it in Step 2, but
 ///    the [Flexible] might not use all of the space reserved for it.

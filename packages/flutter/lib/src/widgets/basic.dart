@@ -4909,7 +4909,8 @@ class PositionedDirectional extends StatelessWidget {
 ///      edge of the [Column] and then aligns "start side" all other children
 ///      to the "start side" edge of the largest child.
 ///
-/// Tips:
+/// ## Tips
+///
 /// What if you need to force the cross axis size of all
 /// children to match the size of the largest _child_ in the cross axis,
 /// but you do not want your [Flex] to be larger than that largest

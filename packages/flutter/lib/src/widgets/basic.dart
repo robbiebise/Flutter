@@ -4567,7 +4567,7 @@ class PositionedDirectional extends StatelessWidget {
 /// below.
 ///
 /// Main axis: The main direction of the [Flex]. This is vertical
-/// for a [Column] and horizontal for a [Row].
+/// for a [Column] and horizontal for a [Row], and corresponds to the [direction] property of a [Flex].
 ///
 /// Cross axis: The other direction. The cross axis of a [Column]
 /// is horizontal, and the cross axis of a [Row] is vertical.

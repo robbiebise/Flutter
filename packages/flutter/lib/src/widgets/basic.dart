@@ -4815,7 +4815,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    to lay the children out. The [Flex] is the class you
 ///    interact with on the Widget Layer. However,
 ///    this error occurs in the Render Layer, and it uses a [RenderFlex]
-///    to render the [Column] or [Row] in your code.
+///    to render the [Flex], [Column], or [Row] in your code.
 ///
 /// 6. Position each child according to the [Flex.mainAxisAlignment] and
 ///    [Flex.crossAxisAlignment] properties. These are the options for each.

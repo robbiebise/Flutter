@@ -4521,8 +4521,8 @@ class PositionedDirectional extends StatelessWidget {
 
 /// * **[direction]:**  Determines whether children are placed
 /// side-by-side ([Axis.horizontal]) or one above the other
-/// ([Axis.vertical]). Instead of using a [Flex] directly with this parameter,
-/// it is recommended to use [Row] and [Column].
+/// ([Axis.vertical]). Instead of using a [Flex] with this parameter set to a fixed value,
+/// it is recommended to use [Row] and [Column], as they are more readable.
 ///
 /// Example usage: "direction: Axis.vertical".
 ///

@@ -4622,7 +4622,7 @@ class PositionedDirectional extends StatelessWidget {
 /// [Flex] to be any larger than the total size of all its children.
 ///
 /// [MainAxisAlignment] : How to align, center, or apply spacing
-/// between the children in the direction of the main axis.
+/// between or around the children in the direction of the main axis.
 ///
 /// [CrossAxisAlignment] : How to align, or stretch, the children in
 /// the direction of the cross axis.

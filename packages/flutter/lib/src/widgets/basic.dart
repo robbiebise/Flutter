@@ -4780,8 +4780,8 @@ class PositionedDirectional extends StatelessWidget {
 ///    in step 6.
 ///
 ///    If the largest child in the cross axis doesn't have a set
-///    size and instead just wants to be as large as it's allowed to be there
-///    are two possible outcomes. If the parent of the [Flex] has set a
+///    size and instead just wants to be as large as it's allowed to be, there
+///    are two possible outcomes: If the parent of the [Flex] has set a
 ///    maximum constraint in the cross axis, then the [Flex] will be that
 ///    size. If the parent of the [Flex] has not set any maximum size and a
 ///    child tries to be as large as possible in the cross axis, it is

@@ -4729,7 +4729,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    Often an [Expanded] is used in order to use
 ///    _all_ of the leftover space in a [Flex] but, _in this edge case_,
 ///    it will not. Remember, if a [Flexible] doesn't use all
-///    of the space reserved for it the unused space will _not_ be
+///    of the space reserved for it, the unused space will _not_ be
 ///    available for any other widget to use. _The unused space is left
 ///    blank and is inside the [Flex]._
 ///

@@ -4528,8 +4528,8 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// * **Layout:** By default, the [Flex] widget won't let its content scroll
 /// or wrap to the next line. If you try to squeeze in too many children,
-/// you'll see an "overflow error" (during development black and yellow
-/// stripes, but a production app just cuts off the content). For content
+/// you'll see an "overflow error" (during development you will see black and yellow
+/// stripes and an exception, but a production app just clips the content). For content
 /// that should wrap to a new line, use [Wrap]. For scrolling content
 /// prefer [SliverList] over [ListView] or [SingleChildScrollView], for
 /// better performance.

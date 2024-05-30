@@ -4513,7 +4513,7 @@ class PositionedDirectional extends StatelessWidget {
 /// A widget that is the basis for [Row] and [Column]. It arranges its
 /// children in a single line – either horizontally (a [Row]) or vertically
 /// (a [Column]).
-
+///
 /// If you only have one child, consider using [Align] or [Center] to
 /// position it.
 

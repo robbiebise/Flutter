@@ -4818,7 +4818,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    to render the [Flex], [Column], or [Row] in your code.
 ///
 /// 6. Position each child according to the [Flex.mainAxisAlignment] and
-///    [Flex.crossAxisAlignment] properties. These are the options for each.
+///    [Flex.crossAxisAlignment] properties. These are the options for each:
 ///
 ///    Main Axis:
 ///    - [MainAxisAlignment.start]: For a [Column], aligns the children to

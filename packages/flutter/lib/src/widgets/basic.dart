@@ -4689,7 +4689,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    add to 100, the process remains the same. Making them total 100
 ///    is simply easier to visualize.
 ///
-/// 3. _Keep in mind that all of step 3 applies only to the main axis._
+/// 3. _Keep in mind that all of step three applies only to the main axis._
 ///    Nothing in Step 3 affects the size of the children in the cross axis.
 ///
 ///    Lay out the [Flexible] and [Expanded] children, and use

@@ -4544,7 +4544,7 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// For reference, here are several terms used below to describe the layout algorithm:
 ///
-/// [BoxConstraints] : These are the minimum and maximum sizes a parent
+/// [BoxConstraints] : These are the minimum and maximum sizes which a parent
 /// [Widget] dictates its child must be. It can be said a child is tightly
 /// constrained (tight constraints) or loosely constrained. "Tight
 /// constraints" means the size of the child is tightly controlled by its

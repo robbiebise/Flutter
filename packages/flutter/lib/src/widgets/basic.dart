@@ -2433,14 +2433,11 @@ class SizedBox extends SingleChildRenderObjectWidget {
 
   @override
   String toStringShort() {
-    final String type;
-    if (width == double.infinity && height == double.infinity) {
-      type = '${objectRuntimeType(this, 'SizedBox')}.expand';
-    } else if (width == 0.0 && height == 0.0) {
-      type = '${objectRuntimeType(this, 'SizedBox')}.shrink';
-    } else {
-      type = objectRuntimeType(this, 'SizedBox');
-    }
+    final String type = switch ((width, height)) {
+      (double.infinity, double.infinity) => '${objectRuntimeType(this, 'SizedBox')}.expand',
+      (0.0, 0.0) => '${objectRuntimeType(this, 'SizedBox')}.shrink',
+      _ => objectRuntimeType(this, 'SizedBox'),
+    };
     return key == null ? type : '$type-$key';
   }
 
@@ -5962,7 +5959,7 @@ class RawImage extends LeafRenderObjectWidget {
     this.centerSlice,
     this.matchTextDirection = false,
     this.invertColors = false,
-    this.filterQuality = FilterQuality.low,
+    this.filterQuality = FilterQuality.medium,
     this.isAntiAlias = false,
   });
 
@@ -6005,8 +6002,7 @@ class RawImage extends LeafRenderObjectWidget {
 
   /// Used to set the filterQuality of the image.
   ///
-  /// Defaults to [FilterQuality.low] to scale the image, which corresponds to
-  /// bilinear interpolation.
+  /// Defaults to [FilterQuality.medium].
   final FilterQuality filterQuality;
 
   /// Used to combine [color] with this image.
@@ -6686,16 +6682,11 @@ class MouseRegion extends SingleChildRenderObjectWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    final List<String> listeners = <String>[];
-    if (onEnter != null) {
-      listeners.add('enter');
-    }
-    if (onExit != null) {
-      listeners.add('exit');
-    }
-    if (onHover != null) {
-      listeners.add('hover');
-    }
+    final List<String> listeners = <String>[
+      if (onEnter != null) 'enter',
+      if (onExit != null) 'exit',
+      if (onHover != null) 'hover',
+    ];
     properties.add(IterableProperty<String>('listeners', listeners, ifEmpty: '<none>'));
     properties.add(DiagnosticsProperty<MouseCursor>('cursor', cursor, defaultValue: null));
     properties.add(DiagnosticsProperty<bool>('opaque', opaque, defaultValue: true));
@@ -7110,6 +7101,7 @@ class Semantics extends SingleChildRenderObjectWidget {
     bool? keyboardKey,
     bool? link,
     bool? header,
+    int? headingLevel,
     bool? textField,
     bool? readOnly,
     bool? focusable,
@@ -7160,6 +7152,7 @@ class Semantics extends SingleChildRenderObjectWidget {
     SetTextHandler? onSetText,
     VoidCallback? onDidGainAccessibilityFocus,
     VoidCallback? onDidLoseAccessibilityFocus,
+    VoidCallback? onFocus,
     Map<CustomSemanticsAction, VoidCallback>? customSemanticsActions,
   }) : this.fromProperties(
     key: key,
@@ -7180,6 +7173,7 @@ class Semantics extends SingleChildRenderObjectWidget {
       keyboardKey: keyboardKey,
       link: link,
       header: header,
+      headingLevel: headingLevel,
       textField: textField,
       readOnly: readOnly,
       focusable: focusable,
@@ -7224,6 +7218,7 @@ class Semantics extends SingleChildRenderObjectWidget {
       onMoveCursorBackwardByCharacter: onMoveCursorBackwardByCharacter,
       onDidGainAccessibilityFocus: onDidGainAccessibilityFocus,
       onDidLoseAccessibilityFocus: onDidLoseAccessibilityFocus,
+      onFocus: onFocus,
       onDismiss: onDismiss,
       onSetSelection: onSetSelection,
       onSetText: onSetText,
@@ -7573,12 +7568,10 @@ class KeyedSubtree extends StatelessWidget {
       return items;
     }
 
-    final List<Widget> itemsWithUniqueKeys = <Widget>[];
-    int itemIndex = baseIndex;
-    for (final Widget item in items) {
-      itemsWithUniqueKeys.add(KeyedSubtree.wrap(item, itemIndex));
-      itemIndex += 1;
-    }
+    final List<Widget> itemsWithUniqueKeys = <Widget>[
+      for (final (int i, Widget item) in items.indexed)
+        KeyedSubtree.wrap(item, baseIndex + i),
+    ];
 
     assert(!debugItemsHaveDuplicateKeys(itemsWithUniqueKeys));
     return itemsWithUniqueKeys;

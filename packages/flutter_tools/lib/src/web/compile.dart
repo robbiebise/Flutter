@@ -184,8 +184,19 @@ enum WebRendererMode implements CliEnum {
   /// Always use skwasm.
   skwasm;
 
+  factory WebRendererMode.fromCliOption(String? webRendererString, {required bool useWasm}) {
+    final WebRendererMode mode = webRendererString != null
+      ? WebRendererMode.values.byName(webRendererString)
+      : WebRendererMode.auto;
+    if (mode == WebRendererMode.auto && useWasm) {
+      // Wasm defaults to skwasm
+      return WebRendererMode.skwasm;
+    }
+    return mode;
+  }
+
   @override
-  String get cliName => snakeCase(name, '-');
+  String get cliName => kebabCase(name);
 
   @override
   String get helpText => switch (this) {

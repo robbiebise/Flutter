@@ -79,6 +79,7 @@ class WebDriverService extends DriverService {
           port: debuggingOptions.port,
           hostname: debuggingOptions.hostname,
           webRenderer: debuggingOptions.webRenderer,
+          webUseWasm: debuggingOptions.webUseWasm
         )
         : DebuggingOptions.enabled(
           buildInfo,
@@ -86,6 +87,7 @@ class WebDriverService extends DriverService {
           hostname: debuggingOptions.hostname,
           disablePortPublication: debuggingOptions.disablePortPublication,
           webRenderer: debuggingOptions.webRenderer,
+          webUseWasm: debuggingOptions.webUseWasm,
         ),
       stayResident: true,
       flutterProject: FlutterProject.current(),
@@ -266,7 +268,7 @@ enum Browser implements CliEnum {
   };
 
   @override
-  String get cliName => snakeCase(name, '-');
+  String get cliName => kebabCase(name);
 
   static Browser fromCliName(String? value) => Browser.values.singleWhere(
     (Browser element) => element.cliName == value,

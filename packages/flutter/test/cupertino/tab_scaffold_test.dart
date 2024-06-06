@@ -47,6 +47,10 @@ void main() {
     selectedTabs = <int>[];
   });
 
+  tearDown(() {
+    imageCache.clear();
+  });
+
   BottomNavigationBarItem tabGenerator(int index) {
     return BottomNavigationBarItem(
       icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
@@ -632,7 +636,9 @@ void main() {
   });
 
   // Regression test for https://github.com/flutter/flutter/issues/33455
-  testWidgets('Adding new tabs does not crash the app', (WidgetTester tester) async {
+  testWidgets('Adding new tabs does not crash the app',
+  experimentalLeakTesting: LeakTesting.settings.withTrackedAll(),
+  (WidgetTester tester) async {
     final List<int> tabsPainted = <int>[];
     final CupertinoTabController controller = CupertinoTabController();
     addTearDown(controller.dispose);
@@ -831,8 +837,6 @@ void main() {
 
   testWidgets('A controller can control more than one CupertinoTabScaffold, '
     'removal of listeners does not break the controller',
-  // TODO(polina-c): dispose TabController, https://github.com/flutter/flutter/issues/144910 [leaks-to-clean]
-  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(),
     (WidgetTester tester) async {
       final List<int> tabsPainted0 = <int>[];
       final List<int> tabsPainted1 = <int>[];
@@ -1277,10 +1281,7 @@ void main() {
           .setMockMethodCallHandler(SystemChannels.platform, null);
     });
 
-    testWidgets('System back navigation inside of tabs',
-    // TODO(polina-c): dispose TabController, https://github.com/flutter/flutter/issues/144910
-    experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(),
-    (WidgetTester tester) async {
+    testWidgets('System back navigation inside of tabs', (WidgetTester tester) async {
       await tester.pumpWidget(
         CupertinoApp(
           home: MediaQuery(

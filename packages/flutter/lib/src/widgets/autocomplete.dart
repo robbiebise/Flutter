@@ -508,7 +508,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             assert(boxConstraints.hasBoundedWidth);
-            // TODO(justinmc): Verify this postframecallback is still needed.
             SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
               _fieldBoxConstraints.value = boxConstraints;
             });

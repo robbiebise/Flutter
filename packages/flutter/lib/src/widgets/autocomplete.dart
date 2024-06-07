@@ -429,55 +429,34 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 
   Widget _buildOptionsView(BuildContext context) {
-    final TextDirection textDirection = Directionality.of(context);
-    final Alignment followerAlignment = switch (widget.optionsViewOpenDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.bottomStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.topStart,
-    }.resolve(textDirection);
-    final Alignment targetAnchor = switch (widget.optionsViewOpenDirection) {
-      OptionsViewOpenDirection.up => AlignmentDirectional.topStart,
-      OptionsViewOpenDirection.down => AlignmentDirectional.bottomStart,
-    }.resolve(textDirection);
-
     return ValueListenableBuilder<BoxConstraints>(
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
-        return Positioned(
-          top: 0.0,
-          bottom: 0.0,
-          width: constraints.maxWidth,
-          child: CompositedTransformFollower(
-            link: _optionsLayerLink,
-            showWhenUnlinked: false,
-            targetAnchor: targetAnchor,
-            followerAnchor: followerAlignment,
-            child: TextFieldTapRegion(
-              child: AutocompleteHighlightedOption(
-                highlightIndexNotifier: _highlightedOptionIndex,
-                // optionsViewBuilder must be able to look up
-                // AutocompleteHighlightedOption in its context.
-                child: Builder(
-                  builder: (BuildContext context) {
-                    return widget.optionsViewBuilder(context, _select, _options);
-                  },
-                ),
+        final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+
+        return CustomSingleChildLayout(
+          delegate: _OptionsLayoutDelegate(
+            fieldBoxConstraints: constraints,
+            fieldHeight: fieldRenderBox?.size.height ?? 0.0,
+            fieldKey: _fieldKey,
+            optionsViewOpenDirection: widget.optionsViewOpenDirection,
+            overlayContext: context,
+          ),
+          child: TextFieldTapRegion(
+            child: AutocompleteHighlightedOption(
+              highlightIndexNotifier: _highlightedOptionIndex,
+              // optionsViewBuilder must be able to look up
+              // AutocompleteHighlightedOption in its context.
+              child: Builder(
+                builder: (BuildContext context) {
+                  return widget.optionsViewBuilder(context, _select, _options);
+                },
               ),
             ),
           ),
         );
       },
     );
-    /*
-    return _OptionsView(
-      fieldKey: _fieldKey,
-      highlightedOptionIndex: _highlightedOptionIndex,
-      optionsViewOpenDirection: widget.optionsViewOpenDirection,
-      textDirection: Directionality.of(context),
-      optionsViewBuilder: (BuildContext context) {
-        return widget.optionsViewBuilder(context, _select, _options);
-      },
-    );
-    */
   }
 
   @override
@@ -531,6 +510,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             assert(boxConstraints.hasBoundedWidth);
+            // TODO(justinmc): Verify this postframecallback is still needed.
             SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
               _fieldBoxConstraints.value = boxConstraints;
             });
@@ -539,6 +519,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               child: Actions(
                 key: _fieldKey,
                 actions: _actionMap,
+                // TODO(justinmc): Remove composited stuff.
                 child: CompositedTransformTarget(
                   link: _optionsLayerLink,
                   child: fieldView,
@@ -552,161 +533,74 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 }
 
-/*
-class _OptionsView extends StatefulWidget {
-  const _OptionsView({
+/// Positions the options view.
+class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
+  _OptionsLayoutDelegate({
+    required this.fieldBoxConstraints,
     required this.fieldKey,
-    required this.highlightedOptionIndex,
+    required this.fieldHeight,
     required this.optionsViewOpenDirection,
-    required this.optionsViewBuilder,
-    required this.textDirection,
+    required this.overlayContext,
   });
 
-  /// The key for the field that the options positions itself based on.
+  /// The constraints of the field in [RawAutocomplete.fieldViewBuilder].
+  final BoxConstraints fieldBoxConstraints;
+
+  /// The height of the field in [RawAutocomplete.fieldViewBuilder].
+  final double fieldHeight;
+
+  /// The key of the field in [RawAutocomplete.fieldViewBuilder].
   final GlobalKey fieldKey;
 
-  /// The index of the highlighted option.
-  ///
-  /// Options appear to be selected, but do not use the [Focus] system, since
-  /// focus remains on the field even during option selection.
-  final ValueNotifier<int> highlightedOptionIndex;
-
-  /// Builds the options visuals.
-  final WidgetBuilder optionsViewBuilder;
-
-  /// Whether the options open above or below the anchor.
+   /// A direction in which to open the options view overlay.
   final OptionsViewOpenDirection optionsViewOpenDirection;
 
-  /// Whether to prefer going to the left or to the right.
-  final TextDirection textDirection;
-
-  @override
-  State<_OptionsView> createState() => _OptionsViewState();
-}
-
-class _OptionsViewState extends State<_OptionsView> {
-  late Rect _fieldRect;
-
-  /// Returns the paint bounds of the field given its key, in the coordinate
-  /// system of the options [Overlay].
-  static Rect _getRect(GlobalKey fieldKey) {
-    final BuildContext fieldContext = fieldKey.currentContext!;
-    final RenderBox overlay = Overlay.of(fieldContext).context.findRenderObject()! as RenderBox;
-    final RenderBox fieldRenderBox = fieldContext.findRenderObject()! as RenderBox;
-    return MatrixUtils.transformRect(
-      fieldRenderBox.getTransformTo(overlay),
-      fieldRenderBox.paintBounds,
-    );
-  }
-
-  /// Updates the _fieldRect with its corresponding widget, giving a one frame
-  /// delay to allow the field to lay itself out.
-  void _updateFieldRect() {
-    setState(() {
-      _fieldRect = _getRect(widget.fieldKey);
-    });
-    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
-      final Rect nextFieldRect = _getRect(widget.fieldKey);
-      if (nextFieldRect != _fieldRect) {
-        setState(() {
-          _fieldRect = nextFieldRect;
-        });
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _updateFieldRect();
-  }
-
-  @override
-  void didUpdateWidget(_OptionsView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _updateFieldRect();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Rect screenRect = Offset.zero & MediaQuery.of(context).size;
-    print('justin build ${MediaQuery.of(context).size} vs $_fieldRect');
-    // TODO(justinmc): This doesn't work (one frame late?). I need a programmatic
-    // way to listen to screen size changes...
-    final Rect fieldRectOnScreen = _fieldRect.intersect(screenRect);
-    return CustomSingleChildLayout(
-      delegate: _OptionsViewLayout(
-        anchorRect: fieldRectOnScreen,
-        optionsViewOpenDirection: widget.optionsViewOpenDirection,
-        textDirection: Directionality.of(context),
-      ),
-      child: TextFieldTapRegion(
-        child: AutocompleteHighlightedOption(
-          highlightIndexNotifier: widget.highlightedOptionIndex,
-          // optionsViewBuilder must be able to look up
-          // AutocompleteHighlightedOption in its context.
-          child: Builder(
-            builder: (BuildContext context) {
-              return widget.optionsViewBuilder(context);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Positions the options view either above or below the field based on
-// optionsViewOpenDirection.
-class _OptionsViewLayout extends SingleChildLayoutDelegate {
-  _OptionsViewLayout({
-    required this.anchorRect,
-    required this.optionsViewOpenDirection,
-    required this.textDirection,
-  });
-
-  // Rect of the field that the options should be positioned relative to.
-  final Rect anchorRect;
-
-  // Whether the options open above or below the anchor.
-  final OptionsViewOpenDirection optionsViewOpenDirection;
-
-  // Whether to prefer going to the left or to the right.
-  final TextDirection textDirection;
+  /// The [BuildContext] of the [Overlay] that options are rendered in.
+  final BuildContext overlayContext;
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    return BoxConstraints(
-      maxWidth: anchorRect.width,
-      maxHeight: switch (optionsViewOpenDirection) {
-        OptionsViewOpenDirection.down => constraints.maxHeight - anchorRect.top,
-        OptionsViewOpenDirection.up => anchorRect.top,
-      },
+    return constraints.loosen().copyWith(
+      maxWidth: fieldBoxConstraints.maxWidth,
+      maxHeight: double.infinity,
     );
   }
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    return switch ((optionsViewOpenDirection, textDirection)) {
-      (OptionsViewOpenDirection.down, TextDirection.ltr) =>
-          anchorRect.bottomLeft,
-      (OptionsViewOpenDirection.down, TextDirection.rtl) =>
-          Offset(anchorRect.right - childSize.width, anchorRect.bottom),
-      (OptionsViewOpenDirection.up, TextDirection.ltr) =>
-          Offset(anchorRect.left, anchorRect.top - childSize.height),
-      (OptionsViewOpenDirection.up, TextDirection.rtl) =>
-          Offset(anchorRect.right - childSize.width, anchorRect.top - childSize.height),
-    };
+    final Offset fieldOffset;
+    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (fieldRenderBox == null) {
+      fieldOffset = Offset.zero;
+    } else {
+      fieldOffset = fieldRenderBox.localToGlobal(
+        Offset.zero,
+        ancestor: Overlay.of(overlayContext).context.findRenderObject(),
+      );
+    }
+
+    return Offset(
+      fieldOffset.dx,
+      clampDouble(
+        switch (optionsViewOpenDirection) {
+          OptionsViewOpenDirection.down => fieldOffset.dy + fieldHeight,
+          OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
+        },
+        0.0,
+        size.height - childSize.height,
+      ),
+    );
   }
 
   @override
-  bool shouldRelayout(_OptionsViewLayout oldDelegate) {
-    return optionsViewOpenDirection != oldDelegate.optionsViewOpenDirection
-        || textDirection != oldDelegate.textDirection
-        || anchorRect != oldDelegate.anchorRect;
+  bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
+    return fieldBoxConstraints != oldDelegate.fieldBoxConstraints
+        || fieldHeight != oldDelegate.fieldHeight
+        || fieldKey != oldDelegate.fieldKey
+        || optionsViewOpenDirection != oldDelegate.optionsViewOpenDirection
+        || overlayContext != oldDelegate.overlayContext;
   }
 }
-*/
 
 class _AutocompleteCallbackAction<T extends Intent> extends CallbackAction<T> {
   _AutocompleteCallbackAction({

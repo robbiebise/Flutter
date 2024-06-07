@@ -310,8 +310,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
       ValueNotifier<BoxConstraints>(const BoxConstraints());
 
-  final LayerLink _optionsLayerLink = LayerLink();
-
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
 
   TextEditingController? _internalTextEditingController;
@@ -519,11 +517,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               child: Actions(
                 key: _fieldKey,
                 actions: _actionMap,
-                // TODO(justinmc): Remove composited stuff.
-                child: CompositedTransformTarget(
-                  link: _optionsLayerLink,
-                  child: fieldView,
-                ),
+                child: fieldView,
               ),
             );
           },

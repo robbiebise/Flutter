@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:math' show max, min;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -550,27 +551,42 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   /// The [BuildContext] of the [Overlay] that options are rendered in.
   final BuildContext overlayContext;
 
+  // Eyeballed to be big enough for about one item in the default
+  // Autocomplete.optionsViewBuilder. The assumption is that the user likely
+  // wants to list of options to move to stay on the screen rather than get any
+  // smaller than this.
+  static const double _minUsableHeight = 52.0;
+
+  Offset get _fieldOffset {
+    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (fieldRenderBox == null) {
+      return Offset.zero;
+    }
+    return fieldRenderBox.localToGlobal(
+      Offset.zero,
+      ancestor: Overlay.of(overlayContext).context.findRenderObject(),
+    );
+  }
+
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    final Offset fieldOffset = _fieldOffset;
+    // Constraints that limit the child to the space above/below the field.
     return constraints.loosen().copyWith(
       maxWidth: fieldBoxConstraints.maxWidth,
-      maxHeight: double.infinity,
+      maxHeight: switch (optionsViewOpenDirection) {
+        OptionsViewOpenDirection.down => max(
+          min(_minUsableHeight, constraints.maxHeight),
+          constraints.maxHeight - fieldOffset.dy - fieldHeight,
+        ),
+        OptionsViewOpenDirection.up => max(_minUsableHeight, fieldOffset.dy),
+      },
     );
   }
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    final Offset fieldOffset;
-    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    if (fieldRenderBox == null) {
-      fieldOffset = Offset.zero;
-    } else {
-      fieldOffset = fieldRenderBox.localToGlobal(
-        Offset.zero,
-        ancestor: Overlay.of(overlayContext).context.findRenderObject(),
-      );
-    }
-
+    final Offset fieldOffset = _fieldOffset;
     return Offset(
       fieldOffset.dx,
       clampDouble(
@@ -579,7 +595,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
           OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
         },
         0.0,
-        size.height - childSize.height,
+        max(0.0, size.height - childSize.height),
       ),
     );
   }

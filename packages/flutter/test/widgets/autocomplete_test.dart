@@ -494,7 +494,7 @@ void main() {
     });
 
     for (final OptionsViewOpenDirection direction in OptionsViewOpenDirection.values) {
-      testWidgets('correct options alignment for RTL', (WidgetTester tester) async {
+      testWidgets('correct options alignment for RTL in direction $direction', (WidgetTester tester) async {
         final GlobalKey fieldKey = GlobalKey();
         final GlobalKey optionsKey = GlobalKey();
         const double kOptionsWidth = 100.0;
@@ -682,21 +682,17 @@ void main() {
     expect(optionsOffset.dy, fieldOffset.dy + fieldSize.height);
 
     // Move the field (similar to as if the keyboard opened). The options move
-    // to follow the field, but take one frame to catch up.
+    // to follow the field.
     setState(() {
       alignment = Alignment.topCenter;
     });
     await tester.pump();
     final Offset fieldOffsetFrame1 = tester.getTopLeft(find.byKey(fieldKey));
     final Offset optionsOffsetOpenFrame1 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffsetOpenFrame1.dy, optionsOffset.dy);
+    expect(optionsOffsetOpenFrame1.dy, isNot(equals(optionsOffset.dy)));
+    expect(optionsOffsetOpenFrame1.dy, fieldOffsetFrame1.dy + fieldSize.height);
     expect(fieldOffsetFrame1.dy, lessThan(fieldOffset.dy));
     await tester.pump();
-    final Offset fieldOffsetFrame2 = tester.getTopLeft(find.byKey(fieldKey));
-    final Offset optionsOffsetOpenFrame2 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(fieldOffsetFrame2, fieldOffsetFrame1);
-    expect(optionsOffsetOpenFrame2.dy, isNot(equals(optionsOffset.dy)));
-    expect(optionsOffsetOpenFrame2.dy, fieldOffsetFrame2.dy + fieldSize.height);
   });
 
   testWidgets('options are shown one frame after tapping in field', (WidgetTester tester) async {

@@ -435,10 +435,11 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         return CustomSingleChildLayout(
           delegate: _OptionsLayoutDelegate(
             fieldBoxConstraints: constraints,
-            fieldHeight: fieldRenderBox?.size.height ?? 0.0,
+            fieldSize: fieldRenderBox?.size,
             fieldKey: _fieldKey,
             optionsViewOpenDirection: widget.optionsViewOpenDirection,
             overlayContext: context,
+            textDirection: Directionality.maybeOf(context),
           ),
           child: TextFieldTapRegion(
             child: AutocompleteHighlightedOption(
@@ -531,25 +532,30 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   _OptionsLayoutDelegate({
     required this.fieldBoxConstraints,
     required this.fieldKey,
-    required this.fieldHeight,
+    required Size? fieldSize,
     required this.optionsViewOpenDirection,
     required this.overlayContext,
-  });
+    required TextDirection? textDirection,
+  }) : fieldSize = fieldSize ?? Size.zero,
+       textDirection = textDirection ?? TextDirection.ltr;
 
   /// The constraints of the field in [RawAutocomplete.fieldViewBuilder].
   final BoxConstraints fieldBoxConstraints;
 
-  /// The height of the field in [RawAutocomplete.fieldViewBuilder].
-  final double fieldHeight;
-
   /// The key of the field in [RawAutocomplete.fieldViewBuilder].
   final GlobalKey fieldKey;
+
+  /// The size of the field in [RawAutocomplete.fieldViewBuilder].
+  final Size fieldSize;
 
    /// A direction in which to open the options view overlay.
   final OptionsViewOpenDirection optionsViewOpenDirection;
 
   /// The [BuildContext] of the [Overlay] that options are rendered in.
   final BuildContext overlayContext;
+
+  /// The [TextDirection] of this part of the widget tree.
+  final TextDirection textDirection;
 
   // Eyeballed to be big enough for about one item in the default
   // Autocomplete.optionsViewBuilder. The assumption is that the user likely
@@ -577,7 +583,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
       maxHeight: switch (optionsViewOpenDirection) {
         OptionsViewOpenDirection.down => max(
           min(_minUsableHeight, constraints.maxHeight),
-          constraints.maxHeight - fieldOffset.dy - fieldHeight,
+          constraints.maxHeight - fieldOffset.dy - fieldSize.height,
         ),
         OptionsViewOpenDirection.up => max(_minUsableHeight, fieldOffset.dy),
       },
@@ -588,10 +594,13 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   Offset getPositionForChild(Size size, Size childSize) {
     final Offset fieldOffset = _fieldOffset;
     return Offset(
-      fieldOffset.dx,
+      switch(textDirection) {
+        TextDirection.ltr => fieldOffset.dx,
+        TextDirection.rtl => fieldOffset.dx + fieldSize.width - childSize.width,
+      },
       clampDouble(
         switch (optionsViewOpenDirection) {
-          OptionsViewOpenDirection.down => fieldOffset.dy + fieldHeight,
+          OptionsViewOpenDirection.down => fieldOffset.dy + fieldSize.height,
           OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
         },
         0.0,
@@ -602,11 +611,11 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
-    return fieldBoxConstraints != oldDelegate.fieldBoxConstraints
-        || fieldHeight != oldDelegate.fieldHeight
-        || fieldKey != oldDelegate.fieldKey
-        || optionsViewOpenDirection != oldDelegate.optionsViewOpenDirection
-        || overlayContext != oldDelegate.overlayContext;
+    // This class depends on the position of the field (_fieldOffset) in order
+    // to do its layout. At this point, it's not possible to know if the field's
+    // position has changed in this frame, because it hasn't laid itself out
+    // yet. So this must always relayout in case it has changed.
+    return true;
   }
 }
 

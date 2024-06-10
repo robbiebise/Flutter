@@ -1408,23 +1408,25 @@ void main() {
           home: Scaffold(
             body: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: RawAutocomplete<String>(
-                optionsViewOpenDirection: direction,
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  return kOptions.where((String option) {
-                    return option.contains(textEditingValue.text.toLowerCase());
-                  });
-                },
-                fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                  return TextField(
-                    key: fieldKey,
-                    focusNode: focusNode,
-                    controller: textEditingController,
-                  );
-                },
-                optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                  return Container(key: optionsKey);
-                },
+              child: Center(
+                child: RawAutocomplete<String>(
+                  optionsViewOpenDirection: direction,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    return kOptions.where((String option) {
+                      return option.contains(textEditingValue.text.toLowerCase());
+                    });
+                  },
+                  fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                    return TextField(
+                      key: fieldKey,
+                      focusNode: focusNode,
+                      controller: textEditingController,
+                    );
+                  },
+                  optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                    return Container(key: optionsKey);
+                  },
+                ),
               ),
             ),
           ),

@@ -577,10 +577,11 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
     );
   }
 
+  // Limits the child to the space above/below the field, with a minimum, and
+  // with the same maxWidth constraint as the field has.
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final Offset fieldOffset = _fieldOffset;
-    // Constraints that limit the child to the space above/below the field.
     return constraints.loosen().copyWith(
       maxWidth: fieldBoxConstraints.maxWidth,
       maxHeight: switch (optionsViewOpenDirection) {
@@ -593,6 +594,8 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
     );
   }
 
+  // Positions the child above/below the field and aligned with the left/right
+  // side based on text direction.
   @override
   Offset getPositionForChild(Size size, Size childSize) {
     final Offset fieldOffset = _fieldOffset;
@@ -617,7 +620,8 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
     // This class depends on the position of the field (_fieldOffset) in order
     // to do its layout. At this point, it's not possible to know if the field's
     // position has changed in this frame, because it hasn't laid itself out
-    // yet. So this must always relayout in case it has changed.
+    // yet. So this must always relayout in case the field position will change
+    // this frame.
     return true;
   }
 }

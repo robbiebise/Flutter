@@ -594,7 +594,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   Offset getPositionForChild(Size size, Size childSize) {
     final Offset fieldOffset = _fieldOffset;
     return Offset(
-      switch(textDirection) {
+      switch (textDirection) {
         TextDirection.ltr => fieldOffset.dx,
         TextDirection.rtl => fieldOffset.dx + fieldSize.width - childSize.width,
       },

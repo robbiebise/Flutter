@@ -559,8 +559,11 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
 
   // Eyeballed to be big enough for about one item in the default
   // Autocomplete.optionsViewBuilder. The assumption is that the user likely
-  // wants to list of options to move to stay on the screen rather than get any
-  // smaller than this.
+  // wants the list of options to move to stay on the screen rather than get any
+  // smaller than this. Allows Autocomplete to work when it has very little
+  // screen height available (as in b/317115348) by positioning itself on top of
+  // the field, while in other cases to size itself based on the height under
+  // the field.
   static const double _minUsableHeight = 52.0;
 
   Offset get _fieldOffset {

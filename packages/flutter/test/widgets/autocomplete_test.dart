@@ -1591,7 +1591,5 @@ void main() {
     optionsBox = tester.renderObject(find.byKey(optionsKey));
     expect(fieldBox.size.width, 200.0);
     expect(optionsBox.size.width, 200.0);
-  },
-    skip: true, // https://github.com/flutter/flutter/issues/146379
-  );
+  });
 }

@@ -676,10 +676,10 @@ void main() {
     expect(find.byKey(optionsKey), findsOneWidget);
 
     // Options are just below the field.
-    final Offset optionsOffset = tester.getTopLeft(find.byKey(optionsKey));
+    final Offset optionsTopLeft = tester.getTopLeft(find.byKey(optionsKey));
     final Offset fieldOffset = tester.getTopLeft(find.byKey(fieldKey));
     final Size fieldSize = tester.getSize(find.byKey(fieldKey));
-    expect(optionsOffset.dy, fieldOffset.dy + fieldSize.height);
+    expect(optionsTopLeft.dy, fieldOffset.dy + fieldSize.height);
 
     // Move the field (similar to as if the keyboard opened). The options move
     // to follow the field.
@@ -688,9 +688,9 @@ void main() {
     });
     await tester.pump();
     final Offset fieldOffsetFrame1 = tester.getTopLeft(find.byKey(fieldKey));
-    final Offset optionsOffsetOpenFrame1 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffsetOpenFrame1.dy, isNot(equals(optionsOffset.dy)));
-    expect(optionsOffsetOpenFrame1.dy, fieldOffsetFrame1.dy + fieldSize.height);
+    final Offset optionsTopLeftOpenFrame1 = tester.getTopLeft(find.byKey(optionsKey));
+    expect(optionsTopLeftOpenFrame1.dy, isNot(equals(optionsTopLeft.dy)));
+    expect(optionsTopLeftOpenFrame1.dy, fieldOffsetFrame1.dy + fieldSize.height);
     expect(fieldOffsetFrame1.dy, lessThan(fieldOffset.dy));
     await tester.pump();
   });
@@ -1593,408 +1593,30 @@ void main() {
     expect(optionsBox.size.width, 200.0);
   });
 
-  testWidgets('options when screen changes landscape to portrait', (WidgetTester tester) async {
-    // Start with a portrait-sized window, with enough space for all of the
-    // options.
-    const Size wideWindowSize = Size(1920.0, 1080.0);
-    const Size narrowWindowSize = Size(1070.0, 1770.0);
-    tester.view.physicalSize = wideWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final GlobalKey fieldKey = GlobalKey();
-    final GlobalKey optionsKey = GlobalKey();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: RawAutocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                return kOptions.where((String option) {
-                  return option.contains(textEditingValue.text.toLowerCase());
-                });
-              },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                return ListView.builder(
-                  key: optionsKey,
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final String option = options.elementAt(index);
-                    return InkWell(
-                      onTap: () {
-                        onSelected(option);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(option),
-                      ),
-                    );
+  group('screen size', () {
+    Future<void> pumpRawAutocomplete(WidgetTester tester, {
+      GlobalKey? fieldKey,
+      GlobalKey? optionsKey,
+      OptionsViewOpenDirection optionsViewOpenDirection = OptionsViewOpenDirection.down,
+      Alignment alignment = Alignment.topLeft,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Align(
+                alignment: alignment,
+                child: RawAutocomplete<String>(
+                  optionsViewOpenDirection: optionsViewOpenDirection,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    return kOptions.where((String option) {
+                      return option.contains(textEditingValue.text.toLowerCase());
+                    });
                   },
-                );
-              },
-              fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                return TextField(
-                  key: fieldKey,
-                  focusNode: focusNode,
-                  controller: textEditingController,
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsNothing);
-
-    await tester.tap(find.byType(TextField));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsOneWidget);
-    expect(find.byType(InkWell), findsNWidgets(kOptions.length));
-    final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
-    final Offset optionsOffset1 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(
-      optionsOffset1,
-      Offset(
-        tester.getTopLeft(find.byKey(fieldKey)).dx,
-        tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height,
-      ),
-    );
-    final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
-    final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
-    expect(
-      optionsBottomRight1,
-      Offset(
-        tester.getTopLeft(find.byKey(fieldKey)).dx + fieldSize1.width,
-        tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height + optionHeight * kOptions.length,
-      ),
-    );
-
-    // Change the screen size to portrait.
-    tester.view.physicalSize = narrowWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byType(InkWell), findsNWidgets(kOptions.length));
-    expect(tester.getTopLeft(find.byKey(optionsKey)), optionsOffset1);
-    final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
-    expect(fieldSize1.width, greaterThan(fieldSize2.width));
-    expect(fieldSize1.height, fieldSize2.height);
-    final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
-    final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(optionsBottomRight2.dx, lessThan(optionsBottomRight1.dx));
-    expect(optionsBottomRight2.dy, optionsBottomRight1.dy);
-    expect(
-      optionsBottomRight2,
-      Offset(
-        fieldTopLeft2.dx + fieldSize2.width,
-        fieldTopLeft2.dy + fieldSize2.height + optionHeight * kOptions.length,
-      ),
-    );
-  });
-
-  testWidgets('options when screen changes portrait to landscape and overflows', (WidgetTester tester) async {
-    // Start with a portrait-sized window, with enough space for all of the
-    // options.
-    const Size wideWindowSize = Size(1920.0, 580.0);
-    const Size narrowWindowSize = Size(1070.0, 1770.0);
-    tester.view.physicalSize = narrowWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final GlobalKey fieldKey = GlobalKey();
-    final GlobalKey optionsKey = GlobalKey();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: RawAutocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                return kOptions.where((String option) {
-                  return option.contains(textEditingValue.text.toLowerCase());
-                });
-              },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                return ListView.builder(
-                  key: optionsKey,
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final String option = options.elementAt(index);
-                    return InkWell(
-                      onTap: () {
-                        onSelected(option);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(option),
-                      ),
-                    );
-                  },
-                );
-              },
-              fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                return TextField(
-                  key: fieldKey,
-                  focusNode: focusNode,
-                  controller: textEditingController,
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsNothing);
-
-    await tester.tap(find.byType(TextField));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsOneWidget);
-    expect(find.byType(InkWell), findsNWidgets(kOptions.length));
-    final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
-    final Offset optionsOffset1 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(
-      optionsOffset1,
-      Offset(
-        tester.getTopLeft(find.byKey(fieldKey)).dx,
-        tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height,
-      ),
-    );
-    final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
-    final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
-    expect(
-      optionsBottomRight1,
-      Offset(
-        tester.getTopLeft(find.byKey(fieldKey)).dx + fieldSize1.width,
-        tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height + optionHeight * kOptions.length,
-      ),
-    );
-
-    // Change the screen size to landscape where the options can't all fit on
-    // the screen.
-    tester.view.physicalSize = wideWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    final int visibleOptions = (wideWindowSize.height / optionHeight).floor();
-    expect(visibleOptions, lessThan(kOptions.length));
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions));
-    expect(tester.getTopLeft(find.byKey(optionsKey)), optionsOffset1);
-    final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
-    expect(fieldSize1.width, lessThan(fieldSize2.width));
-    expect(fieldSize1.height, fieldSize2.height);
-    final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
-    final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
-    expect(optionsBottomRight2.dy, lessThan(optionsBottomRight1.dy));
-    expect(
-      optionsBottomRight2,
-      Offset(
-        fieldTopLeft2.dx + fieldSize2.width,
-        // Options are taking all available space below the field.
-        wideWindowSize.height,
-      ),
-    );
-  });
-
-  testWidgets('fixed-size options when screen changes portrait to landscape and overflows', (WidgetTester tester) async {
-    // Start with a portrait-sized window, with enough space for all of the
-    // options.
-    const Size wideWindowSize = Size(1920.0, 580.0);
-    const Size narrowWindowSize = Size(1070.0, 1770.0);
-    const Size shortWindowSize = Size(1920.0, 90.0);
-    tester.view.physicalSize = narrowWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final GlobalKey fieldKey = GlobalKey();
-    final GlobalKey optionsKey = GlobalKey();
-    // The options are tall enough to not fit below the field in wide screen
-    // size.
-    const double optionsHeight = 550.0;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: RawAutocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                return kOptions.where((String option) {
-                  return option.contains(textEditingValue.text.toLowerCase());
-                });
-              },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                return SizedBox(
-                  height: optionsHeight,
-                  child: ListView.builder(
-                    key: optionsKey,
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final String option = options.elementAt(index);
-                      return InkWell(
-                        onTap: () {
-                          onSelected(option);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(option),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-              fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                return TextField(
-                  key: fieldKey,
-                  focusNode: focusNode,
-                  controller: textEditingController,
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsNothing);
-
-    await tester.tap(find.byType(TextField));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsOneWidget);
-    final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
-    final int visibleOptions = (optionsHeight / optionHeight).ceil();
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions));
-    final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
-    final Offset optionsOffset1 = tester.getTopLeft(find.byKey(optionsKey));
-    final Offset fieldTopLeft1 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(
-      optionsOffset1,
-      Offset(
-        fieldTopLeft1.dx,
-        fieldTopLeft1.dy + fieldSize1.height,
-      ),
-    );
-    final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
-    expect(
-      optionsBottomRight1,
-      Offset(
-        fieldTopLeft1.dx + fieldSize1.width,
-        fieldTopLeft1.dy + fieldSize1.height + optionsHeight,
-      ),
-    );
-
-    // Change the screen size to landscape where the options can't all fit on
-    // the screen.
-    tester.view.physicalSize = wideWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(visibleOptions, lessThan(kOptions.length));
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions));
-    final Offset optionsOffset2 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffset2, optionsOffset1);
-    final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
-    expect(fieldSize1.width, lessThan(fieldSize2.width));
-    expect(fieldSize1.height, fieldSize2.height);
-    final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
-    final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
-    expect(
-      optionsBottomRight2,
-      Offset(
-        fieldTopLeft2.dx + fieldSize2.width,
-        // Options are taking all available space below the field.
-        wideWindowSize.height,
-      ),
-    );
-
-    // Shrink the screen further so that the options become smaller than
-    // _kMinUsableHeight and move to overlap the field.
-    tester.view.physicalSize = shortWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(fieldKey), findsOneWidget);
-    const int visibleOptions3 = 1;
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions3));
-    final Offset optionsOffset3 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffset3.dx, optionsOffset1.dx);
-    // The options have moved up, overlapping the field, to still be able to
-    // show _kMinUsableHeight.
-    expect(optionsOffset3.dy, lessThan(optionsOffset1.dy));
-    final Size fieldSize3 = tester.getSize(find.byKey(fieldKey));
-    final Offset fieldTopLeft3 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(optionsOffset3.dy, lessThan(fieldTopLeft3.dy + fieldSize3.height));
-    expect(fieldSize3.width, fieldSize2.width);
-    expect(fieldSize1.height, fieldSize3.height);
-    final Offset optionsBottomRight3 = tester.getBottomRight(find.byKey(optionsKey));
-    expect(optionsBottomRight3.dx, greaterThan(optionsBottomRight1.dx));
-    expect(
-      optionsBottomRight3,
-      Offset(
-        fieldTopLeft3.dx + fieldSize3.width,
-        shortWindowSize.height,
-      ),
-    );
-  });
-
-  testWidgets('fixed-size options when screen changes portrait to landscape and overflows opening up', (WidgetTester tester) async {
-    // Start with a portrait-sized window, with enough space for all of the
-    // options.
-    const Size wideWindowSize = Size(1920.0, 580.0);
-    const Size narrowWindowSize = Size(1070.0, 1770.0);
-    const Size shortWindowSize = Size(1920.0, 90.0);
-    tester.view.physicalSize = narrowWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final GlobalKey fieldKey = GlobalKey();
-    final GlobalKey optionsKey = GlobalKey();
-    // The options are tall enough to not fit above the field in wideWindowSize.
-    const double optionsMaxHeight = 400.0;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Center(
-              child: RawAutocomplete<String>(
-                optionsViewOpenDirection: OptionsViewOpenDirection.up,
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  return kOptions.where((String option) {
-                    return option.contains(textEditingValue.text.toLowerCase());
-                  });
-                },
-                optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                  return SizedBox(
-                    key: optionsKey,
-                    height: optionsMaxHeight,
-                    child: ListView.builder(
+                  optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                    return ListView.builder(
+                      key: optionsKey,
                       padding: EdgeInsets.zero,
                       shrinkWrap: true,
                       itemCount: options.length,
@@ -2010,112 +1632,385 @@ void main() {
                           ),
                         );
                       },
-                    ),
-                  );
-                },
-                fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
-                  return TextField(
-                    key: fieldKey,
-                    focusNode: focusNode,
-                    controller: textEditingController,
-                  );
-                },
+                    );
+                  },
+                  fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                    return TextField(
+                      key: fieldKey,
+                      focusNode: focusNode,
+                      controller: textEditingController,
+                    );
+                  },
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsNothing);
+    testWidgets('options when screen changes landscape to portrait', (WidgetTester tester) async {
+      // Start with a portrait-sized window, with enough space for all of the
+      // options.
+      const Size wideWindowSize = Size(1920.0, 1080.0);
+      tester.view.physicalSize = wideWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    await tester.tap(find.byType(TextField));
-    await tester.pumpAndSettle();
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    expect(find.byKey(optionsKey), findsOneWidget);
-    final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
-    final int visibleOptions1 = (optionsMaxHeight / optionHeight).ceil();
-    expect(visibleOptions1, lessThan(kOptions.length));
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions1));
-    final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
-    final Offset optionsOffset1 = tester.getTopLeft(find.byKey(optionsKey));
-    final Offset fieldTopLeft1 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(
-      // TODO(justinmc): Rename all these "Offset" variables to TopLeft.
-      optionsOffset1,
-      Offset(
-        fieldTopLeft1.dx,
-        fieldTopLeft1.dy - optionsMaxHeight,
-      ),
-    );
-    expect(optionsOffset1.dy, greaterThan(0.0));
-    final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
-    expect(
-      optionsBottomRight1,
-      Offset(
-        fieldTopLeft1.dx + fieldSize1.width,
-        fieldTopLeft1.dy,
-      ),
-    );
+      await pumpRawAutocomplete(
+        tester,
+        fieldKey: fieldKey,
+        optionsKey: optionsKey,
+      );
 
-    // Change the screen size to landscape where the options can't all fit on
-    // the screen.
-    tester.view.physicalSize = wideWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    final double optionsHeight2 = tester.getSize(find.byKey(optionsKey)).height;
-    expect(optionsHeight2, lessThan(optionsMaxHeight));
-    final int visibleOptions2 = (optionsHeight2 / optionHeight).ceil();
-    expect(visibleOptions2, lessThan(visibleOptions1));
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions2));
-    final Offset optionsOffset2 = tester.getTopLeft(find.byKey(optionsKey));
-    final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(
-      optionsOffset2,
-      Offset(
-        optionsOffset1.dx,
-        fieldTopLeft2.dy - optionsHeight2,
-      ),
-    );
-    final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
-    expect(fieldSize1.width, lessThan(fieldSize2.width));
-    expect(fieldSize1.height, fieldSize2.height);
-    final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
-    expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
-    expect(
-      optionsBottomRight2,
-      Offset(
-        fieldTopLeft2.dx + fieldSize2.width,
-        fieldTopLeft2.dy,
-      ),
-    );
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
 
-    // Shrink the screen further so that the options become smaller than
-    // _kMinUsableHeight and move to overlap the field.
-    tester.view.physicalSize = shortWindowSize;
-    tester.view.devicePixelRatio = 1.0;
-    await tester.pumpAndSettle();
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+      expect(find.byType(InkWell), findsNWidgets(kOptions.length));
+      final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
+      final Offset optionsTopLeft1 = tester.getTopLeft(find.byKey(optionsKey));
+      expect(
+        optionsTopLeft1,
+        Offset(
+          tester.getTopLeft(find.byKey(fieldKey)).dx,
+          tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height,
+        ),
+      );
+      final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
+      final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+      expect(
+        optionsBottomRight1,
+        Offset(
+          tester.getTopLeft(find.byKey(fieldKey)).dx + fieldSize1.width,
+          tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height + optionHeight * kOptions.length,
+        ),
+      );
 
-    expect(find.byKey(fieldKey), findsOneWidget);
-    const int visibleOptions3 = 1;
-    expect(find.byType(InkWell), findsNWidgets(visibleOptions3));
-    final Offset optionsOffset3 = tester.getTopLeft(find.byKey(optionsKey));
-    expect(optionsOffset3.dx, optionsOffset1.dx);
-    // The options have moved down, overlapping the field, to still be able to
-    // show _kMinUsableHeight.
-    expect(optionsOffset3.dy, lessThan(optionsOffset1.dy));
-    final Size fieldSize3 = tester.getSize(find.byKey(fieldKey));
-    final Offset fieldTopLeft3 = tester.getTopLeft(find.byKey(fieldKey));
-    expect(optionsOffset3.dy, lessThan(fieldTopLeft3.dy + fieldSize3.height));
-    expect(fieldSize3.width, fieldSize2.width);
-    expect(fieldSize1.height, fieldSize3.height);
-    final Offset optionsBottomRight3 = tester.getBottomRight(find.byKey(optionsKey));
-    expect(optionsBottomRight3.dx, greaterThan(optionsBottomRight1.dx));
-    expect(optionsBottomRight3.dy, greaterThan(fieldTopLeft3.dy));
-    expect(optionsBottomRight3.dx, fieldTopLeft3.dx + fieldSize3.width);
+      // Change the screen size to portrait.
+      const Size narrowWindowSize = Size(1070.0, 1770.0);
+      tester.view.physicalSize = narrowWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byType(InkWell), findsNWidgets(kOptions.length));
+      expect(tester.getTopLeft(find.byKey(optionsKey)), optionsTopLeft1);
+      final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
+      expect(fieldSize1.width, greaterThan(fieldSize2.width));
+      expect(fieldSize1.height, fieldSize2.height);
+      final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
+      final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(optionsBottomRight2.dx, lessThan(optionsBottomRight1.dx));
+      expect(optionsBottomRight2.dy, optionsBottomRight1.dy);
+      expect(
+        optionsBottomRight2,
+        Offset(
+          fieldTopLeft2.dx + fieldSize2.width,
+          fieldTopLeft2.dy + fieldSize2.height + optionHeight * kOptions.length,
+        ),
+      );
+    });
+
+    testWidgets('options when screen changes portrait to landscape and overflows', (WidgetTester tester) async {
+      // Start with a portrait-sized window, with enough space for all of the
+      // options.
+      const Size narrowWindowSize = Size(1070.0, 1770.0);
+      tester.view.physicalSize = narrowWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
+
+      await pumpRawAutocomplete(
+        tester,
+        fieldKey: fieldKey,
+        optionsKey: optionsKey,
+      );
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
+
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+      expect(find.byType(InkWell), findsNWidgets(kOptions.length));
+      final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
+      final Offset optionsTopLeft1 = tester.getTopLeft(find.byKey(optionsKey));
+      expect(
+        optionsTopLeft1,
+        Offset(
+          tester.getTopLeft(find.byKey(fieldKey)).dx,
+          tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height,
+        ),
+      );
+      final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
+      final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+      expect(
+        optionsBottomRight1,
+        Offset(
+          tester.getTopLeft(find.byKey(fieldKey)).dx + fieldSize1.width,
+          tester.getTopLeft(find.byKey(fieldKey)).dy + fieldSize1.height + optionHeight * kOptions.length,
+        ),
+      );
+
+      // Change the screen size to landscape where the options can't all fit on
+      // the screen.
+      const Size wideWindowSize = Size(1920.0, 580.0);
+      tester.view.physicalSize = wideWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      final int visibleOptions = (wideWindowSize.height / optionHeight).floor();
+      expect(visibleOptions, lessThan(kOptions.length));
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions));
+      expect(tester.getTopLeft(find.byKey(optionsKey)), optionsTopLeft1);
+      final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
+      expect(fieldSize1.width, lessThan(fieldSize2.width));
+      expect(fieldSize1.height, fieldSize2.height);
+      final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
+      final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
+      expect(optionsBottomRight2.dy, lessThan(optionsBottomRight1.dy));
+      expect(
+        optionsBottomRight2,
+        Offset(
+          fieldTopLeft2.dx + fieldSize2.width,
+          // Options are taking all available space below the field.
+          wideWindowSize.height,
+        ),
+      );
+    });
+
+    testWidgets('screen changes portrait to landscape and overflows', (WidgetTester tester) async {
+      // Start with a portrait-sized window, with enough space for all of the
+      // options.
+      const Size narrowWindowSize = Size(1070.0, 1770.0);
+      tester.view.physicalSize = narrowWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
+
+      await pumpRawAutocomplete(
+        tester,
+        fieldKey: fieldKey,
+        optionsKey: optionsKey,
+      );
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
+
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+      final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+      final double optionsHeight1 = tester.getSize(find.byKey(optionsKey)).height;
+      final int visibleOptions1 = (optionsHeight1 / optionHeight).ceil();
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions1));
+      final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
+      final Offset optionsTopLeft1 = tester.getTopLeft(find.byKey(optionsKey));
+      final Offset fieldTopLeft1 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(
+        optionsTopLeft1,
+        Offset(
+          fieldTopLeft1.dx,
+          fieldTopLeft1.dy + fieldSize1.height,
+        ),
+      );
+      final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
+      expect(
+        optionsBottomRight1,
+        Offset(
+          fieldTopLeft1.dx + fieldSize1.width,
+          fieldTopLeft1.dy + fieldSize1.height + optionsHeight1,
+        ),
+      );
+
+      // Change the screen size to landscape where the options can't all fit on
+      // the screen.
+      const Size wideWindowSize = Size(1920.0, 580.0);
+      tester.view.physicalSize = wideWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      final double optionsHeight2 = tester.getSize(find.byKey(optionsKey)).height;
+      final int visibleOptions2 = (optionsHeight2 / optionHeight).ceil();
+      expect(visibleOptions2, lessThan(kOptions.length));
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions2));
+      final Offset optionsTopLeft2 = tester.getTopLeft(find.byKey(optionsKey));
+      expect(optionsTopLeft2, optionsTopLeft1);
+      final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
+      expect(fieldSize1.width, lessThan(fieldSize2.width));
+      expect(fieldSize1.height, fieldSize2.height);
+      final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
+      final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
+      expect(
+        optionsBottomRight2,
+        Offset(
+          fieldTopLeft2.dx + fieldSize2.width,
+          // Options are taking all available space below the field.
+          wideWindowSize.height,
+        ),
+      );
+
+      // Shrink the screen further so that the options become smaller than
+      // _kMinUsableHeight and move to overlap the field.
+      const Size shortWindowSize = Size(1920.0, 90.0);
+      tester.view.physicalSize = shortWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      const int visibleOptions3 = 1;
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions3));
+      final Offset optionsTopLeft3 = tester.getTopLeft(find.byKey(optionsKey));
+      expect(optionsTopLeft3.dx, optionsTopLeft1.dx);
+      // The options have moved up, overlapping the field, to still be able to
+      // show _kMinUsableHeight.
+      expect(optionsTopLeft3.dy, lessThan(optionsTopLeft1.dy));
+      final Size fieldSize3 = tester.getSize(find.byKey(fieldKey));
+      final Offset fieldTopLeft3 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(optionsTopLeft3.dy, lessThan(fieldTopLeft3.dy + fieldSize3.height));
+      expect(fieldSize3.width, fieldSize2.width);
+      expect(fieldSize1.height, fieldSize3.height);
+      final Offset optionsBottomRight3 = tester.getBottomRight(find.byKey(optionsKey));
+      expect(optionsBottomRight3.dx, greaterThan(optionsBottomRight1.dx));
+      expect(
+        optionsBottomRight3,
+        Offset(
+          fieldTopLeft3.dx + fieldSize3.width,
+          shortWindowSize.height,
+        ),
+      );
+    });
+
+    testWidgets('when opening up screen changes portrait to landscape and overflows', (WidgetTester tester) async {
+      // Start with a portrait-sized window, with enough space for all of the
+      // options.
+      const Size narrowWindowSize = Size(1070.0, 1770.0);
+      tester.view.physicalSize = narrowWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
+
+      await pumpRawAutocomplete(
+        tester,
+        fieldKey: fieldKey,
+        optionsKey: optionsKey,
+        optionsViewOpenDirection: OptionsViewOpenDirection.up,
+        alignment: Alignment.center,
+      );
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
+
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+      final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+      final double optionsHeight1 = tester.getSize(find.byKey(optionsKey)).height;
+      final int visibleOptions1 = (optionsHeight1 / optionHeight).ceil();
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions1));
+      final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
+      final Offset optionsTopLeft1 = tester.getTopLeft(find.byKey(optionsKey));
+      final Offset fieldTopLeft1 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(
+        optionsTopLeft1,
+        Offset(
+          fieldTopLeft1.dx,
+          fieldTopLeft1.dy - optionsHeight1,
+        ),
+      );
+      expect(optionsTopLeft1.dy, greaterThan(0.0));
+      final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
+      expect(
+        optionsBottomRight1,
+        Offset(
+          fieldTopLeft1.dx + fieldSize1.width,
+          fieldTopLeft1.dy,
+        ),
+      );
+
+      // Change the screen size to landscape where the options can't all fit on
+      // the screen.
+      const Size wideWindowSize = Size(1920.0, 580.0);
+      tester.view.physicalSize = wideWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      final double optionsHeight2 = tester.getSize(find.byKey(optionsKey)).height;
+      expect(optionsHeight2, lessThan(optionsHeight1));
+      final int visibleOptions2 = (optionsHeight2 / optionHeight).ceil();
+      expect(visibleOptions2, lessThan(visibleOptions1));
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions2));
+      final Offset optionsTopLeft2 = tester.getTopLeft(find.byKey(optionsKey));
+      final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(
+        optionsTopLeft2,
+        Offset(
+          optionsTopLeft1.dx,
+          fieldTopLeft2.dy - optionsHeight2,
+        ),
+      );
+      final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
+      expect(fieldSize1.width, lessThan(fieldSize2.width));
+      expect(fieldSize1.height, fieldSize2.height);
+      final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
+      expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
+      expect(
+        optionsBottomRight2,
+        Offset(
+          fieldTopLeft2.dx + fieldSize2.width,
+          fieldTopLeft2.dy,
+        ),
+      );
+
+      // Shrink the screen further so that the options become smaller than
+      // _kMinUsableHeight and move to overlap the field.
+      const Size shortWindowSize = Size(1920.0, 90.0);
+      tester.view.physicalSize = shortWindowSize;
+      tester.view.devicePixelRatio = 1.0;
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      const int visibleOptions3 = 1;
+      expect(find.byType(InkWell), findsNWidgets(visibleOptions3));
+      final Offset optionsTopLeft3 = tester.getTopLeft(find.byKey(optionsKey));
+      expect(optionsTopLeft3.dx, optionsTopLeft1.dx);
+      // The options have moved down, overlapping the field, to still be able to
+      // show _kMinUsableHeight.
+      expect(optionsTopLeft3.dy, lessThan(optionsTopLeft1.dy));
+      final Size fieldSize3 = tester.getSize(find.byKey(fieldKey));
+      final Offset fieldTopLeft3 = tester.getTopLeft(find.byKey(fieldKey));
+      expect(optionsTopLeft3.dy, lessThan(fieldTopLeft3.dy + fieldSize3.height));
+      expect(fieldSize3.width, fieldSize2.width);
+      expect(fieldSize1.height, fieldSize3.height);
+      final Offset optionsBottomRight3 = tester.getBottomRight(find.byKey(optionsKey));
+      expect(optionsBottomRight3.dx, greaterThan(optionsBottomRight1.dx));
+      expect(optionsBottomRight3.dy, greaterThan(fieldTopLeft3.dy));
+      expect(optionsBottomRight3.dx, fieldTopLeft3.dx + fieldSize3.width);
+    });
   });
 }

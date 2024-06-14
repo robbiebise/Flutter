@@ -564,7 +564,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // screen height available (as in b/317115348) by positioning itself on top of
   // the field, while in other cases to size itself based on the height under
   // the field.
-  static const double _minUsableHeight = 52.0;
+  static const double _kMinUsableHeight = 52.0;
 
   Offset get _fieldOffset {
     final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
@@ -586,10 +586,10 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
       maxWidth: fieldBoxConstraints.maxWidth,
       maxHeight: switch (optionsViewOpenDirection) {
         OptionsViewOpenDirection.down => max(
-          min(_minUsableHeight, constraints.maxHeight),
+          min(_kMinUsableHeight, constraints.maxHeight),
           constraints.maxHeight - fieldOffset.dy - fieldSize.height,
         ),
-        OptionsViewOpenDirection.up => max(_minUsableHeight, fieldOffset.dy),
+        OptionsViewOpenDirection.up => max(_kMinUsableHeight, fieldOffset.dy),
       },
     );
   }

@@ -1812,4 +1812,153 @@ void main() {
       ),
     );
   });
+
+  testWidgets('fixed-size options when screen changes portrait to landscape and overflows', (WidgetTester tester) async {
+    // Start with a portrait-sized window.
+    const Size wideWindowSize = Size(1920.0, 580.0);
+    const Size narrowWindowSize = Size(1070.0, 1770.0);
+    const Size shortWindowSize = Size(1920.0, 90.0);
+    tester.view.physicalSize = narrowWindowSize;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    const double screenPadding = 32.0;
+    // The options are tall enough to not fit below the field in wide screen
+    // size.
+    const double optionsHeight = 550.0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: screenPadding),
+            child: RawAutocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                return kOptions.where((String option) {
+                  return option.contains(textEditingValue.text.toLowerCase());
+                });
+              },
+              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                return SizedBox(
+                  height: optionsHeight,
+                  child: ListView.builder(
+                    key: optionsKey,
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final String option = options.elementAt(index);
+                      return InkWell(
+                        onTap: () {
+                          onSelected(option);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(option),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+              fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                return TextField(
+                  key: fieldKey,
+                  focusNode: focusNode,
+                  controller: textEditingController,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+    final int visibleOptions = (optionsHeight / optionHeight).ceil();
+    expect(find.byType(InkWell), findsNWidgets(visibleOptions));
+    final Size fieldSize1 = tester.getSize(find.byKey(fieldKey));
+    final Offset optionsOffset1 = tester.getTopLeft(find.byKey(optionsKey));
+    final Offset fieldTopLeft1 = tester.getTopLeft(find.byKey(fieldKey));
+    expect(
+      optionsOffset1,
+      Offset(
+        fieldTopLeft1.dx,
+        fieldTopLeft1.dy + fieldSize1.height,
+      ),
+    );
+    final Offset optionsBottomRight1 = tester.getBottomRight(find.byKey(optionsKey));
+    expect(
+      optionsBottomRight1,
+      Offset(
+        fieldTopLeft1.dx + fieldSize1.width,
+        fieldTopLeft1.dy + fieldSize1.height + optionsHeight,
+      ),
+    );
+
+    // Change the screen size to short landscape, so the options can't all fit
+    // on the screen.
+    tester.view.physicalSize = wideWindowSize;
+    tester.view.devicePixelRatio = 1.0;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(visibleOptions, lessThan(kOptions.length));
+    expect(find.byType(InkWell), findsNWidgets(visibleOptions));
+    final Offset optionsOffset2 = tester.getTopLeft(find.byKey(optionsKey));
+    expect(optionsOffset2, optionsOffset1);
+    final Size fieldSize2 = tester.getSize(find.byKey(fieldKey));
+    expect(fieldSize1.width, lessThan(fieldSize2.width));
+    expect(fieldSize1.height, fieldSize2.height);
+    final Offset optionsBottomRight2 = tester.getBottomRight(find.byKey(optionsKey));
+    final Offset fieldTopLeft2 = tester.getTopLeft(find.byKey(fieldKey));
+    expect(optionsBottomRight2.dx, greaterThan(optionsBottomRight1.dx));
+    expect(
+      optionsBottomRight2,
+      Offset(
+        fieldTopLeft2.dx + fieldSize2.width,
+        // Options are taking all available space below the field.
+        wideWindowSize.height,
+      ),
+    );
+
+    // Shrink the screen further so that the options become smaller than
+    // _kMinUsableHeight and move to overlap the field.
+    tester.view.physicalSize = shortWindowSize;
+    tester.view.devicePixelRatio = 1.0;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    const int visibleOptions3 = 1;
+    expect(find.byType(InkWell), findsNWidgets(visibleOptions3));
+    final Offset optionsOffset3 = tester.getTopLeft(find.byKey(optionsKey));
+    expect(optionsOffset3.dx, optionsOffset1.dx);
+    // The options have moved up, overlapping the field, to still be able to
+    // show _kMinUsableHeight.
+    expect(optionsOffset3.dy, lessThan(optionsOffset1.dy));
+    final Size fieldSize3 = tester.getSize(find.byKey(fieldKey));
+    final Offset fieldTopLeft3 = tester.getTopLeft(find.byKey(fieldKey));
+    expect(optionsOffset3.dy, lessThan(fieldTopLeft3.dy + fieldSize3.height));
+    expect(fieldSize3.width, fieldSize2.width);
+    expect(fieldSize1.height, fieldSize3.height);
+    final Offset optionsBottomRight3 = tester.getBottomRight(find.byKey(optionsKey));
+    expect(optionsBottomRight3.dx, greaterThan(optionsBottomRight1.dx));
+    expect(
+      optionsBottomRight3,
+      Offset(
+        fieldTopLeft3.dx + fieldSize3.width,
+        shortWindowSize.height,
+      ),
+    );
+  });
 }

@@ -578,7 +578,9 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final Offset fieldOffset = _fieldOffset;
     return constraints.loosen().copyWith(
-      maxWidth: fieldSize.width,
+      // The field width may be zero if this is a split RawAutocomplete with no
+      // field of its own. In that case, don't change the constraints width.
+      maxWidth: fieldSize.width == 0.0 ? constraints.maxWidth : fieldSize.width,
       maxHeight: switch (optionsViewOpenDirection) {
         OptionsViewOpenDirection.down => max(
           min(_kMinUsableHeight, constraints.maxHeight),

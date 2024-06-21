@@ -434,7 +434,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 
         return CustomSingleChildLayout(
           delegate: _OptionsLayoutDelegate(
-            fieldBoxConstraints: constraints,
             fieldSize: fieldRenderBox?.size,
             fieldKey: _fieldKey,
             optionsViewOpenDirection: widget.optionsViewOpenDirection,
@@ -530,7 +529,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
 /// Positions the options view.
 class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   _OptionsLayoutDelegate({
-    required this.fieldBoxConstraints,
     required this.fieldKey,
     required Size? fieldSize,
     required this.optionsViewOpenDirection,
@@ -538,9 +536,6 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
     required TextDirection? textDirection,
   }) : fieldSize = fieldSize ?? Size.zero,
        textDirection = textDirection ?? TextDirection.ltr;
-
-  /// The constraints of the field in [RawAutocomplete.fieldViewBuilder].
-  final BoxConstraints fieldBoxConstraints;
 
   /// The key of the field in [RawAutocomplete.fieldViewBuilder].
   final GlobalKey fieldKey;
@@ -583,7 +578,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final Offset fieldOffset = _fieldOffset;
     return constraints.loosen().copyWith(
-      maxWidth: fieldBoxConstraints.maxWidth,
+      maxWidth: fieldSize.width,
       maxHeight: switch (optionsViewOpenDirection) {
         OptionsViewOpenDirection.down => max(
           min(_kMinUsableHeight, constraints.maxHeight),

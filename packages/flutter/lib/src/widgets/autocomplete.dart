@@ -509,7 +509,6 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       child: TextFieldTapRegion(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
-            assert(boxConstraints.hasBoundedWidth);
             SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
               _fieldBoxConstraints.value = boxConstraints;
             });
@@ -600,19 +599,17 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   @override
   Offset getPositionForChild(Size size, Size childSize) {
     final Offset fieldOffset = _fieldOffset;
+    final double dy = switch (optionsViewOpenDirection) {
+      OptionsViewOpenDirection.down => fieldOffset.dy + fieldSize.height,
+      OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
+    };
+    final double maxDy = max(0.0, size.height - childSize.height);
     return Offset(
       switch (textDirection) {
         TextDirection.ltr => fieldOffset.dx,
         TextDirection.rtl => fieldOffset.dx + fieldSize.width - childSize.width,
       },
-      clampDouble(
-        switch (optionsViewOpenDirection) {
-          OptionsViewOpenDirection.down => fieldOffset.dy + fieldSize.height,
-          OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
-        },
-        0.0,
-        max(0.0, size.height - childSize.height),
-      ),
+      clampDouble(dy, 0.0, maxDy),
     );
   }
 

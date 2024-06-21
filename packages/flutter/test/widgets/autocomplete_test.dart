@@ -129,6 +129,123 @@ void main() {
     expect(lastOptions.elementAt(5), 'northern white rhinoceros');
   });
 
+  testWidgets('can split the field and options', (WidgetTester tester) async {
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    late Iterable<String> lastOptions;
+    late AutocompleteOnSelected<String> lastOnSelected;
+
+    final GlobalKey autocompleteKey = GlobalKey();
+    final TextEditingController textEditingController = TextEditingController();
+    final FocusNode focusNode = FocusNode();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            // The field is in the AppBar, not actually a child of RawAutocomplete.
+            title: TextFormField(
+              key: fieldKey,
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(
+                hintText: 'Split RawAutocomplete App',
+              ),
+              onFieldSubmitted: (String value) {
+                RawAutocomplete.onFieldSubmitted<String>(autocompleteKey);
+              },
+            ),
+          ),
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: RawAutocomplete<String>(
+              key: autocompleteKey,
+              focusNode: focusNode,
+              textEditingController: textEditingController,
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                return kOptions.where((String option) {
+                  return option.contains(textEditingValue.text.toLowerCase());
+                }).toList();
+              },
+              optionsViewBuilder: (
+                BuildContext context,
+                AutocompleteOnSelected<String> onSelected,
+                Iterable<String> options,
+              ) {
+                lastOptions = options;
+                lastOnSelected = onSelected;
+                return Material(
+                  key: optionsKey,
+                  elevation: 4.0,
+                  child: ListView(
+                    children: options
+                        .map((String option) => GestureDetector(
+                              onTap: () {
+                                onSelected(option);
+                              },
+                              child: ListTile(
+                                title: Text(option),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // The field is always rendered, but the options are not unless needed.
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+
+    // Focus the empty field. All the options are displayed.
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(find.byKey(optionsKey), findsOneWidget);
+    expect(lastOptions.length, kOptions.length);
+    expect(tester.getSize(find.byKey(optionsKey)).width, greaterThan(0.0));
+
+    // Enter text. The options are filtered by the text.
+    textEditingController.value = const TextEditingValue(
+      text: 'ele',
+      selection: TextSelection(baseOffset: 3, extentOffset: 3),
+    );
+    await tester.pump();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    expect(lastOptions.length, 2);
+    expect(lastOptions.elementAt(0), 'chameleon');
+    expect(lastOptions.elementAt(1), 'elephant');
+
+    // Select an option. The options hide and the field updates to show the
+    // selection.
+    final String selection = lastOptions.elementAt(1);
+    lastOnSelected(selection);
+    await tester.pump();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+    expect(textEditingController.text, selection);
+
+    // Modify the field text. The options appear again and are filtered.
+    textEditingController.value = const TextEditingValue(
+      text: 'e',
+      selection: TextSelection(baseOffset: 1, extentOffset: 1),
+    );
+    await tester.pump();
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+    expect(lastOptions.length, 6);
+    expect(lastOptions.elementAt(0), 'chameleon');
+    expect(lastOptions.elementAt(1), 'elephant');
+    expect(lastOptions.elementAt(2), 'goose');
+    expect(lastOptions.elementAt(3), 'lemur');
+    expect(lastOptions.elementAt(4), 'mouse');
+    expect(lastOptions.elementAt(5), 'northern white rhinoceros');
+  });
+
   testWidgets('tapping on an option selects it', (WidgetTester tester) async {
     final GlobalKey fieldKey = GlobalKey();
     final GlobalKey optionsKey = GlobalKey();

@@ -4510,9 +4510,11 @@ class PositionedDirectional extends StatelessWidget {
   }
 }
 
-/// A widget that is the basis for [Row] and [Column]. It arranges its
-/// children in a single line – either horizontally (a [Row]) or vertically
-/// (a [Column]).
+/// A widget that arranges its children in a single line – either horizontally
+/// or vertically.
+///
+/// The [Flex] widget is a more general version of the more commonly used
+/// [Row] and [Column] widgets.
 ///
 /// If you only have one child, consider using [Align] or [Center] to
 /// position it.
@@ -4521,8 +4523,8 @@ class PositionedDirectional extends StatelessWidget {
 ///
 /// * **[direction]:**  Determines whether children are placed
 /// side-by-side ([Axis.horizontal]) or one above the other
-/// ([Axis.vertical]). Instead of using a [Flex] with this parameter set to a fixed value,
-/// it is recommended to use [Row] and [Column], as they are more readable.
+/// ([Axis.vertical]). Instead of using a [Flex] with this parameter set to a
+/// fixed value, it is recommended to use [Row] and [Column], as they are more readable.
 ///
 /// Example usage: "direction: Axis.vertical".
 ///
@@ -4538,7 +4540,6 @@ class PositionedDirectional extends StatelessWidget {
 /// performance using the Flutter DevTools, but make sure to do this in
 /// "profile mode" for accurate results. Development builds will always
 /// seem slow.
-///
 ///
 /// ## Layout algorithm
 ///

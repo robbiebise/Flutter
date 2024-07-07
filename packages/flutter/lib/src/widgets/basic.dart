@@ -4514,7 +4514,9 @@ class PositionedDirectional extends StatelessWidget {
 /// or vertically.
 ///
 /// The [Flex] widget is a more general version of the more commonly used
-/// [Row] and [Column] widgets.
+/// [Row] and [Column] widgets. In this documentation, the term [Flex] will
+/// be used to mean [Flex], [Row], or [Column] as the latter two are subtypes
+/// of the [Flex].
 ///
 /// If you only have one child, consider using [Align] or [Center] to
 /// position it.
@@ -4541,7 +4543,7 @@ class PositionedDirectional extends StatelessWidget {
 /// "profile mode" for accurate results. Development builds will always
 /// seem slow.
 ///
-/// ## Layout algorithm
+/// ## Glossary of Terms:
 ///
 /// For reference, here are several terms used below to describe the layout algorithm:
 ///
@@ -4567,27 +4569,32 @@ class PositionedDirectional extends StatelessWidget {
 /// to other [Flexible]s. More on this in step two of the layout algorithm,
 /// below.
 ///
-/// Main axis: The main direction of the [Flex]. This is vertical
-/// for a [Column] and horizontal for a [Row], and corresponds to the [direction] property of a [Flex].
+/// [MainAxis]: The main direction of the [Flex]. This is vertical
+/// for a [Column] and horizontal for a [Row], and corresponds to the
+/// [direction] property of a [Flex].
 ///
-/// Cross axis: The other direction. The cross axis of a [Column]
-/// is horizontal, and the cross axis of a [Row] is vertical.
+/// [CrossAxis]: The other direction. The cross axis of a [Column]
+/// is horizontal, and the cross axis of a [Row] is vertical. It is
+/// always perpendicular to the [MainAxis].
 ///
-/// [Flexible] : A widget that _could_ cause its child to stretch in the
-/// direction of the main axis, _though it does necessarily have to._
+/// [Flexible] : A widget that is a child of a [Flex]. It _could_ cause
+/// its child to stretch in the direction of the main axis, _though it
+/// does necessarily have to._ It cannot be a child of anything other
+/// than a [Flex].
 ///
-/// [Expanded] : A subtype of [Flexible] that _must_ stretch its child
-/// to use all of the space _reserved for it_ during layout.
-/// An [Expanded] will always use all of the space it is offered but this
-/// does not guarantee it will use all of the extra space in the [Flex]
-/// because it may not be offered all of the extra space within the [Flex].
+/// [Expanded] : A child of a [Flex], it is a subtype of [Flexible]
+/// that _must_ stretch its child to use all of the space _reserved for
+/// it_ during layout. An [Expanded] will always use all of the space it is
+///  offered but this does not guarantee it will use all of the extra space
+///  in the [Flex] because it may not be offered all of the extra space
+///  within the [Flex].
 ///
 /// One important thing to understand is that a [Flexible] might not use all
 /// of the space offered to it, and if it does not use all of the space
-/// offered to it then no other [Widget] will get to the rest of that space.
-/// _It is left blank._ There is an edge case in which a [Flexible] and an
-/// [Expanded] are used within the same [Flex], and the results can only be
-/// understood by comprehending what is happening "under the hood".
+/// offered to it then no other [Widget] will get to use the rest of that
+/// space. _It is left blank._ There is an edge case in which a [Flexible]
+/// and an [Expanded] are used within the same [Flex], and the results can
+/// only be understood by comprehending what is happening "under the hood".
 /// More on this later.
 ///
 /// [Flexible.fit] : The fit is the parameter of the [Flexible] that
@@ -4628,6 +4635,8 @@ class PositionedDirectional extends StatelessWidget {
 /// [CrossAxisAlignment] : How to align, or stretch, the children in
 /// the direction of the cross axis.
 ///
+/// ## The Multi-Child Layout Algorithm:
+///
 /// The multi-child layout algorithm proceeds in six steps:
 ///
 /// 1. Lay out each child that is not a [Flexible] or an [Expanded],
@@ -4656,7 +4665,9 @@ class PositionedDirectional extends StatelessWidget {
 ///    If the parent of the [Flex] has not set any size limit in the cross
 ///    axis, and the child is trying to be the max possible size in that
 ///    axis, then the error you will see is likely _"BoxConstraints forces an
-///    infinite (height or width)"_.
+///    infinite (height or width)"_. In such a case, the parent of the [Flex]
+///    will need to be changed or modified to provide a size for the [Flex]
+///    in the [CrossAxis].
 ///
 /// 2. Children that are not [Flexible]s or [Expanded]s have a fixed size
 ///    and so do not have a flex parameter. They will not go through steps
@@ -4690,8 +4701,9 @@ class PositionedDirectional extends StatelessWidget {
 ///    add to 100, the process remains the same. Making them total 100
 ///    is simply easier to visualize.
 ///
-/// 3. _Keep in mind that all of step three applies only to the main axis._
-///    Nothing in Step 3 affects the size of the children in the cross axis.
+/// 3. _Keep in mind that all of the calculations in step 3 only apply to the
+///    main axis. The sizes applied to the cross axis in step 3 were already
+///    calculated in step 1._
 ///
 ///    Lay out the [Flexible] and [Expanded] children, and use
 ///    the same cross axis size limits (constraints) that were used
@@ -4705,11 +4717,10 @@ class PositionedDirectional extends StatelessWidget {
 ///    maximum possible main axis sizes were calculated in Step 2, and now
 ///    those sizes get used when laying out each [Flexible] and [Expanded].
 ///
-///    An [Expanded] will pass its child tight constraints, a
-///    [Flexible] will pass its child loose constraints (if the fit
-///    parameter hasn't been changed from its default). Children of an
-///    [Expanded] (or a [Flexible] with it's fit property set to
-///    [FlexFit.tight]) are given tight constraints.
+///    Children of an [Expanded] (or a [Flexible] with it's fit property
+///    set to [FlexFit.tight]) are given tight constraints. A [Flexible] will
+///    pass its child loose constraints if the fit parameter hasn't been
+///    changed from its default of [FlexFit.loose].
 ///
 ///    _This will force the child of the [Expanded] to be the size specified
 ///    by the tight constraints, no matter what size that child
@@ -4786,9 +4797,10 @@ class PositionedDirectional extends StatelessWidget {
 ///    maximum constraint in the cross axis, then the [Flex] will be that
 ///    size. If the parent of the [Flex] has not set any maximum size and a
 ///    child tries to be as large as possible in the cross axis, it is
-///    impossible to calculate a final size and you may get the error:
-///
-///    "BoxConstraints forces an infinite (height or width)".
+///    impossible to calculate a final size and you may get the error,
+///    "BoxConstraints forces an infinite (height or width)". Again,  in such
+///    a case, the parent of the [Flex] will need to be changed or modified
+///    to provide a size for the [Flex] in the [CrossAxis].
 ///
 /// 5. The final size of the [Flex] in the main axis is determined in part
 ///    by its [mainAxisSize] property. If the [mainAxisSize] property is

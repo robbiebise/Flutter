@@ -17,6 +17,8 @@ import 'framework.dart';
 import 'inherited_notifier.dart';
 import 'layout_builder.dart';
 import 'overlay.dart';
+import 'scroll_notification.dart';
+import 'scroll_notification_observer.dart';
 import 'shortcuts.dart';
 import 'tap_region.dart';
 import 'value_listenable_builder.dart';
@@ -431,27 +433,16 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
         final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-
-        return CustomSingleChildLayout(
-          delegate: _OptionsLayoutDelegate(
-            fieldSize: fieldRenderBox?.size,
-            fieldKey: _fieldKey,
-            optionsViewOpenDirection: widget.optionsViewOpenDirection,
-            overlayContext: context,
-            textDirection: Directionality.maybeOf(context),
-          ),
-          child: TextFieldTapRegion(
-            child: AutocompleteHighlightedOption(
-              highlightIndexNotifier: _highlightedOptionIndex,
-              // optionsViewBuilder must be able to look up
-              // AutocompleteHighlightedOption in its context.
-              child: Builder(
-                builder: (BuildContext context) {
-                  return widget.optionsViewBuilder(context, _select, _options);
-                },
-              ),
-            ),
-          ),
+        return _Options(
+          fieldSize: fieldRenderBox?.size,
+          fieldKey: _fieldKey,
+          optionsViewOpenDirection: widget.optionsViewOpenDirection,
+          overlayContext: context,
+          textDirection: Directionality.maybeOf(context),
+          highlightIndexNotifier: _highlightedOptionIndex,
+          builder: (BuildContext context) {
+            return widget.optionsViewBuilder(context, _select, _options);
+          },
         );
       },
     );
@@ -526,6 +517,82 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 }
 
+class _Options extends StatefulWidget {
+  const _Options({
+    required this.fieldSize,
+    required this.fieldKey,
+    required this.optionsViewOpenDirection,
+    required this.overlayContext,
+    required this.textDirection,
+    required this.highlightIndexNotifier,
+    required this.builder,
+  });
+
+  final WidgetBuilder builder;
+  final Size? fieldSize;
+  final GlobalKey fieldKey;
+  final OptionsViewOpenDirection optionsViewOpenDirection;
+  final BuildContext overlayContext;
+  final TextDirection? textDirection;
+  final ValueNotifier<int> highlightIndexNotifier;
+
+  @override
+  State<_Options> createState() => _OptionsState();
+}
+
+class _OptionsState extends State<_Options> {
+  ScrollNotificationObserverState? _scrollNotificationObserver;
+
+  void _onScroll(ScrollNotification notification) {
+    // If the field is not on screen, no need to draw the options.
+    if (!_OptionsLayoutDelegate.getFieldOffset(widget.fieldKey, widget.overlayContext).isFinite) {
+      return;
+    }
+    setState(() {
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scrollNotificationObserver?.removeListener(_onScroll);
+    _scrollNotificationObserver = ScrollNotificationObserver.maybeOf(context);
+    _scrollNotificationObserver?.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollNotificationObserver?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_OptionsLayoutDelegate.getFieldOffset(widget.fieldKey, widget.overlayContext).isFinite) {
+      return const SizedBox.shrink();
+    }
+    return CustomSingleChildLayout(
+      delegate: _OptionsLayoutDelegate(
+        fieldSize: widget.fieldSize,//fieldRenderBox?.size,
+        fieldKey: widget.fieldKey,
+        optionsViewOpenDirection: widget.optionsViewOpenDirection,
+        overlayContext: context,
+        textDirection: Directionality.maybeOf(context),
+      ),
+      child: TextFieldTapRegion(
+        child: AutocompleteHighlightedOption(
+          highlightIndexNotifier: widget.highlightIndexNotifier,
+          // optionsViewBuilder must be able to look up
+          // AutocompleteHighlightedOption in its context.
+          child: Builder(
+            builder: widget.builder,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Positions the options view.
 class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   _OptionsLayoutDelegate({
@@ -561,7 +628,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // the field.
   static const double _kMinUsableHeight = 52.0;
 
-  Offset get _fieldOffset {
+  static Offset getFieldOffset(GlobalKey fieldKey, BuildContext overlayContext) {
     final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
     if (fieldRenderBox == null) {
       return Offset.zero;
@@ -576,7 +643,12 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // with the same maxWidth constraint as the field has.
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    final Offset fieldOffset = _fieldOffset;
+    final Offset fieldOffset = getFieldOffset(fieldKey, overlayContext);
+    // If the field is not on screen, no need to calculate the constraints.
+    if (!fieldOffset.isFinite) {
+      return constraints;
+    }
+
     return constraints.loosen().copyWith(
       // The field width may be zero if this is a split RawAutocomplete with no
       // field of its own. In that case, don't change the constraints width.
@@ -595,7 +667,12 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // side based on text direction.
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    final Offset fieldOffset = _fieldOffset;
+    final Offset fieldOffset = getFieldOffset(fieldKey, overlayContext);
+    // If the field is not on screen, position the options offscreen.
+    if (!fieldOffset.isFinite) {
+      return Offset(size.width, size.height);
+    }
+
     final double dy = switch (optionsViewOpenDirection) {
       OptionsViewOpenDirection.down => fieldOffset.dy + fieldSize.height,
       OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,

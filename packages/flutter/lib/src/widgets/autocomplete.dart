@@ -542,13 +542,39 @@ class _Options extends StatefulWidget {
 
 class _OptionsState extends State<_Options> {
   ScrollNotificationObserverState? _scrollNotificationObserver;
+  Offset? _fieldOffset;
+
+  static Offset getFieldOffset(GlobalKey fieldKey, BuildContext overlayContext) {
+    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (fieldRenderBox == null) {
+      return Offset.zero;
+    }
+    return fieldRenderBox.localToGlobal(
+      Offset.zero,
+      ancestor: Overlay.of(overlayContext).context.findRenderObject(),
+    );
+  }
 
   void _onScroll(ScrollNotification notification) {
-    // If the field is not on screen, no need to draw the options.
-    if (!_OptionsLayoutDelegate.getFieldOffset(widget.fieldKey, widget.overlayContext).isFinite) {
-      return;
-    }
-    setState(() {
+    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+      final Offset nextFieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
+      // If the field is not on screen, no need to redraw the options.
+      if (!nextFieldOffset.isFinite) {
+        return;
+      }
+      setState(() {
+        _fieldOffset = nextFieldOffset;
+      });
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+      setState(() {
+        _fieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
+      });
     });
   }
 
@@ -568,13 +594,13 @@ class _OptionsState extends State<_Options> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_OptionsLayoutDelegate.getFieldOffset(widget.fieldKey, widget.overlayContext).isFinite) {
+    if (_fieldOffset == null || !_fieldOffset!.isFinite) {
       return const SizedBox.shrink();
     }
     return CustomSingleChildLayout(
       delegate: _OptionsLayoutDelegate(
         fieldSize: widget.fieldSize,//fieldRenderBox?.size,
-        fieldKey: widget.fieldKey,
+        fieldOffset: _fieldOffset!,
         optionsViewOpenDirection: widget.optionsViewOpenDirection,
         overlayContext: context,
         textDirection: Directionality.maybeOf(context),
@@ -596,7 +622,7 @@ class _OptionsState extends State<_Options> {
 /// Positions the options view.
 class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   _OptionsLayoutDelegate({
-    required this.fieldKey,
+    required this.fieldOffset,
     required Size? fieldSize,
     required this.optionsViewOpenDirection,
     required this.overlayContext,
@@ -604,8 +630,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   }) : fieldSize = fieldSize ?? Size.zero,
        textDirection = textDirection ?? TextDirection.ltr;
 
-  /// The key of the field in [RawAutocomplete.fieldViewBuilder].
-  final GlobalKey fieldKey;
+  final Offset fieldOffset;
 
   /// The size of the field in [RawAutocomplete.fieldViewBuilder].
   final Size fieldSize;
@@ -628,22 +653,10 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // the field.
   static const double _kMinUsableHeight = 52.0;
 
-  static Offset getFieldOffset(GlobalKey fieldKey, BuildContext overlayContext) {
-    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    if (fieldRenderBox == null) {
-      return Offset.zero;
-    }
-    return fieldRenderBox.localToGlobal(
-      Offset.zero,
-      ancestor: Overlay.of(overlayContext).context.findRenderObject(),
-    );
-  }
-
   // Limits the child to the space above/below the field, with a minimum, and
   // with the same maxWidth constraint as the field has.
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    final Offset fieldOffset = getFieldOffset(fieldKey, overlayContext);
     // If the field is not on screen, no need to calculate the constraints.
     if (!fieldOffset.isFinite) {
       return constraints;
@@ -667,7 +680,6 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // side based on text direction.
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    final Offset fieldOffset = getFieldOffset(fieldKey, overlayContext);
     // If the field is not on screen, position the options offscreen.
     if (!fieldOffset.isFinite) {
       return Offset(size.width, size.height);
@@ -689,6 +701,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
+    // TODO(justinmc): See if you can still pass the tests without just returning true here.
     // This class depends on the position of the field (_fieldOffset) in order
     // to do its layout. At this point, it's not possible to know if the field's
     // position has changed in this frame, because it hasn't laid itself out

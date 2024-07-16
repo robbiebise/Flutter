@@ -806,9 +806,10 @@ void main() {
     await tester.pump();
     final Offset fieldOffsetFrame1 = tester.getTopLeft(find.byKey(fieldKey));
     final Offset optionsTopLeftOpenFrame1 = tester.getTopLeft(find.byKey(optionsKey));
+    // TODO(justinmc): The options don't move when alignment changes like this :(
+    expect(fieldOffsetFrame1.dy, lessThan(fieldOffset.dy));
     expect(optionsTopLeftOpenFrame1.dy, isNot(equals(optionsTopLeft.dy)));
     expect(optionsTopLeftOpenFrame1.dy, fieldOffsetFrame1.dy + fieldSize.height);
-    expect(fieldOffsetFrame1.dy, lessThan(fieldOffset.dy));
     await tester.pump();
   });
 
@@ -2129,5 +2130,97 @@ void main() {
       expect(optionsBottomRight3.dy, greaterThan(fieldTopLeft3.dy));
       expect(optionsBottomRight3.dx, fieldTopLeft3.dx + fieldSize3.width);
     });
+  });
+
+  testWidgets('when field scrolled offscreen, options are hidden', (WidgetTester tester) async {
+    final GlobalKey fieldKey = GlobalKey();
+    final GlobalKey optionsKey = GlobalKey();
+    final ScrollController scrollController = ScrollController();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            controller: scrollController,
+            children: <Widget>[
+              const SizedBox(height: 1000.0),
+              RawAutocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  return kOptions.where((String option) {
+                    return option.contains(textEditingValue.text.toLowerCase());
+                  });
+                },
+                optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                  return ListView.builder(
+                    key: optionsKey,
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final String option = options.elementAt(index);
+                      return InkWell(
+                        onTap: () {
+                          onSelected(option);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(option),
+                        ),
+                      );
+                    },
+                  );
+                },
+                fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                  return TextField(
+                    key: fieldKey,
+                    focusNode: focusNode,
+                    controller: textEditingController,
+                  );
+                },
+              ),
+              const SizedBox(height: 1000.0),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(fieldKey), findsNothing);
+    expect(find.byKey(optionsKey), findsNothing);
+
+    await tester.scrollUntilVisible(find.byKey(fieldKey), 500.0);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsNothing);
+
+    await tester.tap(find.byKey(fieldKey));
+    // TODO(justinmc): No settle?
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+
+    // Jump to the beginning. The field is off screen and the options are not
+    // showing either.
+    scrollController.jumpTo(0.0);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsNothing);
+    expect(find.byKey(optionsKey), findsNothing);
+
+    // Scroll back to the field and both are visible again.
+    await tester.scrollUntilVisible(find.byKey(fieldKey), 500.0);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsOneWidget);
+    expect(find.byKey(optionsKey), findsOneWidget);
+
+    // Jump to the end. Both are hidden again.
+    scrollController.jumpTo(2000.0);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(fieldKey), findsNothing);
+    expect(find.byKey(optionsKey), findsNothing);
   });
 }

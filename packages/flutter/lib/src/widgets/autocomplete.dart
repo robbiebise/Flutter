@@ -306,6 +306,7 @@ class RawAutocomplete<T extends Object> extends StatefulWidget {
 }
 
 class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> {
+  final LayerLink _optionsLayerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey(debugLabel: kReleaseMode ? null : 'AutocompleteFieldView');
 
   // The box constraints that the field was last built with.
@@ -432,10 +433,9 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     return ValueListenableBuilder<BoxConstraints>(
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
-        final RenderBox? fieldRenderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
         return _Options(
-          fieldSize: fieldRenderBox?.size,
           fieldKey: _fieldKey,
+          optionsLayerLink: _optionsLayerLink,
           optionsViewOpenDirection: widget.optionsViewOpenDirection,
           overlayContext: context,
           textDirection: Directionality.maybeOf(context),
@@ -510,7 +510,10 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
               child: Actions(
                 key: _fieldKey,
                 actions: _actionMap,
-                child: fieldView,
+                child: CompositedTransformTarget(
+                  link: _optionsLayerLink,
+                  child: fieldView,
+                ),
               ),
             );
           },
@@ -520,10 +523,10 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 }
 
-class _Options extends StatefulWidget {
+class _Options extends StatelessWidget {
   const _Options({
-    required this.fieldSize,
     required this.fieldKey,
+    required this.optionsLayerLink,
     required this.optionsViewOpenDirection,
     required this.overlayContext,
     required this.textDirection,
@@ -532,98 +535,35 @@ class _Options extends StatefulWidget {
   });
 
   final WidgetBuilder builder;
-  final Size? fieldSize;
   final GlobalKey fieldKey;
+  final LayerLink optionsLayerLink;
   final OptionsViewOpenDirection optionsViewOpenDirection;
   final BuildContext overlayContext;
   final TextDirection? textDirection;
   final ValueNotifier<int> highlightIndexNotifier;
 
   @override
-  State<_Options> createState() => _OptionsState();
-}
-
-class _OptionsState extends State<_Options> {
-  ScrollNotificationObserverState? _scrollNotificationObserver;
-  Offset? _fieldOffset;
-
-  static Offset getFieldOffset(GlobalKey fieldKey, BuildContext overlayContext) {
-    final RenderBox? fieldRenderBox = fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    if (fieldRenderBox == null) {
-      return Offset.zero;
-    }
-    return fieldRenderBox.localToGlobal(
-      Offset.zero,
-      ancestor: Overlay.of(overlayContext).context.findRenderObject(),
-    );
-  }
-
-  void _onScroll(ScrollNotification notification) {
-    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
-      if (!mounted) {
-        return;
-      }
-      final Offset nextFieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
-      // If the field is not on screen, no need to redraw the options.
-      if (!nextFieldOffset.isFinite) {
-        return;
-      }
-      setState(() {
-        _fieldOffset = nextFieldOffset;
-      });
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _fieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
-      });
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _scrollNotificationObserver?.removeListener(_onScroll);
-    _scrollNotificationObserver = ScrollNotificationObserver.maybeOf(context);
-    _scrollNotificationObserver?.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollNotificationObserver?.removeListener(_onScroll);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // TODO(justinmc): Is it ok to use Offset.zero as default? No, it jumps...
-    //if (_fieldOffset == null || !_fieldOffset!.isFinite) {
-    if (_fieldOffset != null && !_fieldOffset!.isFinite) {
-      return const SizedBox.shrink();
-    }
-    return CustomSingleChildLayout(
-      delegate: _OptionsLayoutDelegate(
-        fieldSize: widget.fieldSize,//fieldRenderBox?.size,
-        //fieldOffset: _fieldOffset!,
-        fieldOffset: _fieldOffset ?? Offset.zero,
-        optionsViewOpenDirection: widget.optionsViewOpenDirection,
-        overlayContext: context,
-        textDirection: Directionality.maybeOf(context),
-      ),
-      child: TextFieldTapRegion(
-        child: AutocompleteHighlightedOption(
-          highlightIndexNotifier: widget.highlightIndexNotifier,
-          // optionsViewBuilder must be able to look up
-          // AutocompleteHighlightedOption in its context.
-          child: Builder(
-            builder: widget.builder,
+    return CompositedTransformFollower(
+      link: optionsLayerLink,
+      // When the field goes offscreen, don't show the options.
+      showWhenUnlinked: false,
+      child: CustomSingleChildLayout(
+        delegate: _OptionsLayoutDelegate(
+          fieldSize: optionsLayerLink.leaderSize,
+          // TODO(justinmc): Doesn't work. This is local, not global.
+          fieldOffset: optionsLayerLink.leader?.offset,
+          optionsViewOpenDirection: optionsViewOpenDirection,
+          textDirection: Directionality.maybeOf(context),
+        ),
+        child: TextFieldTapRegion(
+          child: AutocompleteHighlightedOption(
+            highlightIndexNotifier: highlightIndexNotifier,
+            // optionsViewBuilder must be able to look up
+            // AutocompleteHighlightedOption in its context.
+            child: Builder(
+              builder: builder,
+            ),
           ),
         ),
       ),
@@ -634,24 +574,20 @@ class _OptionsState extends State<_Options> {
 /// Positions the options view.
 class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   _OptionsLayoutDelegate({
+    required this.fieldSize,
     required this.fieldOffset,
-    required Size? fieldSize,
     required this.optionsViewOpenDirection,
-    required this.overlayContext,
     required TextDirection? textDirection,
-  }) : fieldSize = fieldSize ?? Size.zero,
-       textDirection = textDirection ?? TextDirection.ltr;
-
-  final Offset fieldOffset;
+  }) : textDirection = textDirection ?? TextDirection.ltr;
 
   /// The size of the field in [RawAutocomplete.fieldViewBuilder].
-  final Size fieldSize;
+  final Size? fieldSize;
+
+  /// The position of the field in [RawAutocomplete.fieldViewBuilder].
+  final Offset? fieldOffset;
 
    /// A direction in which to open the options view overlay.
   final OptionsViewOpenDirection optionsViewOpenDirection;
-
-  /// The [BuildContext] of the [Overlay] that options are rendered in.
-  final BuildContext overlayContext;
 
   /// The [TextDirection] of this part of the widget tree.
   final TextDirection textDirection;
@@ -669,21 +605,21 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // with the same maxWidth constraint as the field has.
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    // If the field is not on screen, no need to calculate the constraints.
-    if (!fieldOffset.isFinite) {
-      return constraints;
-    }
+    // shouldRelayout prevents this from being called if fieldOffset or
+    // fieldSize are invalid.
+    assert(fieldSize != null && fieldSize!.isFinite);
+    assert(fieldOffset != null && fieldOffset!.isFinite);
 
     return constraints.loosen().copyWith(
       // The field width may be zero if this is a split RawAutocomplete with no
       // field of its own. In that case, don't change the constraints width.
-      maxWidth: fieldSize.width == 0.0 ? constraints.maxWidth : fieldSize.width,
+      maxWidth: fieldSize!.width == 0.0 ? constraints.maxWidth : fieldSize!.width,
       maxHeight: switch (optionsViewOpenDirection) {
         OptionsViewOpenDirection.down => max(
           min(_kMinUsableHeight, constraints.maxHeight),
-          constraints.maxHeight - fieldOffset.dy - fieldSize.height,
+          constraints.maxHeight - fieldOffset!.dy - fieldSize!.height,
         ),
-        OptionsViewOpenDirection.up => max(_kMinUsableHeight, fieldOffset.dy),
+        OptionsViewOpenDirection.up => max(_kMinUsableHeight, fieldOffset!.dy),
       },
     );
   }
@@ -692,34 +628,35 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // side based on text direction.
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    // If the field is not on screen, position the options offscreen.
-    if (!fieldOffset.isFinite) {
-      return Offset(size.width, size.height);
-    }
+    // shouldRelayout prevents this from being called if fieldOffset or
+    // fieldSize are invalid.
+    assert(fieldSize != null && fieldSize!.isFinite);
+    assert(fieldOffset != null && fieldOffset!.isFinite);
 
     final double dy = switch (optionsViewOpenDirection) {
-      OptionsViewOpenDirection.down => fieldOffset.dy + fieldSize.height,
-      OptionsViewOpenDirection.up => fieldOffset.dy - childSize.height,
+      OptionsViewOpenDirection.down => fieldSize!.height,
+      OptionsViewOpenDirection.up => -childSize.height,
     };
-    final double maxDy = max(0.0, size.height - childSize.height);
+    final double maxDy = max(0.0, size.height - childSize.height - fieldOffset!.dy);
     return Offset(
       switch (textDirection) {
-        TextDirection.ltr => fieldOffset.dx,
-        TextDirection.rtl => fieldOffset.dx + fieldSize.width - childSize.width,
+        TextDirection.ltr => 0.0,
+        TextDirection.rtl => fieldSize!.width - childSize.width,
       },
-      clampDouble(dy, 0.0, maxDy),
+      clampDouble(dy, -fieldOffset!.dy, maxDy),
     );
   }
 
   @override
   bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
-    // TODO(justinmc): See if you can still pass the tests without just returning true here.
-    // This class depends on the position of the field (_fieldOffset) in order
-    // to do its layout. At this point, it's not possible to know if the field's
-    // position has changed in this frame, because it hasn't laid itself out
-    // yet. So this must always relayout in case the field position will change
-    // this frame.
-    return true;
+    if (fieldOffset == null || !fieldOffset!.isFinite
+        || fieldSize == null || !fieldSize!.isFinite) {
+      return false;
+    }
+    return fieldSize != oldDelegate.fieldSize
+        || fieldOffset != oldDelegate.fieldOffset
+        || optionsViewOpenDirection != oldDelegate.optionsViewOpenDirection
+        || textDirection != oldDelegate.textDirection;
   }
 }
 

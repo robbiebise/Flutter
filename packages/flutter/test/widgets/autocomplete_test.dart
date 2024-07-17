@@ -2206,8 +2206,7 @@ void main() {
     expect(find.byKey(optionsKey), findsNothing);
 
     await tester.tap(find.byKey(fieldKey));
-    // TODO(justinmc): No settle?
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byKey(fieldKey), findsOneWidget);
     expect(find.byKey(optionsKey), findsOneWidget);

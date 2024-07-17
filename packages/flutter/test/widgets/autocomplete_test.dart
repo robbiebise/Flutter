@@ -558,8 +558,11 @@ void main() {
         ),
       );
       await tester.showKeyboard(find.byType(TextField));
-      expect(tester.getBottomLeft(find.byType(TextField)),
-        offsetMoreOrLessEquals(tester.getTopLeft(find.text('a'))));
+      await tester.pump();
+      expect(
+        tester.getBottomLeft(find.byType(TextField)),
+        offsetMoreOrLessEquals(tester.getTopLeft(find.text('a'))),
+      );
     });
 
     testWidgets('down: open downward', (WidgetTester tester) async {
@@ -582,6 +585,7 @@ void main() {
         ),
       );
       await tester.showKeyboard(find.byType(TextField));
+      await tester.pump();
       expect(tester.getBottomLeft(find.byType(TextField)),
         offsetMoreOrLessEquals(tester.getTopLeft(find.text('a'))));
     });
@@ -606,6 +610,7 @@ void main() {
         ),
       );
       await tester.showKeyboard(find.byType(TextField));
+      await tester.pump();
       expect(tester.getTopLeft(find.byType(TextField)),
         offsetMoreOrLessEquals(tester.getBottomLeft(find.text('a'))));
     });
@@ -696,8 +701,11 @@ void main() {
           ),
         );
         await tester.showKeyboard(find.byType(TextField));
-        expect(tester.getBottomLeft(find.byKey(autocompleteKey)),
-          offsetMoreOrLessEquals(tester.getTopLeft(find.text('a'))));
+        await tester.pump();
+        expect(
+          tester.getBottomLeft(find.byKey(autocompleteKey)),
+          offsetMoreOrLessEquals(tester.getTopLeft(find.text('a'))),
+        );
       });
 
       testWidgets('up', (WidgetTester tester) async {
@@ -730,8 +738,11 @@ void main() {
           ),
         );
         await tester.showKeyboard(find.byType(TextField));
-        expect(tester.getTopLeft(find.byKey(autocompleteKey)),
-          offsetMoreOrLessEquals(tester.getBottomLeft(find.text('a'))));
+        await tester.pump();
+        expect(tester.getTopLeft(
+          find.byKey(autocompleteKey)),
+          offsetMoreOrLessEquals(tester.getBottomLeft(find.text('a'))),
+        );
       });
     });
   });

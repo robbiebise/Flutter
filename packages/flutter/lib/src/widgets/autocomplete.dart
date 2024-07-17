@@ -500,6 +500,9 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints boxConstraints) {
             SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+              if (!mounted) {
+                return;
+              }
               _fieldBoxConstraints.value = boxConstraints;
             });
             return Shortcuts(
@@ -557,6 +560,9 @@ class _OptionsState extends State<_Options> {
 
   void _onScroll(ScrollNotification notification) {
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+      if (!mounted) {
+        return;
+      }
       final Offset nextFieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
       // If the field is not on screen, no need to redraw the options.
       if (!nextFieldOffset.isFinite) {
@@ -572,6 +578,9 @@ class _OptionsState extends State<_Options> {
   void initState() {
     super.initState();
     SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _fieldOffset = getFieldOffset(widget.fieldKey, widget.overlayContext);
       });
@@ -594,13 +603,16 @@ class _OptionsState extends State<_Options> {
 
   @override
   Widget build(BuildContext context) {
-    if (_fieldOffset == null || !_fieldOffset!.isFinite) {
+    // TODO(justinmc): Is it ok to use Offset.zero as default? No, it jumps...
+    //if (_fieldOffset == null || !_fieldOffset!.isFinite) {
+    if (_fieldOffset != null && !_fieldOffset!.isFinite) {
       return const SizedBox.shrink();
     }
     return CustomSingleChildLayout(
       delegate: _OptionsLayoutDelegate(
         fieldSize: widget.fieldSize,//fieldRenderBox?.size,
-        fieldOffset: _fieldOffset!,
+        //fieldOffset: _fieldOffset!,
+        fieldOffset: _fieldOffset ?? Offset.zero,
         optionsViewOpenDirection: widget.optionsViewOpenDirection,
         overlayContext: context,
         textDirection: Directionality.maybeOf(context),

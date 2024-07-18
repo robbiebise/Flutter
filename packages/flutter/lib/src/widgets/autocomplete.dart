@@ -17,8 +17,6 @@ import 'framework.dart';
 import 'inherited_notifier.dart';
 import 'layout_builder.dart';
 import 'overlay.dart';
-import 'scroll_notification.dart';
-import 'scroll_notification_observer.dart';
 import 'shortcuts.dart';
 import 'tap_region.dart';
 import 'value_listenable_builder.dart';

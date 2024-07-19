@@ -2233,4 +2233,143 @@ void main() {
     expect(find.byKey(fieldKey), findsNothing);
     expect(find.byKey(optionsKey), findsNothing);
   });
+
+  for (final OptionsViewOpenDirection openDirection in OptionsViewOpenDirection.values) {
+    testWidgets('when not enough room for options, options cover field', (WidgetTester tester) async {
+      const double padding = 32.0;
+      final GlobalKey fieldKey = GlobalKey();
+      final GlobalKey optionsKey = GlobalKey();
+      late StateSetter setState;
+      Alignment alignment = Alignment.bottomCenter;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setter) {
+                setState = setter;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: padding),
+                  child: Align(
+                    alignment: alignment,
+                    child: RawAutocomplete<String>(
+                      optionsViewOpenDirection: openDirection,
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        return kOptions.where((String option) {
+                          return option.contains(textEditingValue.text.toLowerCase());
+                        });
+                      },
+                      optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                        return ListView.builder(
+                          key: optionsKey,
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return InkWell(
+                              onTap: () {
+                                onSelected(option);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(option),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onSubmitted) {
+                        return TextField(
+                          key: fieldKey,
+                          focusNode: focusNode,
+                          controller: textEditingController,
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsNothing);
+
+      await tester.tap(find.byKey(fieldKey));
+      await tester.pump();
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+
+      await tester.enterText(find.byKey(fieldKey), 'go'); // 3 results.
+      await tester.pump();
+
+      const double kMinUsableHeight = 52.0; // From _OptionsLayoutDelegate.
+      switch (openDirection) {
+        case OptionsViewOpenDirection.up:
+          // Options are positioned and sized like normal.
+          expect(find.byType(InkWell), findsNWidgets(3));
+          final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+          final double topOfField = tester.getTopLeft(find.byKey(fieldKey)).dy;
+          expect(
+            tester.getTopLeft(find.byType(InkWell).first),
+            Offset(padding, topOfField - 3 * optionHeight),
+          );
+          expect(
+            tester.getBottomLeft(find.byType(InkWell).at(2)),
+            Offset(padding, topOfField),
+          );
+        case OptionsViewOpenDirection.down:
+          expect(find.byType(InkWell), findsNWidgets(1));
+          final Size optionsSize = tester.getSize(find.byKey(optionsKey));
+          expect(optionsSize.height, kMinUsableHeight);
+          // Options are positioned as low as possible while still fitting on screen.
+          final double bottomOfField = tester.getBottomLeft(find.byKey(optionsKey)).dy;
+          expect(
+            tester.getTopLeft(find.byKey(optionsKey)),
+            Offset(padding, bottomOfField - optionsSize.height),
+          );
+      }
+
+      setState(() {
+        alignment = Alignment.topCenter;
+      });
+
+      expect(find.byKey(fieldKey), findsOneWidget);
+      expect(find.byKey(optionsKey), findsOneWidget);
+
+      switch (openDirection) {
+        case OptionsViewOpenDirection.up:
+          // Options are positioned as high as possible while still fitting on
+          // the screen.
+          expect(find.byType(InkWell), findsNWidgets(1));
+          final Size optionsSize = tester.getSize(find.byKey(optionsKey));
+          expect(optionsSize.height, kMinUsableHeight);
+          expect(
+            tester.getTopLeft(find.byKey(optionsKey)),
+            const Offset(padding, 0.0),
+          );
+          expect(
+            tester.getBottomLeft(find.byKey(optionsKey)),
+            Offset(padding, optionsSize.height),
+          );
+        case OptionsViewOpenDirection.down:
+          // Options are positioned and sized like normal.
+          expect(find.byType(InkWell), findsNWidgets(3));
+          final double optionHeight = tester.getSize(find.byType(InkWell).first).height;
+          final double bottomOfField = tester.getBottomLeft(find.byKey(fieldKey)).dy;
+          expect(
+            tester.getTopLeft(find.byType(InkWell).first),
+            Offset(padding, bottomOfField),
+          );
+          expect(
+            tester.getBottomLeft(find.byType(InkWell).at(2)),
+            Offset(padding, bottomOfField + 3 * optionHeight),
+          );
+      }
+    });
+  }
 }

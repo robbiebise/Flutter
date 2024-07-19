@@ -428,6 +428,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 
   Widget _buildOptionsView(BuildContext context) {
+    print('justin buildOptionsView.');
     return ValueListenableBuilder<BoxConstraints>(
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
@@ -603,6 +604,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // with the same maxWidth constraint as the field has.
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    print('justin getConstraintsForChild.');
     // shouldRelayout prevents this from being called if fieldOffset or
     // fieldSize are invalid.
     assert(fieldSize != null && fieldSize!.isFinite);
@@ -626,6 +628,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
   // side based on text direction.
   @override
   Offset getPositionForChild(Size size, Size childSize) {
+    print('justin getPositionForChild.');
     // shouldRelayout prevents this from being called if fieldOffset or
     // fieldSize are invalid.
     assert(fieldSize != null && fieldSize!.isFinite);
@@ -647,6 +650,7 @@ class _OptionsLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_OptionsLayoutDelegate oldDelegate) {
+    print('justin shouldRelayout?');
     if (fieldOffset == null || !fieldOffset!.isFinite
         || fieldSize == null || !fieldSize!.isFinite) {
       return false;

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:math' show max, min;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
@@ -311,6 +312,10 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   final ValueNotifier<BoxConstraints> _fieldBoxConstraints =
       ValueNotifier<BoxConstraints>(const BoxConstraints());
 
+  // The global position that the field was last painted at.
+  final ValueNotifier<Offset> _fieldOffset =
+      ValueNotifier<Offset>(Offset.zero);
+
   final OverlayPortalController _optionsViewController = OverlayPortalController(debugLabel: '_RawAutocompleteState');
 
   TextEditingController? _internalTextEditingController;
@@ -428,19 +433,25 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 
   Widget _buildOptionsView(BuildContext context) {
-    print('justin buildOptionsView.');
     return ValueListenableBuilder<BoxConstraints>(
       valueListenable: _fieldBoxConstraints,
       builder: (BuildContext context, BoxConstraints constraints, Widget? child) {
-        return _Options(
-          fieldKey: _fieldKey,
-          optionsLayerLink: _optionsLayerLink,
-          optionsViewOpenDirection: widget.optionsViewOpenDirection,
-          overlayContext: context,
-          textDirection: Directionality.maybeOf(context),
-          highlightIndexNotifier: _highlightedOptionIndex,
-          builder: (BuildContext context) {
-            return widget.optionsViewBuilder(context, _select, _options);
+        return ValueListenableBuilder<Offset>(
+          valueListenable: _fieldOffset,
+          builder: (BuildContext context, Offset offset, Widget? child) {
+            print('justin build valuelistener with offset $offset.');
+            return _Options(
+              fieldKey: _fieldKey,
+              fieldOffset: offset,
+              optionsLayerLink: _optionsLayerLink,
+              optionsViewOpenDirection: widget.optionsViewOpenDirection,
+              overlayContext: context,
+              textDirection: Directionality.maybeOf(context),
+              highlightIndexNotifier: _highlightedOptionIndex,
+              builder: (BuildContext context) {
+                return widget.optionsViewBuilder(context, _select, _options);
+              },
+            );
           },
         );
       },
@@ -485,6 +496,7 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
     _internalFocusNode?.dispose();
     _highlightedOptionIndex.dispose();
     _fieldBoxConstraints.dispose();
+    _fieldOffset.dispose();
     super.dispose();
   }
 
@@ -511,7 +523,24 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
                 actions: _actionMap,
                 child: CompositedTransformTarget(
                   link: _optionsLayerLink,
-                  child: fieldView,
+                  //child: fieldView,
+                  child: RepaintBoundary(
+                    child: _PaintInformer(
+                      onMove: (Offset globalOffset) {
+                        print('justin _PaintInformer onPaint at $globalOffset.');
+                        // TODO(justinmc): Is the postframecallback necessary?
+                        SchedulerBinding.instance.addPostFrameCallback((Duration duration) {
+                          if (!mounted) {
+                            return;
+                          }
+                          _fieldOffset.value = globalOffset;
+                        });
+                      },
+                      child: RepaintBoundary(
+                        child: fieldView,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             );
@@ -522,9 +551,58 @@ class _RawAutocompleteState<T extends Object> extends State<RawAutocomplete<T>> 
   }
 }
 
+typedef _OffsetCallback = void Function(Offset offset);
+
+// TODO(justinmc): Name.
+class _PaintInformer extends SingleChildRenderObjectWidget {
+  const _PaintInformer({
+    super.child,
+    // TODO(justinmc): Actually only call if position changes?
+    required this.onMove,
+  });
+
+  final _OffsetCallback onMove;
+
+  @override
+  _PaintInformerRenderBox createRenderObject(BuildContext context) {
+    return _PaintInformerRenderBox(
+      onMove: onMove,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, _PaintInformerRenderBox renderObject) {
+    renderObject.onMove = onMove;
+  }
+}
+
+class _PaintInformerRenderBox extends RenderProxyBox {
+  _PaintInformerRenderBox({
+    required this.onMove,
+  });
+
+  _OffsetCallback onMove;
+
+  Offset? _lastOffset;
+
+  @override
+  bool get alwaysNeedsCompositing => true;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final Offset globalOffset = localToGlobal(offset);
+    print('justin paint at $globalOffset.');
+    if (globalOffset != _lastOffset) {
+      _lastOffset = globalOffset;
+      onMove(globalOffset);
+    }
+  }
+}
+
 class _Options extends StatelessWidget {
   const _Options({
     required this.fieldKey,
+    required this.fieldOffset,
     required this.optionsLayerLink,
     required this.optionsViewOpenDirection,
     required this.overlayContext,
@@ -535,6 +613,10 @@ class _Options extends StatelessWidget {
 
   final WidgetBuilder builder;
   final GlobalKey fieldKey;
+
+  /// The global position of the field.
+  final Offset fieldOffset;
+
   final LayerLink optionsLayerLink;
   final OptionsViewOpenDirection optionsViewOpenDirection;
   final BuildContext overlayContext;
@@ -551,7 +633,7 @@ class _Options extends StatelessWidget {
         delegate: _OptionsLayoutDelegate(
           fieldSize: optionsLayerLink.leaderSize,
           // TODO(justinmc): Doesn't work. This is local, not global.
-          fieldOffset: optionsLayerLink.leader?.offset,
+          fieldOffset: fieldOffset,
           optionsViewOpenDirection: optionsViewOpenDirection,
           textDirection: Directionality.maybeOf(context),
         ),

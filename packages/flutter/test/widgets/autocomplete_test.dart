@@ -2235,7 +2235,7 @@ void main() {
   });
 
   for (final OptionsViewOpenDirection openDirection in OptionsViewOpenDirection.values) {
-    testWidgets('when not enough room for options, options cover field', (WidgetTester tester) async {
+    testWidgets('when not enough room for options, options cover field ($openDirection)', (WidgetTester tester) async {
       const double padding = 32.0;
       final GlobalKey fieldKey = GlobalKey();
       final GlobalKey optionsKey = GlobalKey();
@@ -2337,6 +2337,11 @@ void main() {
       setState(() {
         alignment = Alignment.topCenter;
       });
+
+      // One frame for the field to move and one frame for the options to
+      // follow.
+      await tester.pump();
+      await tester.pump();
 
       expect(find.byKey(fieldKey), findsOneWidget);
       expect(find.byKey(optionsKey), findsOneWidget);

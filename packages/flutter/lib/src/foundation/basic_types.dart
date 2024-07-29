@@ -182,6 +182,16 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
+  E elementAt(int index) {
+    while (_results.length <= index) {
+      if (!_fillNext()) {
+        throw RangeError.index(index, this, 'index', 'Index out of range');
+      }
+    }
+    return _results[index];
+  }
+  
+  @override
   List<E> toList({ bool growable = true }) {
     _precacheEntireList();
     return List<E>.of(_results, growable: growable);

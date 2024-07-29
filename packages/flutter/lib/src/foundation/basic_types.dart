@@ -185,7 +185,12 @@ class CachingIterable<E> extends IterableBase<E> {
   E elementAt(int index) {
     while (_results.length <= index) {
       if (!_fillNext()) {
-        throw RangeError.index(index, this, 'index', 'Index out of range');
+        throw IndexError.withLength(
+          index,
+          _results.length,
+          indexable: this,
+          name: 'index',
+        );
       }
     }
     return _results[index];

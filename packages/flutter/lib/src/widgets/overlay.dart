@@ -2187,7 +2187,6 @@ class _OverlayPortalElement extends RenderObjectElement {
     assert(renderObject._deferredLayoutChild == child);
     slot._removeChild(child as _RenderDeferredLayoutBox);
     renderObject._deferredLayoutChild = null;
-    renderObject.markNeedsSemanticsUpdate();
   }
 
   @override

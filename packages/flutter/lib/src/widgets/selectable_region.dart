@@ -331,7 +331,7 @@ class SelectableRegion extends StatefulWidget {
 }
 
 /// State for a [SelectableRegion].
-class SelectableRegionState extends State<SelectableRegion> with TextSelectionDelegate implements SelectionRegistrar {
+class SelectableRegionState extends State<SelectableRegion> implements SelectionRegistrar {
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
     SelectAllTextIntent: _makeOverridable(_SelectAllAction(this)),
     CopySelectionTextIntent: _makeOverridable(_CopySelectionAction(this)),
@@ -459,12 +459,6 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
   }
 
   void _updateSelectionStatus() {
-    final SelectionGeometry geometry = _selectionDelegate.value;
-    final TextSelection selection = switch (geometry.status) {
-      SelectionStatus.uncollapsed || SelectionStatus.collapsed => const TextSelection(baseOffset: 0, extentOffset: 1),
-      SelectionStatus.none => const TextSelection.collapsed(offset: 1),
-    };
-    textEditingValue = TextEditingValue(text: '__', selection: selection);
     if (_hasSelectionOverlayGeometry) {
       _updateSelectionOverlay();
     } else {
@@ -958,11 +952,8 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
  }
 
  void _onAnyDragEnd(DragEndDetails details) {
-   if (widget.selectionControls is! TextSelectionHandleControls) {
-    _selectionOverlay!.hideMagnifier();
-    _selectionOverlay!.showToolbar();
-   } else {
-     _selectionOverlay!.hideMagnifier();
+   _selectionOverlay!.hideMagnifier();
+   if (widget.contextMenuBuilder != null) {
      _selectionOverlay!.showToolbar(
        context: context,
        contextMenuBuilder: (BuildContext context) {
@@ -1117,7 +1108,6 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
       onEndHandleDragEnd: _onAnyDragEnd,
       selectionEndpoints: selectionEndpoints,
       selectionControls: widget.selectionControls,
-      selectionDelegate: this,
       clipboardStatus: null,
       startHandleLayerLink: _startHandleLayerLink,
       endHandleLayerLink: _endHandleLayerLink,
@@ -1169,7 +1159,8 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
   ///
   /// Returns true if the toolbar is shown, false if the toolbar can't be shown.
   bool _showToolbar({Offset? location}) {
-    if (!_hasSelectionOverlayGeometry && _selectionOverlay == null) {
+    if (widget.contextMenuBuilder == null
+        || (!_hasSelectionOverlayGeometry && _selectionOverlay == null)) {
       return false;
     }
 
@@ -1184,12 +1175,6 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
 
     if (_selectionOverlay == null) {
       _createSelectionOverlay();
-    }
-
-    _selectionOverlay!.toolbarLocation = location;
-    if (widget.selectionControls is! TextSelectionHandleControls) {
-      _selectionOverlay!.showToolbar();
-      return true;
     }
 
     _selectionOverlay!.hideToolbar();
@@ -1590,26 +1575,7 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
     return points;
   }
 
-  // [TextSelectionDelegate] overrides.
-  // TODO(justinmc): After deprecations have been removed, remove
-  // TextSelectionDelegate from this class.
-  // https://github.com/flutter/flutter/issues/111213
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  bool get cutEnabled => false;
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  bool get pasteEnabled => false;
-
-  @override
+  /// {@macro flutter.services.TextSelectionDelegate.hideToolbar}
   void hideToolbar([bool hideHandles = true]) {
     _selectionOverlay?.hideToolbar();
     if (hideHandles) {
@@ -1617,7 +1583,7 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
     }
   }
 
-  @override
+  /// {@macro flutter.services.TextSelectionDelegate.selectAll}
   void selectAll([SelectionChangedCause? cause]) {
     _clearSelection();
     _selectable?.dispatchSelectionEvent(const SelectAllSelectionEvent());
@@ -1626,55 +1592,6 @@ class SelectableRegionState extends State<SelectableRegion> with TextSelectionDe
       _showHandles();
     }
     _updateSelectedContentIfNeeded();
-  }
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  void copySelection(SelectionChangedCause cause) {
-    _copy();
-    _clearSelection();
-  }
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  TextEditingValue textEditingValue = const TextEditingValue(text: '_');
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  void bringIntoView(TextPosition position) {/* SelectableRegion must be in view at this point. */}
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  void cutSelection(SelectionChangedCause cause) {
-    assert(false);
-  }
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  void userUpdateTextEditingValue(TextEditingValue value, SelectionChangedCause cause) {/* SelectableRegion maintains its own state */}
-
-  @Deprecated(
-    'Use `contextMenuBuilder` instead. '
-    'This feature was deprecated after v3.3.0-0.5.pre.',
-  )
-  @override
-  Future<void> pasteText(SelectionChangedCause cause) async {
-    assert(false);
   }
 
   // [SelectionRegistrar] override.

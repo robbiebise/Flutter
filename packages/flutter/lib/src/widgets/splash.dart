@@ -253,7 +253,7 @@ abstract class Splash {
   ///
   /// For examples on how the function is used, see [InkSplash] and [InkRipple].
   @protected
-  void paintCircle({
+  void paintInkCircle({
     required Canvas canvas,
     required Matrix4 transform,
     required Paint paint,
@@ -287,37 +287,6 @@ abstract class Splash {
     }
     canvas.drawCircle(center, radius, paint);
     canvas.restore();
-  }
-
-  /// Draws an ink circle on the provided [Canvas].
-  @protected
-  @Deprecated(
-    'Use paintCircle instead. '
-    '"Splash effects" no longer rely on a MaterialInkController. '
-    'This feature was deprecated after v3.24.0-0.2.pre.',
-  )
-  void paintInkCircle({
-    required Canvas canvas,
-    required Matrix4 transform,
-    required Paint paint,
-    required Offset center,
-    required double radius,
-    TextDirection? textDirection,
-    ShapeBorder? customBorder,
-    BorderRadius borderRadius = BorderRadius.zero,
-    RectCallback? clipCallback,
-  }) {
-    return paintCircle(
-      canvas: canvas,
-      transform: transform,
-      paint: paint,
-      center: center,
-      radius: radius,
-      textDirection: textDirection,
-      customBorder: customBorder,
-      borderRadius: borderRadius,
-      clipCallback: clipCallback,
-    );
   }
 
   /// Determines the appropriate transformation using [getPaintTransform].

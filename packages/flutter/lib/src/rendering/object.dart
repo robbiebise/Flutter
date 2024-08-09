@@ -4368,6 +4368,8 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
   // its ancestor chain, to compute new semantics fragment.
   bool isDirty = true;
 
+  bool get explicitChildNodes => renderObject.semanticsParent == null || semanticsConfiguration.explicitChildNodes;
+
   /// The cached node created directly by this Object.
   ///
   /// This cache is filled after the `_SemanticsFragment` provided by this
@@ -4576,7 +4578,7 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
       }
       for (final _InterestingSemanticsFragmentProvider provider in parentFragment.mergeUpFragmentProviders) {
         final _InterestingSemanticsFragment fragment = provider.getFragment();
-        fragment.addAncestor((this, explicitChildNode));
+        fragment.addAncestor(this);
         if (hasTags) {
           fragment.addTags(config.tagsForChildren!);
         }
@@ -4595,7 +4597,7 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
         for (final List<_InterestingSemanticsFragmentProvider> siblingMergeGroup in parentFragment.siblingMergeGroups) {
           for (final _InterestingSemanticsFragmentProvider siblingMergingProvider in siblingMergeGroup) {
             final _InterestingSemanticsFragment siblingMergingFragment = siblingMergingProvider.getFragment();
-            siblingMergingFragment.addAncestor((this, explicitChildNode));
+            siblingMergingFragment.addAncestor(this);
             if (hasTags) {
               siblingMergingFragment.addTags(config.tagsForChildren!);
             }
@@ -4819,10 +4821,6 @@ class _ContainerSemanticsFragment extends _SemanticsFragment {
   final List<_InterestingSemanticsFragmentProvider> mergeUpFragmentProviders = <_InterestingSemanticsFragmentProvider>[];
 }
 
-/// A render object and its opinion on whether its children should form
-/// explicit semantics nodes.
-typedef _RenderObjectSemanticsAndExplicitness = (_RenderObjectSemantics semantics, bool explicitChild);
-
 /// A [_SemanticsFragment] that describes which concrete semantic information
 /// a [RenderObject] wants to add to the [SemanticsNode] of its parent.
 ///
@@ -4832,16 +4830,13 @@ typedef _RenderObjectSemanticsAndExplicitness = (_RenderObjectSemantics semantic
 abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
   _InterestingSemanticsFragment({
     required _RenderObjectSemantics owner,
-    required bool explicitness,
     required super.dropsSemanticsOfPreviousSiblings,
-  }) : _ancestorsAndExplicitnessUntilParent = <_RenderObjectSemanticsAndExplicitness>[(owner, explicitness)],
-       _hasAncestorWithExplicitChild = explicitness;
+  }) : _ancestorsUntilParent = <_RenderObjectSemantics>[owner];
 
   /// The [_RenderObjectSemantics] that owns this fragment.
-  _RenderObjectSemantics get owner => _ancestorsAndExplicitnessUntilParent.first.$1;
+  _RenderObjectSemantics get owner => _ancestorsUntilParent.first;
 
-  final List<_RenderObjectSemanticsAndExplicitness> _ancestorsAndExplicitnessUntilParent;
-  Iterable<_RenderObjectSemantics> get _ancestorsUntilParent => _ancestorsAndExplicitnessUntilParent.map<_RenderObjectSemantics>((_RenderObjectSemanticsAndExplicitness object) => object.$1);
+  final List<_RenderObjectSemantics> _ancestorsUntilParent;
 
   List<_RenderObjectSemantics> get _ancestorChainUntilExplicitParent {
     Iterable<_RenderObjectSemantics> result = _ancestorsUntilParent;
@@ -4853,10 +4848,10 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
     return result.toList();
   }
 
-  bool _hasAncestorWithExplicitChild;
+  bool _hasAncestorWithExplicitChild = false;
 
   /// The reference to the fragment that last ancestor in
-  /// [_ancestorsAndExplicitnessUntilParent] produced.
+  /// [_ancestorsUntilParent] produced.
   ///
   /// Null if the last ancestor produce explicit _SwitchableFragment.
   ///
@@ -4868,7 +4863,7 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
 
   /// Copies parent inherited data from another _InterestingSemanticsFragment.
   void copyParentInheritedDataFrom(_InterestingSemanticsFragment other) {
-    other._ancestorsAndExplicitnessUntilParent.skip(1).forEach(addAncestor);
+    other._ancestorsUntilParent.skip(1).forEach(addAncestor);
     if (other._tagsForChildren?.isNotEmpty ?? false) {
       addTags(other._tagsForChildren!);
     }
@@ -4948,25 +4943,26 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
   ///
   /// Ancestors have to be added in order from [owner] up until the next
   /// [RenderObject] that owns a [SemanticsNode] is reached.
-  void addAncestor(_RenderObjectSemanticsAndExplicitness ancestorAndExplicitness) {
+  void addAncestor(_RenderObjectSemantics ancestor) {
     // From Implicit to explicit
-    if (!_hasAncestorWithExplicitChild && ancestorAndExplicitness.$2) {
+    if (!_hasAncestorWithExplicitChild && ancestor.explicitChildNodes) {
       _hasAncestorWithExplicitChild = true;
     }
-    _ancestorsAndExplicitnessUntilParent.add(ancestorAndExplicitness);
+    _ancestorsUntilParent.add(ancestor);
   }
 
   void _resetAncestorsAfter(_RenderObjectSemantics after) {
     int location;
     _hasAncestorWithExplicitChild = false;
-    for (location = 0; location < _ancestorsAndExplicitnessUntilParent.length; location += 1) {
-      _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || _ancestorsAndExplicitnessUntilParent[location].$2;
-      if (_ancestorsAndExplicitnessUntilParent[location].$1 == after) {
+    for (location = 0; location < _ancestorsUntilParent.length; location += 1) {
+      final _RenderObjectSemantics ancestor = _ancestorsUntilParent[location];
+      _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || ancestor.explicitChildNodes;
+      if (ancestor == after) {
         break;
       }
     }
-    assert(location < _ancestorsAndExplicitnessUntilParent.length);
-    _ancestorsAndExplicitnessUntilParent.removeRange(location + 1, _ancestorsAndExplicitnessUntilParent.length);
+    assert(location < _ancestorsUntilParent.length);
+    _ancestorsUntilParent.removeRange(location + 1, _ancestorsUntilParent.length);
     _implicitParent = null;
   }
 }
@@ -4980,7 +4976,7 @@ class _RootSemanticsFragment extends _InterestingSemanticsFragment {
   _RootSemanticsFragment({
     required super.owner,
     required super.dropsSemanticsOfPreviousSiblings,
-  }) : super(explicitness: true);
+  });
 
   @override
   bool compileSemanticsNodes({
@@ -4994,7 +4990,7 @@ class _RootSemanticsFragment extends _InterestingSemanticsFragment {
     assert(_tagsForChildren == null || _tagsForChildren!.isEmpty);
     assert(parentSemanticsClipRect == null);
     assert(parentPaintClipRect == null);
-    assert(_ancestorsAndExplicitnessUntilParent.length == 1);
+    assert(_ancestorsUntilParent.length == 1);
     assert(elevationAdjustment == 0.0);
 
     owner.cachedSemanticsNode ??= SemanticsNode.root(
@@ -5076,7 +5072,7 @@ class _IncompleteSemanticsFragment extends _InterestingSemanticsFragment {
   _IncompleteSemanticsFragment({
     required this.config,
     required super.owner,
-  }) : super(dropsSemanticsOfPreviousSiblings: false, explicitness: false);
+  }) : super(dropsSemanticsOfPreviousSiblings: false);
 
   @override
   void addAll(Iterable<_InterestingSemanticsFragmentProvider> provider) {
@@ -5148,8 +5144,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
   }) : _siblingMergeGroups = siblingMergeGroups,
        _mergeIntoParent = mergeIntoParent,
        _originalConfig = config,
-       _effectiveConfig = config,
-       super(explicitness: config.isSemanticBoundary) {
+       _effectiveConfig = config {
     if (blockUserActions && !_effectiveConfig.isBlockingUserActions) {
       _ensureConfigIsWritable();
       _effectiveConfig.isBlockingUserActions = true;
@@ -5164,7 +5159,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
   bool _mergesToSibling = false;
 
   bool _hasSiblingConflict = false;
-  bool get _shouldFormSemanticsNode => _hasAncestorWithExplicitChild || _hasSiblingConflict;
+  bool get _shouldFormSemanticsNode => _originalConfig.isSemanticBoundary || _hasAncestorWithExplicitChild || _hasSiblingConflict;
   bool? _formedSemanticsNode;
 
   /// The cached semantics node that this fragment offers to the
@@ -5580,14 +5575,14 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
   }
 
 
-  bool get _needsGeometryUpdate => _ancestorsAndExplicitnessUntilParent.length > 1;
+  bool get _needsGeometryUpdate => _ancestorsUntilParent.length > 1;
 
   @override
   void markBlocksUserActions(bool blocks) {
     if (blocks && _effectiveConfig.isBlockingUserActions) {
       return;
     }
-    blocks = blocks || _ancestorsAndExplicitnessUntilParent.any((_RenderObjectSemanticsAndExplicitness parent) => parent.$1.semanticsConfiguration.isBlockingUserActions);
+    blocks = blocks || _ancestorsUntilParent.any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isBlockingUserActions);
     if (blocks == _effectiveConfig.isBlockingUserActions) {
       return;
     }
@@ -5618,7 +5613,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
     if (merges && _mergeIntoParent) {
       return;
     }
-    merges = merges || _ancestorsAndExplicitnessUntilParent.any((_RenderObjectSemanticsAndExplicitness parent) => parent.$1.semanticsConfiguration.isMergingSemanticsOfDescendants);
+    merges = merges || _ancestorsUntilParent.any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isMergingSemanticsOfDescendants);
     if (merges == _mergeIntoParent) {
       return;
     }

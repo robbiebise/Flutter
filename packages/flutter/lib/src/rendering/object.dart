@@ -4523,20 +4523,25 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
     final _SemanticsFragment fragment = _cachedSemanticFragment!;
     for (final _InterestingSemanticsFragmentProvider provider in fragment.mergeUpFragmentProviders) {
       final _InterestingSemanticsFragment fragment = provider.getFragment();
-      // Need to make sure the cached copy and its fragment subtree are
-      // updated with the latest parent inherited properties.
-      fragment.markBlocksUserActions(blockUserActions);
-      fragment.markMergesToParent(mergeIntoParent);
-      // Restore the sibling conflict for now since the existing value may be
-      // set by the parent.
+      // The caller of _getSemanticsForParent that end up calling this method
+      // expects the ancestor chain to be filled until this fragment.
+      fragment.removeAncestorAfter(
+        this,
+        ancestorMergesIntoParent: mergeIntoParent,
+        ancestorUserActionsAreBlocked: blockUserActions,
+      );
+      // Restore the sibling conflict for now since the existing value is
+      // set by the parent _SwitchableSemanticsFragment.
       fragment.markSiblingConfigurationConflict(false);
-      // Ancestors are added by parent fragments after the cache is returned.
-      fragment._resetAncestorsAfter(this);
     }
     if (fragment is _ContainerSemanticsFragment) {
       for (final List<_InterestingSemanticsFragmentProvider> siblingMergeGroup in fragment.siblingMergeGroups) {
         for (final _InterestingSemanticsFragmentProvider siblingMergingProvider in siblingMergeGroup) {
-          siblingMergingProvider.getFragment()._resetAncestorsAfter(this);
+          siblingMergingProvider.getFragment().removeAncestorAfter(
+            this,
+            ancestorMergesIntoParent: mergeIntoParent,
+            ancestorUserActionsAreBlocked: blockUserActions,
+          );
         }
       }
     }
@@ -4896,14 +4901,6 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
   /// Chooses a sibling fragment has conflicting [SemanticsConfiguration].
   void markSiblingConfigurationConflict(bool conflict);
 
-  /// Chooses whether the semantics node that produced by this fragment will
-  /// be forced to merge into one node.
-  void markMergesToParent(bool merges);
-
-  /// Chooses whether the semantics node that produced by this fragment will
-  /// drop user actions such as tap or long press.
-  void markBlocksUserActions(bool blocks);
-
   /// Consume the fragments of children.
   ///
   /// For each provided fragment it will add that fragment's children to
@@ -4951,13 +4948,28 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
     _ancestorsUntilParent.add(ancestor);
   }
 
-  void _resetAncestorsAfter(_RenderObjectSemantics after) {
+  /// Removes all ancestors after the input ancestor.
+  ///
+  /// The `ancestorMergesIntoParent` contains whether the ancestor itself merges
+  /// into parent.
+  ///
+  /// The `ancestorUserActionsAreBlocked` contains whether the parent of the
+  /// ancestor blocks user action.
+  ///
+  /// Subclasses are responsible to update any caches that associate with the
+  /// ancestor.
+  @mustCallSuper
+  void removeAncestorAfter(
+    _RenderObjectSemantics ancestor, {
+    required bool ancestorMergesIntoParent,
+    required bool ancestorUserActionsAreBlocked,
+  }) {
     int location;
     _hasAncestorWithExplicitChild = false;
     for (location = 0; location < _ancestorsUntilParent.length; location += 1) {
       final _RenderObjectSemantics ancestor = _ancestorsUntilParent[location];
       _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || ancestor.explicitChildNodes;
-      if (ancestor == after) {
+      if (ancestor == ancestor) {
         break;
       }
     }
@@ -5049,18 +5061,6 @@ class _RootSemanticsFragment extends _InterestingSemanticsFragment {
   void addAll(Iterable<_InterestingSemanticsFragmentProvider> fragments) {
     _children.addAll(fragments);
   }
-
-  @override
-  void markBlocksUserActions(bool blocks) {
-    // should never be called with true
-    assert(!blocks);
-  }
-
-  @override
-  void markMergesToParent(bool merges) {
-    // should never be called with true
-    assert(!merges);
-  }
 }
 
 /// A fragment with partial information that must not form an explicit
@@ -5103,16 +5103,6 @@ class _IncompleteSemanticsFragment extends _InterestingSemanticsFragment {
       'SemanticsConfiguration.childConfigurationsDelegate must not produce '
       'its own semantics node',
     );
-  }
-
-  @override
-  void markBlocksUserActions(bool blocks) {
-    // nothing to do.
-  }
-
-  @override
-  void markMergesToParent(bool merges) {
-    // nothing to do, this fragment will never form a semantics node by itself.
   }
 }
 
@@ -5530,6 +5520,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
       _ensureConfigIsWritable();
       _effectiveConfig.isHidden = geometry.markAsHidden;
     }
+
     return sizeChanged || visibilityChanged;
   }
 
@@ -5574,15 +5565,26 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
     _hasSiblingConflict = conflict;
   }
 
+  @override
+  void removeAncestorAfter(
+    _RenderObjectSemantics ancestor, {
+    required bool ancestorMergesIntoParent,
+    required bool ancestorUserActionsAreBlocked,
+  }) {
+    super.removeAncestorAfter(
+      ancestor,
+      ancestorMergesIntoParent: ancestorMergesIntoParent,
+      ancestorUserActionsAreBlocked: ancestorUserActionsAreBlocked,
+    );
+    _updateMergesToParent(ancestorMergesIntoParent);
+    _updateBlocksUserActions(ancestorUserActionsAreBlocked);
+  }
+
 
   bool get _needsGeometryUpdate => _ancestorsUntilParent.length > 1;
 
-  @override
-  void markBlocksUserActions(bool blocks) {
-    if (blocks && _effectiveConfig.isBlockingUserActions) {
-      return;
-    }
-    blocks = blocks || _ancestorsUntilParent.any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isBlockingUserActions);
+  void _updateBlocksUserActions(bool topMostAncestorUserActionsAreBlocked) {
+    final bool blocks = topMostAncestorUserActionsAreBlocked || _ancestorsUntilParent.skip(1).any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isBlockingUserActions);
     if (blocks == _effectiveConfig.isBlockingUserActions) {
       return;
     }
@@ -5596,7 +5598,9 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
       owner.cachedSemanticsNode?.areUserActionsBlocked = _effectiveConfig.isBlockingUserActions;
       for (final _InterestingSemanticsFragmentProvider provider in _compilingChildren) {
         final _InterestingSemanticsFragment fragment = provider.getFragment();
-        fragment.markBlocksUserActions(_effectiveConfig.isBlockingUserActions);
+        if (fragment is _SwitchableSemanticsFragment) {
+          fragment._updateBlocksUserActions(_effectiveConfig.isBlockingUserActions);
+        }
       }
       if (!_effectiveConfig.isBlockingUserActions) {
         // Unblocking user action may causes merge conflicts between child
@@ -5608,12 +5612,11 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
     }
   }
 
-  @override
-  void markMergesToParent(bool merges) {
-    if (merges && _mergeIntoParent) {
-      return;
-    }
-    merges = merges || _ancestorsUntilParent.any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isMergingSemanticsOfDescendants);
+  void _updateMergesToParent(bool topMostAncestorMergesIntoParent) {
+    final bool merges = topMostAncestorMergesIntoParent ||
+                        _ancestorsUntilParent
+                          .skip(1)
+                          .any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isMergingSemanticsOfDescendants);
     if (merges == _mergeIntoParent) {
       return;
     }
@@ -5635,7 +5638,9 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
     }
     for (final _InterestingSemanticsFragmentProvider provider in _compilingChildren) {
       final _InterestingSemanticsFragment fragment = provider.getFragment();
-      fragment.markMergesToParent(_mergeIntoParent || _effectiveConfig.isMergingSemanticsOfDescendants);
+      if (fragment is _SwitchableSemanticsFragment) {
+        fragment._updateMergesToParent(_mergeIntoParent || _effectiveConfig.isMergingSemanticsOfDescendants);
+      }
     }
   }
 }

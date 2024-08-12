@@ -4967,9 +4967,9 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
     int location;
     _hasAncestorWithExplicitChild = false;
     for (location = 0; location < _ancestorsUntilParent.length; location += 1) {
-      final _RenderObjectSemantics ancestor = _ancestorsUntilParent[location];
-      _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || ancestor.explicitChildNodes;
-      if (ancestor == ancestor) {
+      final _RenderObjectSemantics oldAncestor = _ancestorsUntilParent[location];
+      _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || oldAncestor.explicitChildNodes;
+      if (oldAncestor == ancestor) {
         break;
       }
     }

@@ -4537,11 +4537,13 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
     if (fragment is _ContainerSemanticsFragment) {
       for (final List<_InterestingSemanticsFragmentProvider> siblingMergeGroup in fragment.siblingMergeGroups) {
         for (final _InterestingSemanticsFragmentProvider siblingMergingProvider in siblingMergeGroup) {
-          siblingMergingProvider.getFragment().removeAncestorAfter(
+          final _InterestingSemanticsFragment siblingFragment = siblingMergingProvider.getFragment();
+          siblingFragment.removeAncestorAfter(
             this,
             ancestorMergesIntoParent: mergeIntoParent,
             ancestorUserActionsAreBlocked: blockUserActions,
           );
+          siblingFragment.markSiblingConfigurationConflict(false);
         }
       }
     }
@@ -4968,7 +4970,11 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
     _hasAncestorWithExplicitChild = false;
     for (location = 0; location < _ancestorsUntilParent.length; location += 1) {
       final _RenderObjectSemantics oldAncestor = _ancestorsUntilParent[location];
-      _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || oldAncestor.explicitChildNodes;
+      if (location != 0) {
+        // The first ancestor is the owner of this fragment. Its
+        // explicitChildNodes doesn't affect this fragment.
+        _hasAncestorWithExplicitChild = _hasAncestorWithExplicitChild || oldAncestor.explicitChildNodes;
+      }
       if (oldAncestor == ancestor) {
         break;
       }
@@ -5613,10 +5619,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
   }
 
   void _updateMergesToParent(bool topMostAncestorMergesIntoParent) {
-    final bool merges = topMostAncestorMergesIntoParent ||
-                        _ancestorsUntilParent
-                          .skip(1)
-                          .any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isMergingSemanticsOfDescendants);
+    final bool merges = topMostAncestorMergesIntoParent || _ancestorsUntilParent.skip(1).any((_RenderObjectSemantics parent) => parent.semanticsConfiguration.isMergingSemanticsOfDescendants);
     if (merges == _mergeIntoParent) {
       return;
     }

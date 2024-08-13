@@ -2158,7 +2158,7 @@ void main() {
 
     renderImage = key.currentContext!.findRenderObject()! as RenderImage;
     expect(renderImage.image, isNotNull);
-    
+
     final _TestImageProvider imageProvider2 = _TestImageProvider();
     await tester.pumpWidget(
       Container(

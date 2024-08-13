@@ -4452,8 +4452,8 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
   /// One must be sure the semantics fragment that represents the [renderObject]
   /// is a `_InterestingSemanticsFragment` before calling this method.
   ///
-  /// Non _InterestingSemanticsFragment requires over parent inherited
-  /// properties, so it can only be accessed by _getSemanticsForParent.
+  /// Non _InterestingSemanticsFragment requires parameters from parent to
+  /// access, so it can only be accessed by _getSemanticsForParent.
   ///
   /// In cases where it is not certain what types of fragment this object
   /// produce, use _getSemanticsForParent instead.
@@ -4525,7 +4525,7 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
       final _InterestingSemanticsFragment fragment = provider.getFragment();
       // The caller of _getSemanticsForParent that end up calling this method
       // expects the ancestor chain to be filled until this fragment.
-      fragment.removeAncestorAfter(
+      fragment.restoreParentInheritedPropertiesTo(
         this,
         ancestorMergesIntoParent: mergeIntoParent,
         ancestorUserActionsAreBlocked: blockUserActions,
@@ -4538,7 +4538,7 @@ class _RenderObjectSemantics extends _InterestingSemanticsFragmentProvider {
       for (final List<_InterestingSemanticsFragmentProvider> siblingMergeGroup in fragment.siblingMergeGroups) {
         for (final _InterestingSemanticsFragmentProvider siblingMergingProvider in siblingMergeGroup) {
           final _InterestingSemanticsFragment siblingFragment = siblingMergingProvider.getFragment();
-          siblingFragment.removeAncestorAfter(
+          siblingFragment.restoreParentInheritedPropertiesTo(
             this,
             ancestorMergesIntoParent: mergeIntoParent,
             ancestorUserActionsAreBlocked: blockUserActions,
@@ -4950,7 +4950,8 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
     _ancestorsUntilParent.add(ancestor);
   }
 
-  /// Removes all ancestors after the input ancestor.
+  /// Restores parent inherited properties as if input `ancestor` is the
+  /// top-most ancestor in the ancestors chain.
   ///
   /// The `ancestorMergesIntoParent` contains whether the ancestor itself merges
   /// into parent.
@@ -4961,7 +4962,7 @@ abstract class _InterestingSemanticsFragment extends _SemanticsFragment {
   /// Subclasses are responsible to update any caches that associate with the
   /// ancestor.
   @mustCallSuper
-  void removeAncestorAfter(
+  void restoreParentInheritedPropertiesTo(
     _RenderObjectSemantics ancestor, {
     required bool ancestorMergesIntoParent,
     required bool ancestorUserActionsAreBlocked,
@@ -5572,12 +5573,12 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
   }
 
   @override
-  void removeAncestorAfter(
+  void restoreParentInheritedPropertiesTo(
     _RenderObjectSemantics ancestor, {
     required bool ancestorMergesIntoParent,
     required bool ancestorUserActionsAreBlocked,
   }) {
-    super.removeAncestorAfter(
+    super.restoreParentInheritedPropertiesTo(
       ancestor,
       ancestorMergesIntoParent: ancestorMergesIntoParent,
       ancestorUserActionsAreBlocked: ancestorUserActionsAreBlocked,

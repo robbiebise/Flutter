@@ -887,7 +887,7 @@ class _SelectableTextContainerDelegate extends MultiStaticSelectableSelectionCon
   @override
   SelectionResult handleSelectParagraph(SelectParagraphSelectionEvent event) {
     final SelectionResult result = _handleSelectParagraph(event);
-    super.updateInternalSelectionStateForBoundaryEvents();
+    super.didReceiveSelectionBoundaryEvents();
     return result;
   }
 

@@ -5157,6 +5157,7 @@ class _SwitchableSemanticsFragment extends _InterestingSemanticsFragment {
 
   bool _hasSiblingConflict = false;
   bool get _shouldFormSemanticsNode => _originalConfig.isSemanticBoundary || _hasAncestorWithExplicitChild || _hasSiblingConflict;
+  // null if this fragment has not be compiled before.
   bool? _formedSemanticsNode;
 
   /// The cached semantics node that this fragment offers to the

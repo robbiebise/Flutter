@@ -321,11 +321,7 @@ class AndroidGradleBuilder implements AndroidBuilder {
       consumeLog(result.stderr);
       if (detectedGradleError == null) {
         _analytics.send(Event.flutterBuildInfo(label: 'gradle-unknown-failure', buildType: 'gradle'));
-
-        throwToolExit(
-          'Gradle task $taskName failed with exit code $exitCode',
-          exitCode: exitCode,
-        );
+        return result;
       }
       final GradleBuildStatus status = await detectedGradleError!.handler(
         line: detectedGradleErrorLine!,
@@ -336,8 +332,8 @@ class AndroidGradleBuilder implements AndroidBuilder {
       if (maxRetries == null || retry < maxRetries) {
         switch (status) {
           case GradleBuildStatus.retry:
-          // Use binary exponential backoff before retriggering the build.
-          // The expected wait times are: 100ms, 200ms, 400ms, and so on...
+            // Use binary exponential backoff before retriggering the build.
+            // The expected wait times are: 100ms, 200ms, 400ms, and so on...
             final int waitTime = min(pow(2, retry).toInt() * 100, kMaxRetryTime.inMicroseconds);
             retry += 1;
             _logger.printStatus('Retrying Gradle Build: #$retry, wait time: ${waitTime}ms');
@@ -362,7 +358,6 @@ class AndroidGradleBuilder implements AndroidBuilder {
       }
       final String usageLabel = 'gradle-${detectedGradleError?.eventLabel}-failure';
       _analytics.send(Event.flutterBuildInfo(label: usageLabel, buildType: 'gradle'));
-
     }
     return result;
   }
@@ -421,10 +416,6 @@ class AndroidGradleBuilder implements AndroidBuilder {
     final String assembleTask = isBuildingBundle
         ? getBundleTaskFor(buildInfo)
         : getAssembleTaskFor(buildInfo);
-
-    final Status status = _logger.startProgress(
-      "Running Gradle task '$assembleTask'...",
-    );
 
     if (_logger.isVerbose) {
       command.add('--full-stacktrace');
@@ -506,23 +497,26 @@ class AndroidGradleBuilder implements AndroidBuilder {
       command.add('-Pfast-start=true');
     }
 
-    RunResult result;
-    try {
-      result = await _runGradleTask(
-        assembleTask,
-        project: project,
-        options: command,
-        localGradleErrors: localGradleErrors,
-        maxRetries: maxRetries,
-      );
-    } finally {
-      status.stop();
-    }
+    final Stopwatch sw = Stopwatch()
+      ..start();
+    final RunResult result = await _runGradleTask(
+      assembleTask,
+      project: project,
+      options: command,
+      localGradleErrors: localGradleErrors,
+      maxRetries: maxRetries,
+    );
+    final Duration elapsedDuration = sw.elapsed;
+    _analytics.send(Event.timing(
+      workflow: 'build',
+      variableName: 'gradle',
+      elapsedMilliseconds: elapsedDuration.inMilliseconds,
+    ));
 
     if (result.exitCode != 0) {
       throwToolExit(
-        'Gradle task $assembleTask failed with exit code $exitCode',
-        exitCode: exitCode,
+        'Gradle task $assembleTask failed with exit code ${result.exitCode}.',
+        exitCode: result.exitCode,
       );
     }
 
@@ -642,9 +636,6 @@ class AndroidGradleBuilder implements AndroidBuilder {
 
     final BuildInfo buildInfo = androidBuildInfo.buildInfo;
     final String aarTask = getAarTaskFor(buildInfo);
-    final Status status = _logger.startProgress(
-      "Running Gradle task '$aarTask'...",
-    );
 
     final String flutterRoot = _fileSystem.path.absolute(Cache.flutterRoot!);
     final String initScript = _fileSystem.path.join(
@@ -721,17 +712,20 @@ class AndroidGradleBuilder implements AndroidBuilder {
 
     final Stopwatch sw = Stopwatch()
       ..start();
-    RunResult result;
-    try {
-      result = await _runGradleTask(
-        aarTask,
-        options: command,
-        project: project,
-        localGradleErrors: gradleErrors,
+    final RunResult result = await _runGradleTask(
+      aarTask,
+      options: command,
+      project: project,
+      localGradleErrors: gradleErrors,
+    );
+
+    if (result.exitCode != 0) {
+      throwToolExit(
+        'Gradle task $aarTask failed with exit code ${result.exitCode}.',
+        exitCode: result.exitCode,
       );
-    } finally {
-      status.stop();
     }
+
     final Duration elapsedDuration = sw.elapsed;
     _analytics.send(Event.timing(
       workflow: 'build',
@@ -774,10 +768,9 @@ class AndroidGradleBuilder implements AndroidBuilder {
     ));
 
     if (result.exitCode != 0) {
-      _logger.printStatus(result.stdout, wrap: false);
-      _logger.printError(result.stderr, wrap: false);
       return const <String>[];
     }
+
     return <String>[
       for (final String line in LineSplitter.split(result.stdout))
         if (_kBuildVariantRegex.firstMatch(line) case final RegExpMatch match)
@@ -813,8 +806,6 @@ class AndroidGradleBuilder implements AndroidBuilder {
     ));
 
     if (result.exitCode != 0) {
-      _logger.printStatus(result.stdout, wrap: false);
-      _logger.printError(result.stderr, wrap: false);
       throwToolExit(result.stderr);
     }
     return outputPath;

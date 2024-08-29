@@ -12,19 +12,23 @@
 /// @docImport 'tween_animation_builder.dart';
 library;
 
-import 'dart:ui' as ui show TextHeightBehavior;
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'basic.dart';
 import 'container.dart';
 import 'debug.dart';
 import 'framework.dart';
+import 'sliver.dart';
 import 'text.dart';
 import 'ticker_provider.dart';
 import 'transitions.dart';
+import 'value_listenable_builder.dart';
 
 // Examples can assume:
 // class MyWidget extends ImplicitlyAnimatedWidget {
@@ -34,6 +38,16 @@ import 'transitions.dart';
 //   ImplicitlyAnimatedWidgetState<MyWidget> createState() => throw UnimplementedError(); // ignore: no_logic_in_create_state
 // }
 // void setState(VoidCallback fn) { }
+
+/// Function signature for linear interpolation.
+///
+/// {@template flutter.animation.LerpCallback}
+/// For example, [Color.lerp] qualifies as a `LerpCallback<Color>`.
+///
+/// The callback should have the return type [T]; the return type
+/// is nullable for compatibility with existing "lerp" methods.
+/// {@endtemplate}
+typedef LerpCallback<T> = T? Function(T a, T b, double t);
 
 /// An interpolation between two [BoxConstraints].
 ///
@@ -563,6 +577,243 @@ abstract class AnimatedWidgetBaseState<T extends ImplicitlyAnimatedWidget> exten
   void _handleAnimationChanged() {
     setState(() { /* The animation ticked. Rebuild with new animation value */ });
   }
+}
+
+/// A widget that animates based on changes to its [value].
+///
+/// This class uses a [duration], [curve], and [lerp] callback to determine
+/// its transition from one value to another.
+///
+/// The widget will immediately animate from its [initialValue] to the [value],
+/// if an [initialValue] is specified. Otherwise, the widget is "implicitly"
+/// animated: it performs an animation when its [value] changes.
+///
+/// {@tool snippet}
+/// This example shows how to build a widget that animates its size based on
+/// an explicit `size` parameter, instead of adjusting based on its child as
+/// [AnimatedSize] does.
+///
+/// ```dart
+/// class MyAnimatedSize extends AnimatedValue<Size> {
+///   const MyAnimatedSize({
+///     super.key,
+///     required Size size,
+///     required super.duration,
+///     super.curve,
+///     super.initialValue,
+///     super.child,
+///   }) : super(size, lerp: Size.lerp);
+///
+///   @override
+///   Widget build(BuildContext context, Size value) {
+///     return SizedBox.fromSize(size: value, child: child);
+///   }
+/// }
+/// ```
+/// {@end-tool}
+///
+/// {@tool dartpad}
+/// This example shows how to run and restart an animation without needing to
+/// set up an [AnimationController] or interact with it directly.
+///
+/// ** See code in examples/api/lib/widgets/implicit_animations/animated_value.0.dart **
+/// {@end-tool}
+///
+/// See also:
+///
+///  * [ImplicitlyAnimatedWidget], which was used to create implicit animations
+///    before [Record] types were supported in Dart.
+///  * [TweenAnimationBuilder], which is similar to [AnimatedValue.builder],
+///    but uses a [Tween] rather than a [LerpCallback] for evaluation.
+///  * [AnimatedOpacity], which is an implicitly animated version of [Opacity].
+///  * [AnimatedCrossFade], which cross-fades between two given children and
+///    animates itself between their sizes.
+///  * [AnimatedSize], which automatically transitions its size over a given
+///    duration.
+///  * [AnimatedSwitcher], which fades from one widget to another.
+abstract class AnimatedValue<T extends Object> extends StatefulWidget {
+  /// Used by subclasses to initialize fields.
+  ///
+  /// For an animated value that doesn't need an additional class declaration,
+  /// consider [AnimatedValue.builder].
+  const AnimatedValue(
+    this.value, {
+    super.key,
+    this.initialValue,
+    required this.duration,
+    this.curve = Curves.linear,
+    required this.lerp,
+    this.child,
+    this.onEnd,
+  });
+
+  /// Creates an implicit animation using the provided [Duration],
+  /// [ValueWidgetBuilder], and [LerpCallback].
+  ///
+  /// See also:
+  ///
+  ///  * [TweenAnimationBuilder], which does the same,
+  ///    using a [Tween] rather than a [LerpCallback].
+  ///  * [Builder], the [StatelessWidget] equivalent.
+  const factory AnimatedValue.builder(
+    T value, {
+    Key? key,
+    T? initialValue,
+    required Duration duration,
+    Curve curve,
+    required ValueWidgetBuilder<T> builder,
+    required LerpCallback<T> lerp,
+    VoidCallback? onEnd,
+    Widget? child,
+  }) = _AnimatedValueBuilder<T>;
+
+  /// The target value of the animation.
+  ///
+  /// When this value changes, the widget will smoothly animate to the new value
+  /// using the provided [lerp] callback.
+  final T value;
+
+  /// If this is non-null, the widget will immediately start animating from this
+  /// value toward the target [value] when it is first built.
+  final T? initialValue;
+
+  /// The duration over which to animate changes to the [value].
+  final Duration duration;
+
+  /// The curve to apply when the widget animates.
+  ///
+  /// For example, using [Curves.ease] may improve the animation's visual appeal
+  /// by mitigating the linear animation's abrupt stop.
+  final Curve curve;
+
+  /// A function that defines the type [T]'s linear interpolation
+  /// from one [value] to another.
+  ///
+  /// {@macro flutter.animation.LerpCallback}
+  ///
+  /// If the [LerpCallback] is defined as a global function or `static` method,
+  /// it can be used in a `const` constructor!
+  final LerpCallback<T> lerp;
+
+  /// Called each time the animation completes.
+  ///
+  /// This can be useful to trigger additional actions (e.g. another animation)
+  /// at the end of the current animation.
+  final VoidCallback? onEnd;
+
+  /// The widget below this widget in the tree.
+  ///
+  /// {@macro flutter.widgets.ProxyWidget.child}
+  final Widget? child;
+
+  /// Called each frame to build a widget, given the current state
+  /// of the value's animation.
+  @protected
+  Widget build(BuildContext context, T value);
+
+  @override
+  State<AnimatedValue<T>> createState() => _AnimatedValueState<T>();
+}
+
+class _AnimatedValueState<T extends Object> extends State<AnimatedValue<T>>
+    with SingleTickerProviderStateMixin {
+  late T from = widget.initialValue ?? widget.value;
+  late T target = widget.value;
+  late T value = from;
+
+  Ticker? _ticker;
+
+  void _animate() {
+    final T newTarget = widget.value;
+    if (mounted && newTarget != value) {
+      _ticker?.stop();
+
+      if (widget.duration == Duration.zero) {
+        widget.onEnd?.call();
+        value = newTarget;
+      } else {
+        from = value;
+        target = newTarget;
+        value = widget.lerp(from, target, 0)!;
+        _ticker?.start();
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((Duration elapsed) {
+      if (value == target) {
+        widget.onEnd?.call();
+        return _ticker!.stop();
+      }
+
+      final double progress = elapsed.inMicroseconds / widget.duration.inMicroseconds;
+      if (progress >= 1.0) {
+        widget.onEnd?.call();
+        _ticker!.stop();
+        if (mounted) {
+          setState(() {
+            value = target;
+          });
+        }
+        return;
+      }
+
+      if (mounted) {
+        final double t = widget.curve.transform(math.max(progress, 0.0));
+        setState(() {
+          value = widget.lerp(from, target, t)!;
+        });
+      } else {
+        _ticker!.stop();
+      }
+    });
+    _animate();
+  }
+
+  @override
+  void didUpdateWidget(AnimatedValue<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _animate();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.build(context, value);
+}
+
+class _AnimatedValueBuilder<T extends Object> extends AnimatedValue<T> {
+  const _AnimatedValueBuilder(
+    super.value, {
+    super.key,
+    super.initialValue,
+    required super.duration,
+    super.curve,
+    required super.lerp,
+    super.onEnd,
+    required this.builder,
+    super.child,
+  });
+
+  /// {@macro flutter.widgets.ValueWidgetBuilder}
+  final ValueWidgetBuilder<T> builder;
+
+  @override
+  Widget build(BuildContext context, T value) => builder(context, value, child);
+}
+
+double? _lerpDouble(double? a, double? b, double t) {
+  if (a == null || b == null || a == b || a.isNaN || b.isNaN) {
+    return b;
+  }
+  return a * (1 - t) + b * t;
 }
 
 /// Animated version of [Container] that gradually changes its values over a period of time.
@@ -1335,26 +1586,19 @@ class _AnimatedPositionedDirectionalState extends AnimatedWidgetBaseState<Animat
 ///  * [AnimatedSlide], for animating the translation of a child by a given offset relative to its size.
 ///  * [ScaleTransition], an explicitly animated version of this widget, where
 ///    an [Animation] is provided by the caller instead of being built in.
-class AnimatedScale extends ImplicitlyAnimatedWidget {
+class AnimatedScale extends AnimatedValue<double> {
   /// Creates a widget that animates its scale implicitly.
   const AnimatedScale({
     super.key,
-    this.child,
-    required this.scale,
+    required double scale,
+    super.initialValue,
     this.alignment = Alignment.center,
     this.filterQuality,
-    super.curve,
     required super.duration,
+    super.curve,
     super.onEnd,
-  });
-
-  /// The widget below this widget in the tree.
-  ///
-  /// {@macro flutter.widgets.ProxyWidget.child}
-  final Widget? child;
-
-  /// The target scale.
-  final double scale;
+    super.child,
+  }) : super(scale, lerp: _lerpDouble);
 
   /// The alignment of the origin of the coordinate system in which the scale
   /// takes place, relative to the size of the box.
@@ -1369,39 +1613,21 @@ class AnimatedScale extends ImplicitlyAnimatedWidget {
   final FilterQuality? filterQuality;
 
   @override
-  ImplicitlyAnimatedWidgetState<AnimatedScale> createState() => _AnimatedScaleState();
+  Widget build(BuildContext context, double value) {
+    return Transform.scale(
+      scale: value,
+      alignment: alignment,
+      filterQuality: filterQuality,
+      child: child,
+    );
+  }
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DoubleProperty('scale', scale));
+    properties.add(DoubleProperty('scale', value));
     properties.add(DiagnosticsProperty<Alignment>('alignment', alignment, defaultValue: Alignment.center));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality, defaultValue: null));
-  }
-}
-
-class _AnimatedScaleState extends ImplicitlyAnimatedWidgetState<AnimatedScale> {
-  Tween<double>? _scale;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void forEachTween(TweenVisitor<dynamic> visitor) {
-    _scale = visitor(_scale, widget.scale, (dynamic value) => Tween<double>(begin: value as double)) as Tween<double>?;
-  }
-
-  @override
-  void didUpdateTweens() {
-    _scaleAnimation = animation.drive(_scale!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      alignment: widget.alignment,
-      filterQuality: widget.filterQuality,
-      child: widget.child,
-    );
   }
 }
 
@@ -1457,29 +1683,19 @@ class _AnimatedScaleState extends ImplicitlyAnimatedWidgetState<AnimatedScale> {
 ///  * [AnimatedScale], for animating the scale of a child.
 ///  * [RotationTransition], an explicitly animated version of this widget, where
 ///    an [Animation] is provided by the caller instead of being built in.
-class AnimatedRotation extends ImplicitlyAnimatedWidget {
+class AnimatedRotation extends AnimatedValue<double> {
   /// Creates a widget that animates its rotation implicitly.
   const AnimatedRotation({
     super.key,
-    this.child,
-    required this.turns,
+    required double turns,
+    super.initialValue,
     this.alignment = Alignment.center,
     this.filterQuality,
     super.curve,
     required super.duration,
     super.onEnd,
-  });
-
-  /// The widget below this widget in the tree.
-  ///
-  /// {@macro flutter.widgets.ProxyWidget.child}
-  final Widget? child;
-
-  /// The animation that controls the rotation of the child.
-  ///
-  /// If the current value of the turns animation is v, the child will be
-  /// rotated v * 2 * pi radians before being painted.
-  final double turns;
+    super.child,
+  }) : super(turns, lerp: _lerpDouble);
 
   /// The alignment of the origin of the coordinate system in which the rotation
   /// takes place, relative to the size of the box.
@@ -1494,39 +1710,21 @@ class AnimatedRotation extends ImplicitlyAnimatedWidget {
   final FilterQuality? filterQuality;
 
   @override
-  ImplicitlyAnimatedWidgetState<AnimatedRotation> createState() => _AnimatedRotationState();
+  Widget build(BuildContext context, double value) {
+    return Transform.rotate(
+      angle: value * 2 * math.pi,
+      alignment: alignment,
+      filterQuality: filterQuality,
+      child: child,
+    );
+  }
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DoubleProperty('turns', turns));
+    properties.add(DoubleProperty('turns', value));
     properties.add(DiagnosticsProperty<Alignment>('alignment', alignment, defaultValue: Alignment.center));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality, defaultValue: null));
-  }
-}
-
-class _AnimatedRotationState extends ImplicitlyAnimatedWidgetState<AnimatedRotation> {
-  Tween<double>? _turns;
-  late Animation<double> _turnsAnimation;
-
-  @override
-  void forEachTween(TweenVisitor<dynamic> visitor) {
-    _turns = visitor(_turns, widget.turns, (dynamic value) => Tween<double>(begin: value as double)) as Tween<double>?;
-  }
-
-  @override
-  void didUpdateTweens() {
-    _turnsAnimation = animation.drive(_turns!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _turnsAnimation,
-      alignment: widget.alignment,
-      filterQuality: widget.filterQuality,
-      child: widget.child,
-    );
   }
 }
 

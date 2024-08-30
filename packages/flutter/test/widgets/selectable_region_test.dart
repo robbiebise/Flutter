@@ -4867,8 +4867,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 1);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 1);
 
     // Selection on paragraph1.
     await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 10));
@@ -4876,8 +4876,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 10);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 10);
 
     // Selection on paragraph1 and paragraph2.
     await mouseGesture.moveTo(textOffsetToPosition(paragraph2, 10));
@@ -4885,15 +4885,15 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 23);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 23);
     await mouseGesture.up();
     await tester.pump();
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 23);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 23);
 
     // Collapsed selection.
     await mouseGesture.down(textOffsetToPosition(paragraph2, 3));
@@ -4903,8 +4903,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 16);
-    expect(currentSelectionDetails!.globalEndOffset, 16);
+    expect(currentSelectionDetails!.localStartOffset, 16);
+    expect(currentSelectionDetails!.localEndOffset, 16);
 
     // Backwards selection.
     await mouseGesture.down(textOffsetToPosition(paragraph2, 4));
@@ -4914,15 +4914,15 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 17);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 17);
+    expect(currentSelectionDetails!.localEndOffset, 0);
     await mouseGesture.up();
     await tester.pump();
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 17);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 17);
+    expect(currentSelectionDetails!.localEndOffset, 0);
 
     // Collapsed selection.
     await mouseGesture.down(textOffsetToPosition(paragraph1, 0));
@@ -4932,8 +4932,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 0);
   });
 
   testWidgets('onSelectionChanged SelectedContentRange is accurate', (WidgetTester tester) async {
@@ -4987,8 +4987,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 4);
-    expect(currentSelectionDetails!.globalEndOffset, 7);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 7);
 
     // Selection on paragraph1.
     await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 10));
@@ -4996,8 +4996,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 4);
-    expect(currentSelectionDetails!.globalEndOffset, 10);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 10);
 
     // Selection on paragraph1 and paragraph2.
     await mouseGesture.moveTo(textOffsetToPosition(paragraph2, 10));
@@ -5005,8 +5005,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 4);
-    expect(currentSelectionDetails!.globalEndOffset, 22);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 22);
 
     // Selection on paragraph1, paragraph2, and paragraph3.
     await mouseGesture.moveTo(textOffsetToPosition(paragraph3, 10));
@@ -5014,15 +5014,15 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 4);
-    expect(currentSelectionDetails!.globalEndOffset, 36);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 36);
     await mouseGesture.up();
     await tester.pump();
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 4);
-    expect(currentSelectionDetails!.globalEndOffset, 36);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 36);
 
     // Collapsed selection.
     await mouseGesture.down(textOffsetToPosition(paragraph1, 3));
@@ -5032,8 +5032,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 3);
-    expect(currentSelectionDetails!.globalEndOffset, 3);
+    expect(currentSelectionDetails!.localStartOffset, 3);
+    expect(currentSelectionDetails!.localEndOffset, 3);
 
     // Backwards selection.
     await mouseGesture.down(textOffsetToPosition(paragraph3, 4));
@@ -5043,15 +5043,15 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isFalse);
-    expect(currentSelectionDetails!.globalStartOffset, 30);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 30);
+    expect(currentSelectionDetails!.localEndOffset, 0);
     await mouseGesture.up();
     await tester.pump();
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 30);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 30);
+    expect(currentSelectionDetails!.localEndOffset, 0);
 
     // Collapsed selection.
     await mouseGesture.down(textOffsetToPosition(paragraph1, 0));
@@ -5061,8 +5061,8 @@ void main() {
     expect(currentSelectionDetails, isNotNull);
     expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
     expect(currentSelectionDetails!.selectionFinalized, isTrue);
-    expect(currentSelectionDetails!.globalStartOffset, 0);
-    expect(currentSelectionDetails!.globalEndOffset, 0);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 0);
   });
 
   testWidgets('onSelectionChange is called when the selection changes through gestures', (WidgetTester tester) async {

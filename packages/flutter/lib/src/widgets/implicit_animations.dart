@@ -650,6 +650,8 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
   /// Creates an implicit animation using the provided [Duration],
   /// [ValueWidgetBuilder], and [LerpCallback].
   ///
+  /// (The [curve] defaults to [Curves.linear] if none is specified.)
+  ///
   /// See also:
   ///
   ///  * [TweenAnimationBuilder], which does the same,
@@ -1685,6 +1687,9 @@ class AnimatedScale extends AnimatedValue<double> {
 ///    an [Animation] is provided by the caller instead of being built in.
 class AnimatedRotation extends AnimatedValue<double> {
   /// Creates a widget that animates its rotation implicitly.
+  ///
+  /// The `turns` parameter specifies the number of clockwise rotations.
+  /// A value of `0.25` rotates the [child] by 90 degrees.
   const AnimatedRotation({
     super.key,
     required double turns,

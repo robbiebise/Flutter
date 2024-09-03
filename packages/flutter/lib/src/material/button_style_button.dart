@@ -13,6 +13,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/src/foundation/colors.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button_style.dart';
@@ -442,9 +443,9 @@ class _ButtonStyleState extends State<ButtonStyleButton> with TickerProviderStat
         && elevation != null
         && backgroundColor != null
         && elevation != resolvedElevation
-        && backgroundColor!.value != resolvedBackgroundColor!.value
-        && backgroundColor!.opacity == 1
-        && resolvedBackgroundColor.opacity < 1
+        && backgroundColor!.isEquivalentTo(resolvedBackgroundColor!)
+        && backgroundColor!.a == 1
+        && resolvedBackgroundColor.a < 1
         && resolvedElevation == 0) {
       if (controller?.duration != resolvedAnimationDuration) {
         controller?.dispose();

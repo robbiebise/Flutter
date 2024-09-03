@@ -24,13 +24,13 @@ abstract final class ElevationOverlay {
   /// elevated. The amount of opacity will vary with the elevation as described
   /// in: https://m3.material.io/styles/color/the-color-system/color-roles.
   ///
-  /// If [surfaceTint] is not null and not completely transparent ([Color.alpha]
+  /// If [surfaceTint] is not null and not completely transparent ([Color.a]
   /// is 0), then the returned color will be the given [color] with the
   /// [surfaceTint] of the appropriate opacity applied to it. Otherwise it will
   /// just return [color] unmodified.
   static Color applySurfaceTint(Color color, Color? surfaceTint, double elevation) {
     if (surfaceTint != null && surfaceTint != Colors.transparent) {
-      return Color.alphaBlend(surfaceTint.withOpacity(_surfaceTintOpacityForElevation(elevation)), color);
+      return Color.alphaBlend(surfaceTint.withValues(alpha: _surfaceTintOpacityForElevation(elevation)), color);
     }
     return color;
   }
@@ -98,7 +98,7 @@ abstract final class ElevationOverlay {
     if (elevation > 0.0 &&
         theme.applyElevationOverlayColor &&
         theme.brightness == Brightness.dark &&
-        color.withOpacity(1.0) == theme.colorScheme.surface.withOpacity(1.0)) {
+        color.withValues(alpha: 1.0) == theme.colorScheme.surface.withValues(alpha: 1.0)) {
       return colorWithOverlay(color, theme.colorScheme.onSurface, elevation);
     }
     return color;
@@ -141,7 +141,7 @@ abstract final class ElevationOverlay {
     // This formula matches the values in the spec:
     // https://material.io/design/color/dark-theme.html#properties
     final double opacity = (4.5 * math.log(elevation + 1) + 2) / 100.0;
-    return color.withOpacity(opacity);
+    return color.withValues(alpha: opacity);
   }
 }
 

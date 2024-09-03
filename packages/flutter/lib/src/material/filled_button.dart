@@ -12,6 +12,7 @@ library;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/src/foundation/colors.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button_style.dart';
@@ -305,7 +306,7 @@ class FilledButton extends ButtonStyleButton {
     };
     final MaterialStateProperty<Color?>? overlayColorProp = switch ((foregroundColor, overlayColor)) {
       (null, null) => null,
-      (_, final Color overlayColor) when overlayColor.value == 0 => const MaterialStatePropertyAll<Color?>(Colors.transparent),
+      (_, final Color overlayColor) when overlayColor.isEquivalentTo(const Color(0x00000000)) => const MaterialStatePropertyAll<Color?>(Colors.transparent),
       (_, _) => _FilledButtonDefaultOverlay((overlayColor ?? foregroundColor)!),
     };
     final MaterialStateProperty<MouseCursor?> mouseCursor = _FilledButtonDefaultMouseCursor(enabledMouseCursor, disabledMouseCursor);
@@ -350,7 +351,7 @@ class FilledButton extends ButtonStyleButton {
   /// All of the ButtonStyle's defaults appear below. In this list
   /// "Theme.foo" is shorthand for `Theme.of(context).foo`. Color
   /// scheme values like "onSurface(0.38)" are shorthand for
-  /// `onSurface.withOpacity(0.38)`. [WidgetStateProperty] valued
+  /// `onSurface.withValues(alpha: 0.38)`. [WidgetStateProperty] valued
   /// properties that are not followed by a sublist have the same
   /// value for all states, otherwise the values are as specified for
   /// each state, and "others" means all other states.
@@ -508,13 +509,13 @@ class _FilledButtonDefaultOverlay extends MaterialStateProperty<Color?> with Dia
   @override
   Color? resolve(Set<MaterialState> states) {
     if (states.contains(MaterialState.pressed)) {
-      return overlay.withOpacity(0.1);
+      return overlay.withValues(alpha: 0.1);
     }
     if (states.contains(MaterialState.hovered)) {
-      return overlay.withOpacity(0.08);
+      return overlay.withValues(alpha: 0.08);
     }
     if (states.contains(MaterialState.focused)) {
-      return overlay.withOpacity(0.1);
+      return overlay.withValues(alpha: 0.1);
     }
     return null;
   }
@@ -665,7 +666,7 @@ class _FilledButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get backgroundColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.12);
+        return _colors.onSurface.withValues(alpha: 0.12);
       }
       return _colors.primary;
     });
@@ -674,7 +675,7 @@ class _FilledButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get foregroundColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       return _colors.onPrimary;
     });
@@ -683,13 +684,13 @@ class _FilledButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get overlayColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.pressed)) {
-        return _colors.onPrimary.withOpacity(0.1);
+        return _colors.onPrimary.withValues(alpha: 0.1);
       }
       if (states.contains(MaterialState.hovered)) {
-        return _colors.onPrimary.withOpacity(0.08);
+        return _colors.onPrimary.withValues(alpha: 0.08);
       }
       if (states.contains(MaterialState.focused)) {
-        return _colors.onPrimary.withOpacity(0.1);
+        return _colors.onPrimary.withValues(alpha: 0.1);
       }
       return null;
     });
@@ -738,7 +739,7 @@ class _FilledButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color>? get iconColor {
     return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       if (states.contains(MaterialState.pressed)) {
         return _colors.onPrimary;
@@ -810,7 +811,7 @@ class _FilledTonalButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get backgroundColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.12);
+        return _colors.onSurface.withValues(alpha: 0.12);
       }
       return _colors.secondaryContainer;
     });
@@ -819,7 +820,7 @@ class _FilledTonalButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get foregroundColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       return _colors.onSecondaryContainer;
     });
@@ -828,13 +829,13 @@ class _FilledTonalButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get overlayColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.pressed)) {
-        return _colors.onSecondaryContainer.withOpacity(0.1);
+        return _colors.onSecondaryContainer.withValues(alpha: 0.1);
       }
       if (states.contains(MaterialState.hovered)) {
-        return _colors.onSecondaryContainer.withOpacity(0.08);
+        return _colors.onSecondaryContainer.withValues(alpha: 0.08);
       }
       if (states.contains(MaterialState.focused)) {
-        return _colors.onSecondaryContainer.withOpacity(0.1);
+        return _colors.onSecondaryContainer.withValues(alpha: 0.1);
       }
       return null;
     });
@@ -883,7 +884,7 @@ class _FilledTonalButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color>? get iconColor {
     return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       if (states.contains(MaterialState.pressed)) {
         return _colors.onSecondaryContainer;

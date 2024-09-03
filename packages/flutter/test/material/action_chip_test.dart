@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../color_matcher.dart';
+
 /// Adds the basic requirements for a Chip.
 Widget wrapForChip({
   required Widget child,
@@ -154,8 +156,8 @@ void main() {
     );
     // Test default label style.
     expect(
-      getLabelStyle(tester, label).style.color!.value,
-      theme.colorScheme.onSurface.value,
+      getLabelStyle(tester, label).style.color,
+      isEquivalentColor(theme.colorScheme.onSurface),
     );
 
     Material chipMaterial = getMaterial(tester);
@@ -194,7 +196,7 @@ void main() {
       chipMaterial.shape,
       RoundedRectangleBorder(
         borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-        side: BorderSide(color: theme.colorScheme.onSurface.withOpacity(0.12)),
+        side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
       ),
     );
 
@@ -228,8 +230,8 @@ void main() {
     );
     // Test default label style.
     expect(
-      getLabelStyle(tester, label).style.color!.value,
-      theme.colorScheme.onSurface.value,
+      getLabelStyle(tester, label).style.color,
+      isEquivalentColor(theme.colorScheme.onSurface),
     );
 
     Material chipMaterial = getMaterial(tester);
@@ -273,7 +275,7 @@ void main() {
     );
 
     decoration = tester.widget<Ink>(find.byType(Ink)).decoration! as ShapeDecoration;
-    expect(decoration.color, theme.colorScheme.onSurface.withOpacity(0.12));
+    expect(decoration.color, theme.colorScheme.onSurface.withValues(alpha: 0.12));
   });
 
   testWidgets('ActionChip.color resolves material states', (WidgetTester tester) async {

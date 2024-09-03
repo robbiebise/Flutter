@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/src/foundation/colors.dart';
 
 import 'box.dart';
 import 'custom_paint.dart';
@@ -2861,7 +2862,7 @@ class _CaretPainter extends RenderEditablePainter {
   Color? get caretColor => _caretColor;
   Color? _caretColor;
   set caretColor(Color? value) {
-    if (caretColor?.value == value?.value) {
+    if (caretColor?.isEquivalentTo(value) ?? false) {
       return;
     }
 
@@ -2892,7 +2893,7 @@ class _CaretPainter extends RenderEditablePainter {
   Color? get backgroundCursorColor => _backgroundCursorColor;
   Color? _backgroundCursorColor;
   set backgroundCursorColor(Color? value) {
-    if (backgroundCursorColor?.value == value?.value) {
+    if (backgroundCursorColor?.isEquivalentTo(value) ?? false) {
       return;
     }
 
@@ -2955,7 +2956,7 @@ class _CaretPainter extends RenderEditablePainter {
       paintRegularCursor(canvas, renderEditable, caretColor, caretTextPosition);
     }
 
-    final Color? floatingCursorColor = this.caretColor?.withOpacity(0.75);
+    final Color? floatingCursorColor = this.caretColor?.withValues(alpha: 0.75);
     // Floating Cursor.
     if (floatingCursorRect == null || floatingCursorColor == null || !shouldPaint) {
       return;

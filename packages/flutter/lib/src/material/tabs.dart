@@ -11,6 +11,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/src/foundation/colors.dart';
 import 'package:flutter/widgets.dart';
 
 import 'app_bar.dart';
@@ -1380,7 +1381,7 @@ class _TabBarState extends State<TabBar> {
     // with a better long-term solution.
     // https://github.com/flutter/flutter/pull/68171#pullrequestreview-517753917
     if (widget.automaticIndicatorColorAdjustment &&
-        color.value == Material.maybeOf(context)?.color?.value) {
+        color.isEquivalentTo(Material.maybeOf(context)?.color)) {
       color = Colors.white;
     }
 
@@ -2499,24 +2500,24 @@ class _TabsPrimaryDefaultsM3 extends TabBarTheme {
     return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.selected)) {
         if (states.contains(MaterialState.pressed)) {
-          return _colors.primary.withOpacity(0.1);
+          return _colors.primary.withValues(alpha: 0.1);
         }
         if (states.contains(MaterialState.hovered)) {
-          return _colors.primary.withOpacity(0.08);
+          return _colors.primary.withValues(alpha: 0.08);
         }
         if (states.contains(MaterialState.focused)) {
-          return _colors.primary.withOpacity(0.1);
+          return _colors.primary.withValues(alpha: 0.1);
         }
         return null;
       }
       if (states.contains(MaterialState.pressed)) {
-        return _colors.primary.withOpacity(0.1);
+        return _colors.primary.withValues(alpha: 0.1);
       }
       if (states.contains(MaterialState.hovered)) {
-        return _colors.onSurface.withOpacity(0.08);
+        return _colors.onSurface.withValues(alpha: 0.08);
       }
       if (states.contains(MaterialState.focused)) {
-        return _colors.onSurface.withOpacity(0.1);
+        return _colors.onSurface.withValues(alpha: 0.1);
       }
       return null;
     });
@@ -2578,24 +2579,24 @@ class _TabsSecondaryDefaultsM3 extends TabBarTheme {
     return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.selected)) {
         if (states.contains(MaterialState.pressed)) {
-          return _colors.onSurface.withOpacity(0.1);
+          return _colors.onSurface.withValues(alpha: 0.1);
         }
         if (states.contains(MaterialState.hovered)) {
-          return _colors.onSurface.withOpacity(0.08);
+          return _colors.onSurface.withValues(alpha: 0.08);
         }
         if (states.contains(MaterialState.focused)) {
-          return _colors.onSurface.withOpacity(0.1);
+          return _colors.onSurface.withValues(alpha: 0.1);
         }
         return null;
       }
       if (states.contains(MaterialState.pressed)) {
-        return _colors.onSurface.withOpacity(0.1);
+        return _colors.onSurface.withValues(alpha: 0.1);
       }
       if (states.contains(MaterialState.hovered)) {
-        return _colors.onSurface.withOpacity(0.08);
+        return _colors.onSurface.withValues(alpha: 0.08);
       }
       if (states.contains(MaterialState.focused)) {
-        return _colors.onSurface.withOpacity(0.1);
+        return _colors.onSurface.withValues(alpha: 0.1);
       }
       return null;
     });

@@ -17,7 +17,7 @@ void main() {
     const Color surfaceTintColor = Color(0xff44CCFF);
 
     Color overlayWithOpacity(double opacity) {
-      return Color.alphaBlend(surfaceTintColor.withOpacity(opacity), baseColor);
+      return Color.alphaBlend(surfaceTintColor.withValues(alpha: opacity), baseColor);
     }
 
     // Based on values from the spec:
@@ -47,7 +47,7 @@ void main() {
     const Color surfaceTintColor = Color(0xff44CCFF);
 
     Color overlayWithOpacity(double opacity) {
-      return Color.alphaBlend(surfaceTintColor.withOpacity(opacity), baseColor);
+      return Color.alphaBlend(surfaceTintColor.withValues(alpha: opacity), baseColor);
     }
 
     expect(ElevationOverlay.applySurfaceTint(baseColor, surfaceTintColor, -42.0), equals(overlayWithOpacity(0.0)));
@@ -58,7 +58,7 @@ void main() {
     const Color surfaceTintColor = Color(0xff44CCFF);
 
     Color overlayWithOpacity(double opacity) {
-      return Color.alphaBlend(surfaceTintColor.withOpacity(opacity), baseColor);
+      return Color.alphaBlend(surfaceTintColor.withValues(alpha: opacity), baseColor);
     }
 
     // Elevation level 5 (12.0) - should have opacity 0.14.
@@ -70,7 +70,7 @@ void main() {
     const Color surfaceTintColor = Color(0xff44CCFF);
 
     Color overlayWithOpacity(double opacity) {
-      return Color.alphaBlend(surfaceTintColor.withOpacity(opacity), baseColor);
+      return Color.alphaBlend(surfaceTintColor.withValues(alpha: opacity), baseColor);
     }
 
     // Elevation between level 4 (8.0) and level 5 (12.0) should be interpolated

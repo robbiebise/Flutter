@@ -11,6 +11,7 @@ library;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/src/foundation/colors.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button_style.dart';
@@ -238,7 +239,7 @@ class TextButton extends ButtonStyleButton {
     };
     final MaterialStateProperty<Color?>? overlayColorProp = switch ((foregroundColor, overlayColor)) {
       (null, null) => null,
-      (_, final Color overlayColor) when overlayColor.value == 0 => const MaterialStatePropertyAll<Color?>(Colors.transparent),
+      (_, final Color overlayColor) when overlayColor.isEquivalentTo(const Color(0x00000000)) => const MaterialStatePropertyAll<Color?>(Colors.transparent),
       (_, _) => _TextButtonDefaultOverlay((overlayColor ?? foregroundColor)!),
     };
     final MaterialStateProperty<MouseCursor?> mouseCursor = _TextButtonDefaultMouseCursor(enabledMouseCursor, disabledMouseCursor);
@@ -284,7 +285,7 @@ class TextButton extends ButtonStyleButton {
   /// In this list "Theme.foo" is shorthand for
   /// `Theme.of(context).foo`. Color scheme values like
   /// "onSurface(0.38)" are shorthand for
-  /// `onSurface.withOpacity(0.38)`. [WidgetStateProperty] valued
+  /// `onSurface.withValues(alpha: 0.38)`. [WidgetStateProperty] valued
   /// properties that are not followed by a sublist have the same
   /// value for all states, otherwise the values are as specified for
   /// each state and "others" means all other states.
@@ -393,7 +394,7 @@ class TextButton extends ButtonStyleButton {
       ? _TextButtonDefaultsM3(context)
       : styleFrom(
           foregroundColor: colorScheme.primary,
-          disabledForegroundColor: colorScheme.onSurface.withOpacity(0.38),
+          disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
           shadowColor: theme.shadowColor,
@@ -464,20 +465,20 @@ class _TextButtonDefaultOverlay extends MaterialStateProperty<Color?> {
   @override
   Color? resolve(Set<MaterialState> states) {
     if (states.contains(MaterialState.pressed)) {
-      return primary.withOpacity(0.1);
+      return primary.withValues(alpha: 0.1);
     }
     if (states.contains(MaterialState.hovered)) {
-      return primary.withOpacity(0.08);
+      return primary.withValues(alpha: 0.08);
     }
     if (states.contains(MaterialState.focused)) {
-      return primary.withOpacity(0.1);
+      return primary.withValues(alpha: 0.1);
     }
     return null;
   }
 
   @override
   String toString() {
-    return '{hovered: ${primary.withOpacity(0.04)}, focused,pressed: ${primary.withOpacity(0.12)}, otherwise: null}';
+    return '{hovered: ${primary.withValues(alpha: 0.04)}, focused,pressed: ${primary.withValues(alpha: 0.12)}, otherwise: null}';
   }
 }
 
@@ -597,7 +598,7 @@ class _TextButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get foregroundColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       return _colors.primary;
     });
@@ -606,13 +607,13 @@ class _TextButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color?>? get overlayColor =>
     MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.pressed)) {
-        return _colors.primary.withOpacity(0.1);
+        return _colors.primary.withValues(alpha: 0.1);
       }
       if (states.contains(MaterialState.hovered)) {
-        return _colors.primary.withOpacity(0.08);
+        return _colors.primary.withValues(alpha: 0.08);
       }
       if (states.contains(MaterialState.focused)) {
-        return _colors.primary.withOpacity(0.1);
+        return _colors.primary.withValues(alpha: 0.1);
       }
       return null;
     });
@@ -647,7 +648,7 @@ class _TextButtonDefaultsM3 extends ButtonStyle {
   MaterialStateProperty<Color>? get iconColor {
     return MaterialStateProperty.resolveWith((Set<MaterialState> states) {
       if (states.contains(MaterialState.disabled)) {
-        return _colors.onSurface.withOpacity(0.38);
+        return _colors.onSurface.withValues(alpha: 0.38);
       }
       if (states.contains(MaterialState.pressed)) {
         return _colors.primary;

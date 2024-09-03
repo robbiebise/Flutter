@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../color_matcher.dart';
+
 RenderBox getMaterialBox(WidgetTester tester, Finder type) {
   return tester.firstRenderObject<RenderBox>(
     find.descendant(
@@ -203,8 +205,8 @@ void main() {
     );
     // Test default label style.
     expect(
-      getLabelStyle(tester, label).style.color!.value,
-      theme.colorScheme.onSurfaceVariant.value,
+      getLabelStyle(tester, label).style.color,
+      isEquivalentColor(theme.colorScheme.onSurfaceVariant),
     );
 
     Material chipMaterial = getMaterial(tester);
@@ -244,7 +246,7 @@ void main() {
       chipMaterial.shape,
       RoundedRectangleBorder(
         borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-        side: BorderSide(color: theme.colorScheme.onSurface.withOpacity(0.12)),
+        side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
       ),
     );
 
@@ -308,7 +310,7 @@ void main() {
     );
 
     decoration = tester.widget<Ink>(find.byType(Ink)).decoration! as ShapeDecoration;
-    expect(decoration.color, theme.colorScheme.onSurface.withOpacity(0.12));
+    expect(decoration.color, theme.colorScheme.onSurface.withValues(alpha: 0.12));
   });
 
   testWidgets('Material3 - ChoiceChip.elevated defaults', (WidgetTester tester) async {
@@ -338,8 +340,8 @@ void main() {
     );
     // Test default label style.
     expect(
-      getLabelStyle(tester, label).style.color!.value,
-      theme.colorScheme.onSurfaceVariant.value,
+      getLabelStyle(tester, label).style.color,
+      isEquivalentColor(theme.colorScheme.onSurfaceVariant),
     );
 
     Material chipMaterial = getMaterial(tester);
@@ -384,7 +386,7 @@ void main() {
     );
 
     decoration = tester.widget<Ink>(find.byType(Ink)).decoration! as ShapeDecoration;
-    expect(decoration.color, theme.colorScheme.onSurface.withOpacity(0.12));
+    expect(decoration.color, theme.colorScheme.onSurface.withValues(alpha: 0.12));
 
     // Test selected enabled ChoiceChip.elevated defaults.
     await tester.pumpWidget(
@@ -443,7 +445,7 @@ void main() {
     );
 
     decoration = tester.widget<Ink>(find.byType(Ink)).decoration! as ShapeDecoration;
-    expect(decoration.color, theme.colorScheme.onSurface.withOpacity(0.12));
+    expect(decoration.color, theme.colorScheme.onSurface.withValues(alpha: 0.12));
   });
 
   testWidgets('ChoiceChip.color resolves material states', (WidgetTester tester) async {

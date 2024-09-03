@@ -566,7 +566,7 @@ class LinearGradient extends Gradient {
       begin: begin,
       end: end,
       colors: <Color>[
-        for (final Color color in colors) color.withOpacity(opacity)
+        for (final Color color in colors) color.withValues(alpha: opacity)
       ],
       stops: stops,
       tileMode: tileMode,
@@ -866,7 +866,7 @@ class RadialGradient extends Gradient {
       center: center,
       radius: radius,
       colors: <Color>[
-        for (final Color color in colors) color.withOpacity(opacity)
+        for (final Color color in colors) color.withValues(alpha: opacity)
       ],
       stops: stops,
       tileMode: tileMode,
@@ -1145,7 +1145,7 @@ class SweepGradient extends Gradient {
       startAngle: startAngle,
       endAngle: endAngle,
       colors: <Color>[
-        for (final Color color in colors) color.withOpacity(opacity)
+        for (final Color color in colors) color.withValues(alpha: opacity)
       ],
       stops: stops,
       tileMode: tileMode,

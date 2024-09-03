@@ -992,14 +992,14 @@ void main() {
 
     await tester.fling(find.text('X'), const Offset(0.0, 600.0), 1000.0);
     await tester.pump();
-    expect(tester.widget<RefreshProgressIndicator>(find.byType(RefreshProgressIndicator)).valueColor!.value, refreshIndicatorColor.withOpacity(1.0));
+    expect(tester.widget<RefreshProgressIndicator>(find.byType(RefreshProgressIndicator)).valueColor!.value, refreshIndicatorColor.withValues(alpha: 1.0));
 
     setState(() {
       refreshIndicatorColor = red;
     });
 
     await tester.pump();
-    expect(tester.widget<RefreshProgressIndicator>(find.byType(RefreshProgressIndicator)).valueColor!.value, red.withOpacity(1.0));
+    expect(tester.widget<RefreshProgressIndicator>(find.byType(RefreshProgressIndicator)).valueColor!.value, red.withValues(alpha: 1.0));
   });
 
   testWidgets('RefreshIndicator - reverse - BouncingScrollPhysics', (WidgetTester tester) async {
@@ -1215,7 +1215,7 @@ void main() {
       final Animation<Color?> valueColorAnimation = positionController.drive(
         ColorTween(
           begin: color.withAlpha(0),
-          end: color.withAlpha(color.alpha),
+          end: color.withValues(alpha: color.a),
         ).chain(
           CurveTween(
             // Correspond to [_kDragSizeFactorLimit].
@@ -1249,8 +1249,8 @@ void main() {
         await tester.pump();
         positionController.value = position / maxPosition;
         expect(
-          getIndicator().valueColor!.value!.alpha,
-          valueColorAnimation.value!.alpha,
+          getIndicator().valueColor!.value!.a,
+          valueColorAnimation.value!.a,
         );
         // Wait until the fling finishes before starting the next fling.
         await tester.pumpAndSettle();

@@ -11,28 +11,37 @@ import 'package:flutter/material.dart';
 void main() => runApp(const AnimatedValueApp());
 
 /// Prizes come in all shapes!
-enum Prize implements ValueKey<Prize> {
+enum Prize implements Key {
   circle,
   triangle,
   square,
   hexagon;
 
   @override
-  Prize get value => this;
-
-  @override
   String toString() => name;
 }
+
+final math.Random rng = math.Random();
 
 class PrizeSpinner extends StatelessWidget {
   const PrizeSpinner({super.key});
 
+  static final double randomDirection = rng.nextDouble();
+
   // This build method returns an AnimatedRotation, which is a subtype
   // of AnimatedValue!
   @override
-  AnimatedValue<double> build(BuildContext context) {
+  Widget build(BuildContext context) {
     final Prize? prize = FreePrizes.maybeOf(context);
-    final double turns = (prize?.index ?? math.Random().nextDouble()) / 4 + 1 / 8;
+
+    final double turns;
+    if (prize != null) {
+      // The spinner should end up at the center of the section.
+      turns = (prize.index * 2 + 1) / (Prize.values.length * 2);
+    } else {
+      // Before the first spin, load the spinner facing a random direction.
+      turns = randomDirection;
+    }
 
     // Changing a widget's key will cause its state to reset.
     // So if an AnimatedValue widget animates from an initialValue,
@@ -40,8 +49,8 @@ class PrizeSpinner extends StatelessWidget {
 
     return AnimatedRotation(
       key: prize,
-      initialValue: prize != null ? turns - 2 : null,
       turns: turns,
+      initialTurns: prize != null ? turns - 2 : null,
       duration: const Duration(seconds: 2),
       curve: Curves.easeOutCubic,
       onEnd: () {
@@ -109,19 +118,22 @@ class AnimatedValueApp extends StatefulWidget {
 class _AnimatedValueAppState extends State<AnimatedValueApp> implements _PrizeScope {
   Prize? prize;
 
-  static final math.Random rng = math.Random();
+  static final int prizeCount = Prize.values.length;
   @override
   void randomize() {
-    final int newIndex = switch (prize?.index) {
-      final int index => index + 1 + rng.nextInt(3),
-      null => rng.nextInt(4),
-    };
+    int? newIndex = prize?.index;
+    if (newIndex != null) {
+      // Never the same prize twice in a row!
+      newIndex += 1 + rng.nextInt(prizeCount - 1);
+      newIndex %= prizeCount;
+    }
     setState(() {
-      prize = Prize.values[newIndex % 4];
+      prize = Prize.values[newIndex ?? rng.nextInt(prizeCount)];
     });
   }
 
-  Color? seedColor;
+  static const Color _startingColor = Colors.deepPurple;
+  Color seedColor = _startingColor;
 
   @override
   void recolor() {
@@ -138,11 +150,11 @@ class _AnimatedValueAppState extends State<AnimatedValueApp> implements _PrizeSc
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor ?? Colors.deepPurple,
+      seedColor: seedColor,
       dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
     );
     AppBarTheme? appBarTheme;
-    if (seedColor != null) {
+    if (seedColor != _startingColor) {
       appBarTheme = AppBarTheme(
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
@@ -209,6 +221,7 @@ class _AnimatedSlideExampleState extends State<AnimatedValueExample> {
       ),
     ),
   );
+
   static const ButtonStyle buttonStyle = ButtonStyle(
     padding: WidgetStatePropertyAll<EdgeInsets>(
       EdgeInsets.symmetric(horizontal: 30, vertical: 20),
@@ -329,10 +342,10 @@ class _PrizePopupState extends State<PrizePopup> {
   late final Prize _prize = widget.prize;
   late final Text description = Text('You won a $_prize!');
   late final Polygon shape = switch (_prize) {
-    Prize.circle => const Polygon(sides: 0, color: Colors.green),
+    Prize.circle   => const Polygon(sides: 0, color: Colors.green),
     Prize.triangle => const Polygon(sides: 3, color: Colors.red),
-    Prize.square => const Polygon(sides: 4, color: Colors.blue),
-    Prize.hexagon => const Polygon(sides: 6, color: Colors.purple),
+    Prize.square   => const Polygon(sides: 4, color: Colors.blue),
+    Prize.hexagon  => const Polygon(sides: 6, color: Colors.purple),
   };
 
   @override

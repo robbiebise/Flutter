@@ -24,7 +24,6 @@ import 'basic.dart';
 import 'container.dart';
 import 'debug.dart';
 import 'framework.dart';
-import 'sliver.dart';
 import 'text.dart';
 import 'ticker_provider.dart';
 import 'transitions.dart';
@@ -581,36 +580,67 @@ abstract class AnimatedWidgetBaseState<T extends ImplicitlyAnimatedWidget> exten
 
 /// A widget that animates based on changes to its [value].
 ///
-/// This class uses a [duration], [curve], and [lerp] callback to determine
-/// its transition from one value to another.
-///
-/// The widget will immediately animate from its [initialValue] to the [value],
-/// if an [initialValue] is specified. Otherwise, the widget is "implicitly"
-/// animated: it performs an animation when its [value] changes.
+/// The [duration], [curve], and [lerp] callback determine the transition
+/// from one value of type `T` to another.
 ///
 /// {@tool snippet}
-/// This example shows how to build a widget that animates its size based on
-/// an explicit `size` parameter, instead of adjusting based on its child as
-/// [AnimatedSize] does.
+/// Generally, animating multiple values simultaneously is unnecessary,
+/// since the same can be achieved with nested `AnimatedValue` widgets,
+/// and doing so allows the values to transition independently.
+///
+/// But when transitioning properties together is the desired behavior,
+/// [Record] types can be used to create the [LerpCallback] and allow
+/// the widget to retain its `const` constructor.
+///
+/// This example shows how to build a widget that animates both its `color`
+/// and its `padding` to create a smooth transition when the values change.
+///
+/// This provides the same functionality as configuring `color` and `padding`
+/// for an [AnimatedContainer], but with greater efficiency:
 ///
 /// ```dart
-/// class MyAnimatedSize extends AnimatedValue<Size> {
-///   const MyAnimatedSize({
+/// // This typedef can be expanded upon as needed.
+/// typedef _ColorPadding = ({Color? color, EdgeInsetsGeometry padding});
+///
+/// class AnimatedValues extends AnimatedValue<_ColorPadding> {
+///   const AnimatedValues({
 ///     super.key,
-///     required Size size,
+///     Color? color,
+///     required EdgeInsetsGeometry padding,
 ///     required super.duration,
 ///     super.curve,
-///     super.initialValue,
+///     super.onEnd,
 ///     super.child,
-///   }) : super(size, lerp: Size.lerp);
+///   }) : super(value: (color: color, padding: padding), lerp: _lerp);
+///
+///   static _ColorPadding _lerp(_ColorPadding a, _ColorPadding b, double t) {
+///     return (
+///       color: Color.lerp(a.color, b.color, t),
+///       padding: EdgeInsetsGeometry.lerp(a.padding, b.padding, t)!,
+///     );
+///   }
 ///
 ///   @override
-///   Widget build(BuildContext context, Size value) {
-///     return SizedBox.fromSize(size: value, child: child);
+///   Widget build(
+///     BuildContext context,
+///     ({Color? color, EdgeInsetsGeometry padding}) value,
+///   ) {
+///     return ColoredBox(
+///       color: value.color ?? Colors.transparent,
+///       child: Padding(
+///         padding: value.padding,
+///         child: child,
+///       ),
+///     );
 ///   }
 /// }
 /// ```
 /// {@end-tool}
+///
+/// When the widget is initialized, it immediately animates from the
+/// [initialValue] to the [value], if an initial value is specified.
+/// Otherwise, the widget does not animate at first, but will transition
+/// each time its [value] changes.
 ///
 /// {@tool dartpad}
 /// This example shows how to run and restart an animation without needing to
@@ -618,6 +648,14 @@ abstract class AnimatedWidgetBaseState<T extends ImplicitlyAnimatedWidget> exten
 ///
 /// ** See code in examples/api/lib/widgets/implicit_animations/animated_value.0.dart **
 /// {@end-tool}
+///
+/// Changing the [duration] or the [curve] while an animation is running
+/// may cause abrupt visual changes. There are 2 ways to prevent this problem:
+///
+///  1. Wait until an animation completes before adjusting its duration or curve.
+///  2. If the [duration] and/or [curve] need to change immediately,
+///     consider changing the [value] as well. This will start an animation to
+///     the new value, using the current value as a starting point.
 ///
 /// See also:
 ///
@@ -636,8 +674,8 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
   ///
   /// For an animated value that doesn't need an additional class declaration,
   /// consider [AnimatedValue.builder].
-  const AnimatedValue(
-    this.value, {
+  const AnimatedValue({
+    required this.value,
     super.key,
     this.initialValue,
     required this.duration,
@@ -650,6 +688,11 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
   /// Creates an implicit animation using the provided [Duration],
   /// [ValueWidgetBuilder], and [LerpCallback].
   ///
+  /// When this builder is created, it immediately begins animating from
+  /// [initial] to the [value], if an `initial` argument is specified.
+  /// Otherwise, this constructor does not animate at first, but will
+  /// transition each time the [value] changes.
+  ///
   /// (The [curve] defaults to [Curves.linear] if none is specified.)
   ///
   /// See also:
@@ -660,7 +703,7 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
   const factory AnimatedValue.builder(
     T value, {
     Key? key,
-    T? initialValue,
+    T? initial,
     required Duration duration,
     Curve curve,
     required ValueWidgetBuilder<T> builder,
@@ -684,8 +727,10 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
 
   /// The curve to apply when the widget animates.
   ///
-  /// For example, using [Curves.ease] may improve the animation's visual appeal
-  /// by mitigating the linear animation's abrupt stop.
+  /// Defaults to [Curves.linear].
+  ///
+  /// Setting a different curve (e.g. [Curves.ease]) may improve the animation's
+  /// visual appeal by mitigating the linear animation's abrupt stop.
   final Curve curve;
 
   /// A function that defines the type [T]'s linear interpolation
@@ -708,8 +753,8 @@ abstract class AnimatedValue<T extends Object> extends StatefulWidget {
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget? child;
 
-  /// Called each frame to build a widget, given the current state
-  /// of the value's animation.
+  /// Called during each frame of the animation to build a widget,
+  /// given the current state of the value's transition.
   @protected
   Widget build(BuildContext context, T value);
 
@@ -723,6 +768,33 @@ class _AnimatedValueState<T extends Object> extends State<AnimatedValue<T>>
   late T target = widget.value;
   late T value = from;
 
+  /// Why does this [State] use a [Ticker] instead of an [AnimationController]?
+  ///
+  /// A few reasons:
+  ///
+  /// - AnimationController is set up to handle an arbitrary number of listeners,
+  ///   which makes it super versatile. But for the purposes of this widget,
+  ///   all that's needed is 1 [setState] call when the value changes.
+  /// - Animation controllers can just have a [AnimationController.duration],
+  ///   or it can have its [AnimationController.reverseDuration] configured as well.
+  ///   The class fields and branching logic relating to `_AnimationDirection`
+  ///   are useful in many different scenarios, but they aren't necessary
+  ///   for this widget.
+  /// - AnimationController has a wide variety of methods, including:
+  ///   - [AnimationController.forward] / [AnimationController.reverse]
+  ///   - [AnimationController.animateTo] / [AnimationController.animateBack]
+  ///   - [AnimationController.repeat]
+  ///   - [AnimationController.fling]
+  ///   - [AnimationController.animateWith]
+  ///
+  /// In order to handle the wide variety of uses, each of those methods
+  /// internally creates a [Simulation] object and uses that in its
+  /// [TickerCallback] (except for [AnimationController.animateWith],
+  /// since it takes a simulation directly).
+  ///
+  /// Since the [_AnimatedValueState] only needs to interpolate between two values,
+  /// it can just evaluate the [AnimatedValue.lerp] function directly,
+  /// without needing to configure an `_InterpolationSimulation` object.
   Ticker? _ticker;
 
   void _animate() {
@@ -736,7 +808,15 @@ class _AnimatedValueState<T extends Object> extends State<AnimatedValue<T>>
       } else {
         from = value;
         target = newTarget;
-        value = widget.lerp(from, target, 0)!;
+
+        final T? result = widget.lerp(from, target, 0);
+        assert(
+          result != null,
+          'A ${widget.runtimeType} "lerp" callback returned a null value based on '
+          'the non-null inputs $from and $target, evaluated at t = 0.\n'
+          'Consider using a different callback for linear interpolation.',
+        );
+        value = result!;
         _ticker?.start();
       }
     }
@@ -765,8 +845,15 @@ class _AnimatedValueState<T extends Object> extends State<AnimatedValue<T>>
 
       if (mounted) {
         final double t = widget.curve.transform(math.max(progress, 0.0));
+        final T? result = widget.lerp(from, target, t);
+        assert(
+          result != null,
+          'A ${widget.runtimeType} "lerp" callback returned a null value based on '
+          'the non-null inputs $from and $target, evaluated at t = $t.\n'
+          'Consider using a different callback for linear interpolation.',
+        );
         setState(() {
-          value = widget.lerp(from, target, t)!;
+          value = result!;
         });
       } else {
         _ticker!.stop();
@@ -793,29 +880,22 @@ class _AnimatedValueState<T extends Object> extends State<AnimatedValue<T>>
 
 class _AnimatedValueBuilder<T extends Object> extends AnimatedValue<T> {
   const _AnimatedValueBuilder(
-    super.value, {
+    T value, {
     super.key,
-    super.initialValue,
+    T? initial,
     required super.duration,
     super.curve,
     required super.lerp,
     super.onEnd,
     required this.builder,
     super.child,
-  });
+  }) : super(value: value, initialValue: initial);
 
   /// {@macro flutter.widgets.ValueWidgetBuilder}
   final ValueWidgetBuilder<T> builder;
 
   @override
   Widget build(BuildContext context, T value) => builder(context, value, child);
-}
-
-double? _lerpDouble(double? a, double? b, double t) {
-  if (a == null || b == null || a == b || a.isNaN || b.isNaN) {
-    return b;
-  }
-  return a * (1 - t) + b * t;
 }
 
 /// Animated version of [Container] that gradually changes its values over a period of time.
@@ -1589,24 +1669,31 @@ class _AnimatedPositionedDirectionalState extends AnimatedWidgetBaseState<Animat
 ///  * [ScaleTransition], an explicitly animated version of this widget, where
 ///    an [Animation] is provided by the caller instead of being built in.
 class AnimatedScale extends AnimatedValue<double> {
-  /// Creates a widget that animates its scale implicitly.
+  /// Initializes [alignment], [filterQuality], and [AnimatedValue] fields.
+  ///
+  /// When [AnimatedScale] is initialized, it immediately animates from the
+  /// [initialScale] to the [scale], if an initial scale is specified.
+  /// Otherwise, the widget does not animate at first, but will transition
+  /// each time its [scale] changes.
   const AnimatedScale({
     super.key,
     required double scale,
-    super.initialValue,
+    double? initialScale,
     this.alignment = Alignment.center,
     this.filterQuality,
     required super.duration,
     super.curve,
     super.onEnd,
     super.child,
-  }) : super(scale, lerp: _lerpDouble);
+  }) : super(value: scale, initialValue: initialScale, lerp: ui.lerpDouble);
 
   /// The alignment of the origin of the coordinate system in which the scale
   /// takes place, relative to the size of the box.
   ///
   /// For example, to set the origin of the scale to bottom middle, you can use
   /// an alignment of (0.0, 1.0).
+  ///
+  /// Defaults to [Alignment.center].
   final Alignment alignment;
 
   /// The filter quality with which to apply the transform as a bitmap operation.
@@ -1628,6 +1715,7 @@ class AnimatedScale extends AnimatedValue<double> {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DoubleProperty('scale', value));
+    properties.add(DoubleProperty('initialScale', initialValue, defaultValue: null));
     properties.add(DiagnosticsProperty<Alignment>('alignment', alignment, defaultValue: Alignment.center));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality, defaultValue: null));
   }
@@ -1686,21 +1774,26 @@ class AnimatedScale extends AnimatedValue<double> {
 ///  * [RotationTransition], an explicitly animated version of this widget, where
 ///    an [Animation] is provided by the caller instead of being built in.
 class AnimatedRotation extends AnimatedValue<double> {
-  /// Creates a widget that animates its rotation implicitly.
+  /// Initializes [alignment], [filterQuality], and [AnimatedValue] fields.
   ///
   /// The `turns` parameter specifies the number of clockwise rotations.
   /// A value of `0.25` rotates the [child] by 90 degrees.
+  ///
+  /// When [AnimatedRotation] is initialized, it immediately animates from the
+  /// [initialTurns] to the [turns], if an initial number of turns is specified.
+  /// Otherwise, the widget does not animate at first, but will transition
+  /// each time the amount of [turns] changes.
   const AnimatedRotation({
     super.key,
     required double turns,
-    super.initialValue,
+    double? initialTurns,
     this.alignment = Alignment.center,
     this.filterQuality,
     super.curve,
     required super.duration,
     super.onEnd,
     super.child,
-  }) : super(turns, lerp: _lerpDouble);
+  }) : super(value: turns, initialValue: initialTurns, lerp: ui.lerpDouble);
 
   /// The alignment of the origin of the coordinate system in which the rotation
   /// takes place, relative to the size of the box.
@@ -1728,6 +1821,7 @@ class AnimatedRotation extends AnimatedValue<double> {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DoubleProperty('turns', value));
+    properties.add(DoubleProperty('initialTurns', initialValue, defaultValue: null));
     properties.add(DiagnosticsProperty<Alignment>('alignment', alignment, defaultValue: Alignment.center));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality, defaultValue: null));
   }

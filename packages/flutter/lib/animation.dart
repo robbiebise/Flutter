@@ -156,8 +156,8 @@
 ///    which showcases Flutter's animation features.
 ///  * [AnimatedValue] and its [AnimatedValue.builder] constructor, for
 ///    creating a widget that implicitly animates changes to its properties.
-///  * [ImplicitlyAnimatedWidget], which was used to create implicit animations
-///    before [Record] types were supported in Dart.
+///  * [ImplicitlyAnimatedWidget], which was used to simultaneously animate
+///    multiple parameters before [Record] types were supported in Dart.
 ///  * [AnimatedWidget] and its subclasses, which are [Widget]s that take an
 ///    explicit [Animation] to animate their properties.
 ///

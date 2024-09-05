@@ -19,7 +19,7 @@ import 'framework.dart';
 /// {@template flutter.widgets.ValueWidgetBuilder}
 /// Builds a [Widget] when given a concrete value.
 ///
-/// If a subtree does not depend on the current value, it can be passed as
+/// If a subtree does not depend on the current `value`, it can be passed as
 /// the `child` of the enclosing [ValueListenableBuilder] or [AnimatedValue]
 /// widget, and it will be passed to this callback instead of being reconfigured
 /// each tick.

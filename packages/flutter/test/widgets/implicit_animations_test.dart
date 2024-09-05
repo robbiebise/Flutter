@@ -73,7 +73,7 @@ void main() {
     late double t;
     final AnimatedValue<double> animatedValue = AnimatedValue<double>.builder(
       1.0,
-      initialValue: 0.0,
+      initial: 0.0,
       lerp: lerpDouble,
       duration: const Duration(seconds: 1),
       builder: (BuildContext context, double value, Widget? child) {
@@ -90,6 +90,42 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 500));
     expect(t, 1.0);
+  });
+
+  testWidgets('AnimatedValue responds smoothly to interruptions', (WidgetTester tester) async {
+    double targetValue = 20.0;
+    late double currentValue;
+    AnimatedValue<double> animatedValue() {
+      return AnimatedValue<double>.builder(
+        targetValue,
+        initial: 0.0,
+        lerp: lerpDouble,
+        duration: const Duration(seconds: 1),
+        builder: (BuildContext context, double value, Widget? child) {
+          currentValue = value;
+          return const SizedBox.shrink();
+        },
+      );
+    }
+
+    await tester.pumpWidget(animatedValue());
+    expect(currentValue, 0.0);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(currentValue, 10.0);
+
+    // Set a new value halfway through the animation.
+    targetValue = 30;
+    await tester.pumpWidget(animatedValue());
+    expect(currentValue, 10.0);
+
+    // Animation should restart using the current value,
+    // and should transition to the new target value.
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(currentValue, 20.0);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(currentValue, 30.0);
   });
 
   testWidgets('AnimatedContainer onEnd callback test', (WidgetTester tester) async {

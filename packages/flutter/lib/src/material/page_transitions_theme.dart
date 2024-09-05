@@ -295,32 +295,13 @@ class _ZoomPageTransition extends StatelessWidget {
           child: child,
         );
       },
-      child: DualTransitionBuilder(
-        animation: ReverseAnimation(secondaryAnimation),
-        forwardBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Widget? child,
-        ) {
-          return _ZoomEnterTransition(
-            animation: animation,
-            allowSnapshotting: allowSnapshotting && allowEnterRouteSnapshotting ,
-            reverse: true,
-            child: child,
-          );
-        },
-        reverseBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Widget? child,
-        ) {
-          return _ZoomExitTransition(
-            animation: animation,
-            allowSnapshotting: allowSnapshotting,
-            child: child,
-          );
-        },
-        child: child,
+      child: ZoomPageTransitionsBuilder.snapshotAwareDelegatedTransition(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+        allowSnapshotting,
+        allowEnterRouteSnapshotting
       ),
     );
   }
@@ -560,6 +541,13 @@ abstract class PageTransitionsBuilder {
   /// const constructors so that they can be used in const expressions.
   const PageTransitionsBuilder();
 
+  /// Provideds a secondary transition to the previous route.
+  ///
+  /// {@macro flutter.widgets.delegatedTransition}
+  ///
+  /// If left as null, the previous page will not animate.
+  DelegatedTransition? get delegatedTransition => null;
+
   /// Wraps the child with one or more transition widgets which define how [route]
   /// arrives on and leaves the screen.
   ///
@@ -708,6 +696,47 @@ class ZoomPageTransitionsBuilder extends PageTransitionsBuilder {
   static const bool _kProfileForceDisableSnapshotting = bool.fromEnvironment('flutter.benchmarks.force_disable_snapshot');
 
   @override
+  DelegatedTransition? get delegatedTransition => ZoomDelegatedTransition(
+    builder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget? child)
+      => snapshotAwareDelegatedTransition(context, animation, secondaryAnimation, child, allowSnapshotting, allowEnterRouteSnapshotting),
+  );
+
+  /// A transition builder that takes into account the snapshotting properties of
+  /// [ZoomPageTransitionsBuilder].
+  ///
+  /// This is provided to [ZoomDelegatedTransition.builder], to be passed to the
+  /// previous page route, when the current page is added to the stack.
+  static Widget snapshotAwareDelegatedTransition(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget? child, bool allowSnapshotting, bool allowEnterRouteSnapshotting) {
+    return DualTransitionBuilder(
+      animation: ReverseAnimation(secondaryAnimation),
+      forwardBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Widget? child,
+      ) {
+        return _ZoomEnterTransition(
+          animation: animation,
+          allowSnapshotting: allowSnapshotting && allowEnterRouteSnapshotting,
+          reverse: true,
+          child: child,
+        );
+      },
+      reverseBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Widget? child,
+      ) {
+        return _ZoomExitTransition(
+          animation: animation,
+          allowSnapshotting: allowSnapshotting,
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
+
+  @override
   Widget buildTransitions<T>(
     PageRoute<T> route,
     BuildContext context,
@@ -732,6 +761,12 @@ class ZoomPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
+/// The [DelegatedTransition] for a Zoom page transition.
+class ZoomDelegatedTransition extends DelegatedTransition {
+  /// Creates a Zoom delegated transtion.
+  const ZoomDelegatedTransition({required super.builder});
+}
+
 /// Used by [PageTransitionsTheme] to define a horizontal [MaterialPageRoute]
 /// page transition animation that matches native iOS page transitions.
 ///
@@ -748,6 +783,9 @@ class ZoomPageTransitionsBuilder extends PageTransitionsBuilder {
 class CupertinoPageTransitionsBuilder extends PageTransitionsBuilder {
   /// Constructs a page transition animation that matches the iOS transition.
   const CupertinoPageTransitionsBuilder();
+
+  @override
+  DelegatedTransition? get delegatedTransition => CupertinoPageTransition.delegatedTransition;
 
   @override
   Widget buildTransitions<T>(
@@ -829,6 +867,24 @@ class PageTransitionsTheme with Diagnosticable {
       secondaryAnimation: secondaryAnimation,
       child: child,
     );
+  }
+
+  /// Provides the delegate transition for the target platform.
+  ///
+  /// {@macro flutter.widgets.delegatedTransition}
+  DelegatedTransition? delegatedTransition(TargetPlatform platform, bool allowSnapshotting) {
+    final PageTransitionsBuilder matchingBuilder =
+      builders[platform] ?? const ZoomPageTransitionsBuilder();
+
+    final PageTransitionsBuilder snapshotAwareBuilder =
+      matchingBuilder is ZoomPageTransitionsBuilder ?
+        ZoomPageTransitionsBuilder(
+          allowSnapshotting: matchingBuilder.allowSnapshotting && allowSnapshotting,
+          allowEnterRouteSnapshotting: matchingBuilder.allowEnterRouteSnapshotting
+        ) :
+        matchingBuilder;
+
+    return snapshotAwareBuilder.delegatedTransition;
   }
 
   // Map the builders to a list with one PageTransitionsBuilder per platform for

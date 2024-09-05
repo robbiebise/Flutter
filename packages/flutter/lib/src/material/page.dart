@@ -95,11 +95,28 @@ mixin MaterialRouteTransitionMixin<T> on PageRoute<T> {
   @override
   String? get barrierLabel => null;
 
+  DelegatedTransition? _delegatedTransition;
+
+  @override
+  DelegatedTransition? get delegatedTransition => _delegatedTransition;
+
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
+    // Don't perform outgoing animation if the next route is a fullscreen dialog,
+    // or there is no matching transition to use.
     // Don't perform outgoing animation if the next route is a fullscreen dialog.
-    return (nextRoute is MaterialRouteTransitionMixin && !nextRoute.fullscreenDialog)
-      || (nextRoute is CupertinoRouteTransitionMixin && !nextRoute.fullscreenDialog);
+    final bool nextRouteIsNotFullscreen = (nextRoute is! PageRoute<T>) || !nextRoute.fullscreenDialog;
+
+    // If the next route has a delegated transition, then this route is able to
+    // use that delegated transition to smoothly sync with the next route's
+    // transition.
+    final bool nextRouteHasDelegatedTransition = nextRoute is ModalRoute<T>
+      && nextRoute.delegatedTransition != null;
+
+    // Otherwise if the next route has the same route transition mixin as this
+    // one, then this route will already be synced with its transition.
+    return nextRouteIsNotFullscreen &&
+      ((nextRoute is MaterialRouteTransitionMixin) || nextRouteHasDelegatedTransition);
   }
 
   @override
@@ -117,8 +134,19 @@ mixin MaterialRouteTransitionMixin<T> on PageRoute<T> {
   }
 
   @override
+  void setDelegatedTransition(BuildContext context) {
+    final PageTransitionsTheme theme = Theme.of(context).pageTransitionsTheme;
+    final TargetPlatform platform = Theme.of(context).platform;
+    final DelegatedTransition? themeDelegatedTransition = theme.delegatedTransition(platform, allowSnapshotting);
+    if (delegatedTransition != themeDelegatedTransition) {
+      _delegatedTransition = themeDelegatedTransition;
+    }
+  }
+
+  @override
   Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
     final PageTransitionsTheme theme = Theme.of(context).pageTransitionsTheme;
+    setDelegatedTransition(context);
     return theme.buildTransitions<T>(this, context, animation, secondaryAnimation, child);
   }
 }
@@ -172,7 +200,12 @@ class MaterialPage<T> extends Page<T> {
 
   @override
   Route<T> createRoute(BuildContext context) {
-    return _PageBasedMaterialPageRoute<T>(page: this, allowSnapshotting: allowSnapshotting);
+    final _PageBasedMaterialPageRoute<T> route = _PageBasedMaterialPageRoute<T>(page: this, allowSnapshotting: allowSnapshotting);
+    // It is necessary to do this now as this is the earliest the MaterialPage can
+    // know what its context is for deciding what delegated transition to send.
+    // buildTransitions happens after canTransitionTo in a lot of cases.
+    route.setDelegatedTransition(context);
+    return route;
   }
 }
 

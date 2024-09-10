@@ -30,7 +30,6 @@ void main() {
         ),
       ),
     );
-    debugDumpSemanticsTree();
 
     final TestSemantics expected = TestSemantics.root(
       children: <TestSemantics>[

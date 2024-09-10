@@ -648,11 +648,66 @@ abstract class WidgetStateOutlinedBorder extends OutlinedBorder implements Widge
   /// const constructors so that they can be used in const expressions.
   const WidgetStateOutlinedBorder();
 
+  /// Creates a [WidgetStateOutlinedBorder] using a [WidgetPropertyResolver]
+  /// callback.
+  ///
+  /// This constructor should only be used with widgets that support
+  /// [WidgetStateOutlinedBorder], such as [ChipThemeData.shape]
+  /// (if used as a regular [OutlinedBorder], it acts the same as
+  /// an empty `RoundedRectangleBorder()` constructor).
+  const factory WidgetStateOutlinedBorder.resolveWith(
+    WidgetPropertyResolver<OutlinedBorder?> callback,
+  ) = _WidgetStateOutlinedBorder;
+
+  /// Creates a [WidgetStateTextStyle] from a [WidgetStateMap].
+  ///
+  /// {@macro flutter.widgets.WidgetStateProperty.fromMap}
+  /// It should only be used with widgets that support
+  /// [WidgetStateOutlinedBorder], such as [ChipThemeData.shape]
+  /// (if used as a regular [OutlinedBorder], it acts the same as
+  /// an empty `RoundedRectangleBorder()` constructor).
+  const factory WidgetStateOutlinedBorder.fromMap(
+    WidgetStateMap<OutlinedBorder?> map,
+  ) = _WidgetOutlinedBorderMapper;
+
   /// Returns an [OutlinedBorder] that's to be used when a component is in the
   /// specified state. Return null to defer to the default value of the widget
   /// or theme.
   @override
   OutlinedBorder? resolve(Set<WidgetState> states);
+}
+
+sealed class _RectangleBorder extends RoundedRectangleBorder implements WidgetStateOutlinedBorder {
+  const _RectangleBorder();
+}
+
+class _WidgetStateOutlinedBorder extends _RectangleBorder {
+  const _WidgetStateOutlinedBorder(this._resolve);
+
+  final WidgetPropertyResolver<OutlinedBorder?> _resolve;
+
+  @override
+  OutlinedBorder? resolve(Set<WidgetState> states) => _resolve(states);
+}
+
+@immutable
+class _WidgetOutlinedBorderMapper extends _RectangleBorder {
+  const _WidgetOutlinedBorderMapper(this.map);
+
+  final WidgetStateMap<OutlinedBorder?> map;
+
+  _WidgetStateMapper<OutlinedBorder?> get _mapper => _WidgetStateMapper<OutlinedBorder?>(map);
+
+  @override
+  OutlinedBorder? resolve(Set<WidgetState> states) => _mapper.resolve(states);
+
+  @override
+  bool operator ==(Object other) {
+    return other is _WidgetOutlinedBorderMapper && other._mapper == _mapper;
+  }
+
+  @override
+  int get hashCode => _mapper.hashCode;
 }
 
 /// Defines a [TextStyle] that is also a [WidgetStateProperty].

@@ -145,6 +145,86 @@ void main() {
     expect(borderSide.color, isSameColorAs(const Color(0xff0000ff)));
     expect(borderSide.width, 12.0);
   });
+
+  test('.fromMap() constructors perform accurate equality checks', () {
+    const Color white = Color(0xFFFFFFFF);
+    const Color black = Color(0xFF000000);
+    final WidgetStateColor color1 = WidgetStateColor.fromMap(
+      <WidgetStatesConstraint, Color>{
+        WidgetState.focused | WidgetState.hovered: white,
+        WidgetState.any: black,
+      },
+    );
+    final WidgetStateColor color2 = WidgetStateColor.fromMap(
+      <WidgetStatesConstraint, Color>{
+        WidgetState.focused | WidgetState.hovered: white,
+        WidgetState.any: black,
+      },
+    );
+    expect(color1 == color2, isTrue);
+
+    const BorderSide whiteBorder = BorderSide(color: white);
+    const BorderSide blackBorder = BorderSide();
+    final WidgetStateBorderSide side1 = WidgetStateBorderSide.fromMap(
+      <WidgetStatesConstraint, BorderSide>{
+        WidgetState.focused | WidgetState.hovered: whiteBorder,
+        WidgetState.any: blackBorder,
+      },
+    );
+    final WidgetStateBorderSide side2 = WidgetStateBorderSide.fromMap(
+      <WidgetStatesConstraint, BorderSide>{
+        WidgetState.focused | WidgetState.hovered: whiteBorder,
+        WidgetState.any: blackBorder,
+      },
+    );
+    expect(side1 == side2, isTrue);
+
+    const OutlinedBorder whiteRRect = RoundedRectangleBorder(side: whiteBorder);
+    const OutlinedBorder blackRRect = RoundedRectangleBorder(side: blackBorder);
+    final WidgetStateOutlinedBorder border1 = WidgetStateOutlinedBorder.fromMap(
+      <WidgetStatesConstraint, OutlinedBorder>{
+        WidgetState.focused | WidgetState.hovered: whiteRRect,
+        WidgetState.any: blackRRect,
+      },
+    );
+    final WidgetStateOutlinedBorder border2 = WidgetStateOutlinedBorder.fromMap(
+      <WidgetStatesConstraint, OutlinedBorder>{
+        WidgetState.focused | WidgetState.hovered: whiteRRect,
+        WidgetState.any: blackRRect,
+      },
+    );
+    expect(border1 == border2, isTrue);
+
+    final WidgetStateMouseCursor cursor1 = WidgetStateMouseCursor.fromMap(
+      <WidgetStatesConstraint, MouseCursor>{
+        WidgetState.focused | WidgetState.hovered: MouseCursor.defer,
+        WidgetState.any: MouseCursor.uncontrolled,
+      },
+    );
+    final WidgetStateMouseCursor cursor2 = WidgetStateMouseCursor.fromMap(
+      <WidgetStatesConstraint, MouseCursor>{
+        WidgetState.focused | WidgetState.hovered: MouseCursor.defer,
+        WidgetState.any: MouseCursor.uncontrolled,
+      },
+    );
+    expect(cursor1 == cursor2, isTrue);
+
+    const TextStyle whiteText = TextStyle(color: white);
+    const TextStyle blackText = TextStyle(color: black);
+    final WidgetStateTextStyle style1 = WidgetStateTextStyle.fromMap(
+      <WidgetStatesConstraint, TextStyle>{
+        WidgetState.focused | WidgetState.hovered: whiteText,
+        WidgetState.any: blackText,
+      },
+    );
+    final WidgetStateTextStyle style2 = WidgetStateTextStyle.fromMap(
+      <WidgetStatesConstraint, TextStyle>{
+        WidgetState.focused | WidgetState.hovered: whiteText,
+        WidgetState.any: blackText,
+      },
+    );
+    expect(style1 == style2, isTrue);
+  });
 }
 
-Set<WidgetState> enabled = <WidgetState>{};
+const Set<WidgetState> enabled = <WidgetState>{};

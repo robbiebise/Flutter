@@ -280,7 +280,6 @@ class ThemeData with Diagnosticable {
     // https://github.com/flutter/flutter/issues/91772.
     Color? canvasColor,
     Color? cardColor,
-    Color? dialogBackgroundColor,
     Color? disabledColor,
     Color? dividerColor,
     Color? focusColor,
@@ -358,6 +357,11 @@ class ThemeData with Diagnosticable {
       'This feature was deprecated after v3.21.0-10.0.pre.',
     )
     ButtonBarThemeData? buttonBarTheme,
+    @Deprecated(
+      'Use DialogThemeData.backgroundColor instead. '
+      'This feature was deprecated after v3.26.0-0.1.pre.',
+    )
+    Color? dialogBackgroundColor,
   }) {
     // GENERAL CONFIGURATION
     cupertinoOverrideTheme = cupertinoOverrideTheme?.noDefault();
@@ -443,7 +447,6 @@ class ThemeData with Diagnosticable {
     unselectedWidgetColor ??= isDark ? Colors.white70 : Colors.black54;
     // Spec doesn't specify a dark theme secondaryHeaderColor, this is a guess.
     secondaryHeaderColor ??= isDark ? Colors.grey[700]! : primarySwatch[50]!;
-    dialogBackgroundColor ??= isDark ? Colors.grey[800]! : Colors.white;
     indicatorColor ??= colorScheme.secondary == primaryColor ? Colors.white : colorScheme.secondary;
     hintColor ??= isDark ? Colors.white60 : Colors.black.withOpacity(0.6);
     // The default [buttonTheme] is here because it doesn't use the defaults for
@@ -531,6 +534,7 @@ class ThemeData with Diagnosticable {
     tooltipTheme ??= const TooltipThemeData();
     // DEPRECATED (newest deprecations at the bottom)
     buttonBarTheme ??= const ButtonBarThemeData();
+    dialogBackgroundColor ??= isDark ? Colors.grey[800]! : Colors.white;
     return ThemeData.raw(
       // For the sanity of the reader, make sure these properties are in the same
       // order in every place that they are separated by section comments (e.g.
@@ -554,7 +558,6 @@ class ThemeData with Diagnosticable {
       canvasColor: canvasColor,
       cardColor: cardColor,
       colorScheme: colorScheme,
-      dialogBackgroundColor: dialogBackgroundColor,
       disabledColor: disabledColor,
       dividerColor: dividerColor,
       focusColor: focusColor,
@@ -624,6 +627,7 @@ class ThemeData with Diagnosticable {
       tooltipTheme: tooltipTheme,
       // DEPRECATED (newest deprecations at the bottom)
       buttonBarTheme: buttonBarTheme,
+      dialogBackgroundColor: dialogBackgroundColor,
     );
   }
 
@@ -660,7 +664,6 @@ class ThemeData with Diagnosticable {
     // https://github.com/flutter/flutter/issues/91772.
     required this.canvasColor,
     required this.cardColor,
-    required this.dialogBackgroundColor,
     required this.disabledColor,
     required this.dividerColor,
     required this.focusColor,
@@ -734,9 +737,15 @@ class ThemeData with Diagnosticable {
       'This feature was deprecated after v3.21.0-10.0.pre.',
     )
     ButtonBarThemeData? buttonBarTheme,
+    @Deprecated(
+      'Use DialogThemeData.backgroundColor instead. '
+      'This feature was deprecated after v3.26.0-0.1.pre.',
+    )
+    Color? dialogBackgroundColor,
   }) : // DEPRECATED (newest deprecations at the bottom)
        // should not be `required`, use getter pattern to avoid breakages.
        _buttonBarTheme = buttonBarTheme,
+       _dialogBackgroundColor = dialogBackgroundColor,
        assert(buttonBarTheme != null);
 
   /// Create a [ThemeData] based on the colors in the given [colorScheme] and
@@ -1127,9 +1136,6 @@ class ThemeData with Diagnosticable {
   /// backwards compatibility breaks.
   final ColorScheme colorScheme;
 
-  /// The background color of [Dialog] elements.
-  final Color dialogBackgroundColor;
-
   /// The color used for widgets that are inoperative, regardless of
   /// their state. For example, a disabled checkbox (which may be
   /// checked or unchecked).
@@ -1397,6 +1403,14 @@ class ThemeData with Diagnosticable {
   ButtonBarThemeData get buttonBarTheme => _buttonBarTheme!;
   final ButtonBarThemeData? _buttonBarTheme;
 
+  /// The background color of [Dialog] elements.
+  @Deprecated(
+    'Use DialogThemeData.backgroundColor instead. '
+    'This feature was deprecated after v3.26.0-0.1.pre.',
+  )
+  Color? get dialogBackgroundColor => _dialogBackgroundColor;
+  final Color? _dialogBackgroundColor;
+
   /// Creates a copy of this theme but with the given fields replaced with the new values.
   ///
   /// The [brightness] value is applied to the [colorScheme].
@@ -1426,7 +1440,6 @@ class ThemeData with Diagnosticable {
     // https://github.com/flutter/flutter/issues/91772.
     Color? canvasColor,
     Color? cardColor,
-    Color? dialogBackgroundColor,
     Color? disabledColor,
     Color? dividerColor,
     Color? focusColor,
@@ -1508,6 +1521,11 @@ class ThemeData with Diagnosticable {
       'This feature was deprecated after v3.21.0-10.0.pre.',
     )
     ButtonBarThemeData? buttonBarTheme,
+    @Deprecated(
+      'Use DialogThemeData.backgroundColor instead. '
+      'This feature was deprecated after v3.26.0-0.1.pre.',
+    )
+    Color? dialogBackgroundColor,
   }) {
     cupertinoOverrideTheme = cupertinoOverrideTheme?.noDefault();
     return ThemeData.raw(
@@ -1535,7 +1553,6 @@ class ThemeData with Diagnosticable {
       canvasColor: canvasColor ?? this.canvasColor,
       cardColor: cardColor ?? this.cardColor,
       colorScheme: (colorScheme ?? this.colorScheme).copyWith(brightness: brightness),
-      dialogBackgroundColor: dialogBackgroundColor ?? this.dialogBackgroundColor,
       disabledColor: disabledColor ?? this.disabledColor,
       dividerColor: dividerColor ?? this.dividerColor,
       focusColor: focusColor ?? this.focusColor,
@@ -1603,7 +1620,9 @@ class ThemeData with Diagnosticable {
       timePickerTheme: timePickerTheme ?? this.timePickerTheme,
       toggleButtonsTheme: toggleButtonsTheme ?? this.toggleButtonsTheme,
       tooltipTheme: tooltipTheme ?? this.tooltipTheme,
+      // DEPRECATED (newest deprecations at the bottom)
       buttonBarTheme: buttonBarTheme ?? _buttonBarTheme,
+      dialogBackgroundColor: dialogBackgroundColor ?? this.dialogBackgroundColor,
     );
   }
 
@@ -1728,7 +1747,6 @@ class ThemeData with Diagnosticable {
       canvasColor: Color.lerp(a.canvasColor, b.canvasColor, t)!,
       cardColor: Color.lerp(a.cardColor, b.cardColor, t)!,
       colorScheme: ColorScheme.lerp(a.colorScheme, b.colorScheme, t),
-      dialogBackgroundColor: Color.lerp(a.dialogBackgroundColor, b.dialogBackgroundColor, t)!,
       disabledColor: Color.lerp(a.disabledColor, b.disabledColor, t)!,
       dividerColor: Color.lerp(a.dividerColor, b.dividerColor, t)!,
       focusColor: Color.lerp(a.focusColor, b.focusColor, t)!,
@@ -1796,7 +1814,9 @@ class ThemeData with Diagnosticable {
       timePickerTheme: TimePickerThemeData.lerp(a.timePickerTheme, b.timePickerTheme, t),
       toggleButtonsTheme: ToggleButtonsThemeData.lerp(a.toggleButtonsTheme, b.toggleButtonsTheme, t)!,
       tooltipTheme: TooltipThemeData.lerp(a.tooltipTheme, b.tooltipTheme, t)!,
+      // DEPRECATED (newest deprecations at the bottom)
       buttonBarTheme: ButtonBarThemeData.lerp(a.buttonBarTheme, b.buttonBarTheme, t),
+      dialogBackgroundColor: Color.lerp(a.dialogBackgroundColor, b.dialogBackgroundColor, t),
     );
   }
 
@@ -1828,7 +1848,6 @@ class ThemeData with Diagnosticable {
         other.canvasColor == canvasColor &&
         other.cardColor == cardColor &&
         other.colorScheme == colorScheme &&
-        other.dialogBackgroundColor == dialogBackgroundColor &&
         other.disabledColor == disabledColor &&
         other.dividerColor == dividerColor &&
         other.focusColor == focusColor &&
@@ -1896,7 +1915,9 @@ class ThemeData with Diagnosticable {
         other.timePickerTheme == timePickerTheme &&
         other.toggleButtonsTheme == toggleButtonsTheme &&
         other.tooltipTheme == tooltipTheme &&
-        other.buttonBarTheme == buttonBarTheme;
+        // DEPRECATED (newest deprecations at the bottom)
+        other.buttonBarTheme == buttonBarTheme &&
+        other.dialogBackgroundColor == dialogBackgroundColor;
   }
 
   @override
@@ -1926,7 +1947,6 @@ class ThemeData with Diagnosticable {
       canvasColor,
       cardColor,
       colorScheme,
-      dialogBackgroundColor,
       disabledColor,
       dividerColor,
       focusColor,
@@ -1996,6 +2016,7 @@ class ThemeData with Diagnosticable {
       tooltipTheme,
       // DEPRECATED (newest deprecations at the bottom)
       buttonBarTheme,
+      dialogBackgroundColor,
     ];
     return Object.hashAll(values);
   }
@@ -2026,7 +2047,6 @@ class ThemeData with Diagnosticable {
     properties.add(ColorProperty('canvasColor', canvasColor, defaultValue: defaultData.canvasColor, level: DiagnosticLevel.debug));
     properties.add(ColorProperty('cardColor', cardColor, defaultValue: defaultData.cardColor, level: DiagnosticLevel.debug));
     properties.add(DiagnosticsProperty<ColorScheme>('colorScheme', colorScheme, defaultValue: defaultData.colorScheme, level: DiagnosticLevel.debug));
-    properties.add(ColorProperty('dialogBackgroundColor', dialogBackgroundColor, defaultValue: defaultData.dialogBackgroundColor, level: DiagnosticLevel.debug));
     properties.add(ColorProperty('disabledColor', disabledColor, defaultValue: defaultData.disabledColor, level: DiagnosticLevel.debug));
     properties.add(ColorProperty('dividerColor', dividerColor, defaultValue: defaultData.dividerColor, level: DiagnosticLevel.debug));
     properties.add(ColorProperty('focusColor', focusColor, defaultValue: defaultData.focusColor, level: DiagnosticLevel.debug));
@@ -2096,6 +2116,7 @@ class ThemeData with Diagnosticable {
     properties.add(DiagnosticsProperty<TooltipThemeData>('tooltipTheme', tooltipTheme, level: DiagnosticLevel.debug));
     // DEPRECATED (newest deprecations at the bottom)
     properties.add(DiagnosticsProperty<ButtonBarThemeData>('buttonBarTheme', buttonBarTheme, defaultValue: defaultData.buttonBarTheme, level: DiagnosticLevel.debug));
+    properties.add(ColorProperty('dialogBackgroundColor', dialogBackgroundColor, defaultValue: defaultData.dialogBackgroundColor, level: DiagnosticLevel.debug));
   }
 }
 

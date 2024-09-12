@@ -161,7 +161,14 @@ void main() {
         WidgetState.any: black,
       },
     );
+    final WidgetStateColor color3 = WidgetStateColor.fromMap(
+      <WidgetStatesConstraint, Color>{
+        WidgetState.focused | WidgetState.hovered: black,
+        WidgetState.any: white,
+      },
+    );
     expect(color1 == color2, isTrue);
+    expect(color1 == color3, isFalse);
 
     const BorderSide whiteBorder = BorderSide(color: white);
     const BorderSide blackBorder = BorderSide();
@@ -177,7 +184,14 @@ void main() {
         WidgetState.any: blackBorder,
       },
     );
+    final WidgetStateBorderSide side3 = WidgetStateBorderSide.fromMap(
+      <WidgetStatesConstraint, BorderSide>{
+        WidgetState.focused | WidgetState.hovered: blackBorder,
+        WidgetState.any: whiteBorder,
+      },
+    );
     expect(side1 == side2, isTrue);
+    expect(side1 == side3, isFalse);
 
     const OutlinedBorder whiteRRect = RoundedRectangleBorder(side: whiteBorder);
     const OutlinedBorder blackRRect = RoundedRectangleBorder(side: blackBorder);
@@ -193,7 +207,14 @@ void main() {
         WidgetState.any: blackRRect,
       },
     );
+    final WidgetStateOutlinedBorder border3 = WidgetStateOutlinedBorder.fromMap(
+      <WidgetStatesConstraint, OutlinedBorder>{
+        WidgetState.focused | WidgetState.hovered: blackRRect,
+        WidgetState.any: whiteRRect,
+      },
+    );
     expect(border1 == border2, isTrue);
+    expect(border1 == border3, isFalse);
 
     final WidgetStateMouseCursor cursor1 = WidgetStateMouseCursor.fromMap(
       <WidgetStatesConstraint, MouseCursor>{
@@ -207,7 +228,14 @@ void main() {
         WidgetState.any: MouseCursor.uncontrolled,
       },
     );
+    final WidgetStateMouseCursor cursor3 = WidgetStateMouseCursor.fromMap(
+      <WidgetStatesConstraint, MouseCursor>{
+        WidgetState.focused | WidgetState.hovered: MouseCursor.uncontrolled,
+        WidgetState.any: MouseCursor.defer,
+      },
+    );
     expect(cursor1 == cursor2, isTrue);
+    expect(cursor1 == cursor3, isFalse);
 
     const TextStyle whiteText = TextStyle(color: white);
     const TextStyle blackText = TextStyle(color: black);
@@ -223,7 +251,14 @@ void main() {
         WidgetState.any: blackText,
       },
     );
+    final WidgetStateTextStyle style3 = WidgetStateTextStyle.fromMap(
+      <WidgetStatesConstraint, TextStyle>{
+        WidgetState.focused | WidgetState.hovered: blackText,
+        WidgetState.any: whiteText,
+      },
+    );
     expect(style1 == style2, isTrue);
+    expect(style1 == style3, isFalse);
   });
 }
 

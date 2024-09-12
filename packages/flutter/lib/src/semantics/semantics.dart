@@ -4224,8 +4224,7 @@ class SemanticsConfiguration {
   set childConfigurationsDelegate(ChildSemanticsConfigurationsDelegate? value) {
     assert(value != null);
     _childConfigurationsDelegate = value;
-    // Setting the childConfigsDelegate does not annotate any meaningful
-    // semantics information of the config.
+    hasBeenAnnotated = true;
   }
 
   /// Returns the action handler registered for [action] or null if none was

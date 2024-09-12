@@ -1315,27 +1315,53 @@ class PipelineOwner with DiagnosticableTreeMixin {
         ..sort((RenderObject a, RenderObject b) => a.depth - b.depth);
       _nodesNeedingSemantics.clear();
       if (nodesToProcess.isNotEmpty) {
-        print('before update ${nodesToProcess.map((e) => describeIdentity(e)).toList()}');
-        debugDumpRenderObjectSemanticsTree();
-      }
-      // They have to be update in order.
-      for (final RenderObject node in nodesToProcess) {
-        if (!kReleaseMode) {
-          FlutterTimeline.startSync('Semantics.updateChildParentData');
+        // print('before update ${nodesToProcess.map((e) => describeIdentity(e)).toList()}');
+        // They have to be update in order.
+        for (final RenderObject node in nodesToProcess) {
+          if (!kReleaseMode) {
+            FlutterTimeline.startSync('Semantics.updateChildParentData');
+          }
+          if (node._semantics.parentDataDirty) {
+            // This is a node that are blocked by sibling.
+            continue;
+          }
+          node._semantics.updateChildParentData();
+          if (!kReleaseMode) {
+            FlutterTimeline.finishSync();
+          }
         }
-        node._semantics.updateChildParentData();
-        if (!kReleaseMode) {
-          FlutterTimeline.finishSync();
+
+        assert(_RenderObjectSemantics.debugCheckForParentData(rootNode!));
+
+        for (final RenderObject node in nodesToProcess) {
+          if (!kReleaseMode) {
+            FlutterTimeline.startSync('Semantics.updateChildParentGeometry');
+          }
+          if (node._semantics.parentDataDirty) {
+            // This is a node that are blocked by sibling.
+            continue;
+          }
+          node._semantics.updateChildParentGeometry();
+          if (!kReleaseMode) {
+            FlutterTimeline.finishSync();
+          }
         }
-      }
-      for (final RenderObject node in nodesToProcess) {
-        if (!kReleaseMode) {
-          FlutterTimeline.startSync('Semantics.updateChildParentData');
-        }
-        // print('rebuild ${describeIdentity(node)}');
-        node._semantics.ensureSemantics(usedSemanticsIds: <int>{});
-        if (!kReleaseMode) {
-          FlutterTimeline.finishSync();
+
+        assert(_RenderObjectSemantics.debugCheckForParentGeometry(rootNode!));
+
+        for (final RenderObject node in nodesToProcess) {
+          if (!kReleaseMode) {
+            FlutterTimeline.startSync('Semantics.ensureSemantics');
+          }
+          if (node._semantics.parentDataDirty) {
+            // This is a node that are blocked by sibling.
+            continue;
+          }
+          // print('rebuild ${describeIdentity(node)}');
+          node._semantics.ensureSemantics(usedSemanticsIds: <int>{});
+          if (!kReleaseMode) {
+            FlutterTimeline.finishSync();
+          }
         }
       }
       _semanticsOwner!.sendSemanticsUpdate();
@@ -4471,27 +4497,20 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
   bool _hasSiblingConflict = false;
 
   bool get needsBuild => contributeToSemanticsTree && _formedSemanticsNode != shouldFormSemanticsNode;
+  bool? _blocksPreviousSibling;
 
   bool get parentDataDirty {
     if (isRoot) {
       return false;
     }
     return parentData == null;
-    // if (isRoot) {
-    //   assert(parentData == null && parentGeometry == null);
-    //   assert(contributeToSemanticsTree);
-    //   return needsBuild;
-    // }
-    //
-    // if (parentData == null) {
-    //   return true;
-    // }
-    // assert(parentData != null && parentGeometry != null);
-    // return needsBuild;
   }
 
-  void marksNeedsBuild() {
-    _formedSemanticsNode = null;
+  bool get parentGeometryDirty {
+    if (isRoot) {
+      return false;
+    }
+    return parentGeometry == null;
   }
 
   // null if this has not be compiled before or was marked dirty.
@@ -4540,17 +4559,64 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     if (!contributeToSemanticsTree) {
       return false;
     }
-    if (parentData ==  null) {
-      print('this is ${describeIdentity(renderObject)}');
-      debugDumpRenderObjectSemanticsTree();
-    }
     return parentData!.explicitChildNodes || _hasSiblingConflict;
   }
 
   _SemanticsParentData? parentData;
   _SemanticsGeometry? parentGeometry;
 
+  static bool debugCheckForParentData(RenderObject root) {
+    void debugCheckParentDataNotEmpty(_RenderObjectSemantics semantics) {
+      // if (semantics.parentDataDirty) {
+      //   print('parentDataDirty!!!!!\n${StackTrace.current}');
+      //   debugDumpRenderObjectSemanticsTree();
+      // }
+      assert(!semantics.parentDataDirty);
+      semantics._getNonBlockedChildren().forEach(debugCheckParentDataNotEmpty);
+    }
+    debugCheckParentDataNotEmpty(root._semantics);
+    return true;
+  }
+
+  static bool debugCheckForParentGeometry(RenderObject root) {
+    void debugCheckParentGeometryNotEmpty(_RenderObjectSemantics semantics) {
+      // if (semantics.parentGeometryDirty) {
+      //   print('parentGeometryDirty!!!!!\n${StackTrace.current}');
+      //   debugDumpRenderObjectSemanticsTree();
+      // }
+      assert(!semantics.parentGeometryDirty);
+      semantics._getNonBlockedChildren().forEach(debugCheckParentGeometryNotEmpty);
+    }
+    debugCheckParentGeometryNotEmpty(root._semantics);
+    return true;
+  }
+
+  bool get isBlockingPreviousSibling {
+    if (_blocksPreviousSibling != null) {
+      return _blocksPreviousSibling!;
+    }
+
+    _blocksPreviousSibling = configProvider.effective.isBlockingSemanticsOfPreviouslyPaintedNodes;
+    
+    if (_blocksPreviousSibling!) {
+      return true;
+    }
+
+    renderObject.visitChildrenForSemantics((RenderObject child) {
+      final _RenderObjectSemantics childSemantics = child._semantics;
+      final SemanticsConfiguration childConfig = child._semantics.configProvider.effective;
+      if (!childConfig.isSemanticBoundary && childSemantics.isBlockingPreviousSibling) {
+        _blocksPreviousSibling = true;
+      }
+    });
+    return _blocksPreviousSibling!;
+  }
+
   bool shouldDrop(SemanticsNode node) => node.isInvisible;
+
+  void marksNeedsBuild() {
+    _formedSemanticsNode = null;
+  }
 
   /// Ensures the semantics nodes from this render object semantics subtree are
   /// generated and up to date.
@@ -4562,7 +4628,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
   void ensureSemantics({required Set<int> usedSemanticsIds}) {
     // assert(configProvider.effective.isSemanticBoundary || renderObject.semanticsParent == null);
     // updateChildParentData();
-    updateChildParentGeometry();
+    // updateChildParentGeometry();
     if (needsBuild) {
       buildSemantics(usedSemanticsIds: usedSemanticsIds);
     } else {
@@ -4571,8 +4637,8 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       buildSemanticsSubtree(
         usedSemanticsIds: usedSemanticsIds,
         // The result can be discarded since they are used by parent and they
-        // shouldn't have had changed, otherwise the parent would have been
-        // marked dirty.
+        // shouldn't have had changed, otherwise the `needsBuild` must have be
+        // false.
         semanticsNodes: <SemanticsNode>[],
         siblingNodes: <SemanticsNode>[],
       );
@@ -4596,12 +4662,20 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     marksNeedsBuild();
     // print('renderobject sets new parent data ${describeIdentity(renderObject)}');
     parentData = newParentData;
-    var children = <String>[];
-    renderObject.visitChildrenForSemantics((RenderObject renderChild) {
-      children.add(describeIdentity(renderChild));
-    });
-    print('didUpdateParentData for ${describeIdentity(renderObject)}, children $children');
+    // var children = <String>[];
+    // renderObject.visitChildrenForSemantics((RenderObject renderChild) {
+    //   children.add(describeIdentity(renderChild));
+    // });
+    // print('didUpdateParentData for ${describeIdentity(renderObject)}, children $children');
     updateChildParentData();
+
+    final Set<SemanticsTag>? tags = newParentData.tagsForChildren;
+    if (tags != null) {
+      assert(tags.isNotEmpty);
+      configProvider.setProperty((SemanticsConfiguration config) {
+        tags.forEach(config.addTagForChildren);
+      });
+    }
 
     final bool effectiveBlocksUserAction = newParentData.blocksUserActions || configProvider.original.isBlockingUserActions;
     if (effectiveBlocksUserAction != configProvider.effective.isBlockingUserActions) {
@@ -4613,7 +4687,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
 
   void updateChildParentData() {
     assert(
-      parentData != null || renderObject.semanticsParent == null,
+      parentData != null || isRoot,
       'parent data can only be null for root rendering object'
     );
     configProvider.reset();
@@ -4627,8 +4701,12 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       (!contributeToSemanticsTree && (parentData?.explicitChildNodes ?? true));
     final List<SemanticsConfiguration> childConfigurations = <SemanticsConfiguration>[];
     final ChildSemanticsConfigurationsDelegate? childConfigurationsDelegate = configProvider.effective.childConfigurationsDelegate;
+    final bool hasChildConfigurationsDelegate = childConfigurationsDelegate != null;
     final Map<SemanticsConfiguration, _SemanticsFragment> configToFragment = <SemanticsConfiguration, _SemanticsFragment>{};
     final List<_SemanticsFragment> children = <_SemanticsFragment>[];
+    siblingMergeGroup.clear();
+    _children.clear();
+    mergeUp.clear();
     for (final _RenderObjectSemantics childSemantics in _getNonBlockedChildren()) {
       assert(!childSemantics.renderObject._needsLayout);
       final _SemanticsParentData childParentData = _SemanticsParentData(
@@ -4640,20 +4718,14 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         tagsForChildren: tagsForChildren,
       );
       childSemantics.didUpdateParentData(childParentData);
-
-      final SemanticsConfiguration childConfig = childSemantics.configProvider.effective;
-      if (childConfig.isBlockingSemanticsOfPreviouslyPaintedNodes && !childConfig.isSemanticBoundary) {
-        configProvider.setProperty((SemanticsConfiguration config) {
-          config.isBlockingSemanticsOfPreviouslyPaintedNodes = true;
-        });
-      }
       for (final _SemanticsFragment fragment in childSemantics.mergeUp) {
-        children.add(fragment);
-        if (childConfigurationsDelegate != null && fragment.config != null) {
+        if (hasChildConfigurationsDelegate && fragment.config != null) {
           // This fragment need to go through delegate to determine whether it
           // merge up or not.
           childConfigurations.add(fragment.config!);
           configToFragment[fragment.config!] = fragment;
+        } else {
+          children.add(fragment);
         }
       }
 
@@ -4664,12 +4736,8 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       }
     }
 
-    siblingMergeGroup.clear();
-    _children.clear();
-    mergeUp.clear();
-
     assert(childConfigurationsDelegate != null || configToFragment.isEmpty);
-    if (!explicitChildNodesForChildren && childConfigurationsDelegate != null) {
+    if (!explicitChildNodesForChildren && hasChildConfigurationsDelegate) {
       final ChildSemanticsConfigurationsResult result = childConfigurationsDelegate(childConfigurations);
       mergeUp.addAll(
         result.mergeUp.map<_SemanticsFragment>((SemanticsConfiguration config) {
@@ -4679,7 +4747,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
           }
           // Parent fragment of Incomplete fragments can't be a forking
           // fragment since they need to be merged.
-          configProvider.setProperty((SemanticsConfiguration config) => config.hasBeenAnnotated = true);
+          // configProvider.setProperty((SemanticsConfiguration config) => config.hasBeenAnnotated = true);
           return _IncompleteSemanticsFragment(config, this);
         }),
       );
@@ -4690,9 +4758,9 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
           }).toList(),
         );
       }
-    } else {
-      mergeUp.addAll(children);
+      assert(children.every((_SemanticsFragment fragment) => fragment.config == null));
     }
+    mergeUp.addAll(children);
 
     if (contributeToSemanticsTree) {
       // Remove old value
@@ -4716,6 +4784,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       // because they are either absorbed or will form a semantics node.
       mergeUp.clear();
       mergeUp.add(this);
+      // print('this ${describeIdentity(renderObject)} gets children ${children.whereType<_RenderObjectSemantics>().map((e) => describeIdentity(e.renderObject)).toList()}');
       _children.addAll(children);
     }
   }
@@ -4735,31 +4804,31 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         // `needsBuild == ture`, then this method is responsible for updating the
         // geometry of cached semantics node.
         needsBuild ||
-        _updateSemanticsNodeGeometry();
+        _childGeometryMayChange();
 
-    if (!childGeometryMayChange) {
+    if (childGeometryMayChange) {
+      marksNeedsBuild();
+      updateChildParentGeometry();
       return;
     }
 
-    updateChildParentGeometry();
-
-    final bool needsToUpdateCache = contributeToSemanticsTree && !needsBuild;
-    if (!needsToUpdateCache) {
-      return;
-    }
-    _updateSiblingNodesGeometries();
-
-    if (_formedSemanticsNode!) {
-      // Child geometry change may result in dropping child semantics node.
-      buildSemanticsSubtree(
-        usedSemanticsIds: <int>{},
-        // The result can be discarded since they are used by parent and they
-        // shouldn't have had changed, otherwise the parent would have been
-        // marked needsBuild.
-        semanticsNodes: <SemanticsNode>[],
-        siblingNodes: <SemanticsNode>[],
-      );
-    }
+    // final bool needsToUpdateCache = contributeToSemanticsTree && !needsBuild;
+    // if (!needsToUpdateCache) {
+    //   return;
+    // }
+    // _updateSiblingNodesGeometries();
+    //
+    // if (_formedSemanticsNode!) {
+    //   // Child geometry change may result in dropping child semantics node.
+    //   buildSemanticsSubtree(
+    //     usedSemanticsIds: <int>{},
+    //     // The result can be discarded since they are used by parent and they
+    //     // shouldn't have had changed, otherwise the parent would have been
+    //     // marked needsBuild.
+    //     semanticsNodes: <SemanticsNode>[],
+    //     siblingNodes: <SemanticsNode>[],
+    //   );
+    // }
   }
 
   void updateChildParentGeometry() {
@@ -4773,12 +4842,10 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     }
   }
 
-  /// Returns true if any of the children is blocked
   List<_RenderObjectSemantics> _getNonBlockedChildren() {
     final List<_RenderObjectSemantics> result = <_RenderObjectSemantics>[];
     renderObject.visitChildrenForSemantics((RenderObject renderChild) {
-      final SemanticsConfiguration childConfig = renderChild._semantics.configProvider.effective;
-      if (childConfig.isBlockingSemanticsOfPreviouslyPaintedNodes) {
+      if (renderChild._semantics.isBlockingPreviousSibling) {
         result.clear();
       }
       result.add(renderChild._semantics);
@@ -4860,7 +4927,6 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
   }) {
     final List<SemanticsNode> children = <SemanticsNode>[];
     final List<SemanticsNode> childSiblingNodes = <SemanticsNode>[];
-    // print('buildSemanticsSubtree for ${describeIdentity(renderObject)}, _children ${_children.map((e) => describeIdentity(e.owner.renderObject)).toList()}');
     for (final _SemanticsFragment fragment in _children) {
       if (fragment is _IncompleteSemanticsFragment) {
         continue;
@@ -4909,7 +4975,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       node
         ..isMergedIntoParent = (parentData?.mergeIntoParent ?? false)
         ..tags = parentData?.tagsForChildren;
-      _updateSemanticsNodeGeometry();
+      _updateSemanticsNodeGeometry(node);
     }
     _mergeSiblingGroup(
       usedSemanticsIds,
@@ -4956,7 +5022,11 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         }
         node.updateWith(config: configuration);
         _producedSiblingNodesAndOwners[node] = group;
-        siblingNodes.add(node);
+        if (_formedSemanticsNode!) {
+          semanticsNodes.add(node);
+        } else {
+          siblingNodes.add(node);
+        }
 
         final Set<SemanticsTag> tags = group
             .map<Set<SemanticsTag>?>((_SemanticsFragment fragment) => fragment.owner.parentData!.tagsForChildren)
@@ -4989,7 +5059,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
   ///
   /// Returns true if geometry changes that may result in children's geometries
   /// change as well.
-  bool _updateSemanticsNodeGeometry() {
+  bool _childGeometryMayChange() {
     final SemanticsNode? producedNode = cachedSemanticsNode;
     if (producedNode == null) {
       // Return true since it is not certain whether children's geometries may
@@ -4999,7 +5069,30 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     assert(parentGeometry != null || isRoot);
     final _SemanticsGeometry geometry = parentGeometry ?? _SemanticsGeometry.rootGeometry;
 
-    producedNode.elevationAdjustment = geometry.elevationAdjustment;
+    Rect rect = geometry.semanticsClipRect?.intersect(renderObject.semanticBounds) ?? renderObject.semanticBounds;
+    bool isRectHidden = false;
+    if (geometry.paintClipRect != null) {
+      final Rect paintRect = geometry.paintClipRect!.intersect(rect);
+      isRectHidden = paintRect.isEmpty && !rect.isEmpty;
+      if (!isRectHidden) {
+        rect = paintRect;
+      }
+    }
+    final bool isSemanticsHidden = !(parentData?.mergeIntoParent ?? false) && isRectHidden;
+    final bool sizeChanged = rect.size != producedNode.rect.size;
+    final bool visibilityChanged = configProvider.effective.isHidden != isSemanticsHidden;
+    return sizeChanged || visibilityChanged;
+  }
+
+  /// Updates the semantics geometry of the cached semantics node.
+  ///
+  /// Returns true if geometry changes that may result in children's geometries
+  /// change as well.
+  void _updateSemanticsNodeGeometry(SemanticsNode node) {
+    assert(parentGeometry != null || isRoot);
+    final _SemanticsGeometry geometry = parentGeometry ?? _SemanticsGeometry.rootGeometry;
+
+    node.elevationAdjustment = geometry.elevationAdjustment;
     if (geometry.elevationAdjustment != 0.0) {
       configProvider.setProperty((SemanticsConfiguration config) {
         config.elevation = configProvider.original.elevation + geometry.elevationAdjustment;
@@ -5014,16 +5107,14 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         rect = paintRect;
       }
     }
-    final bool isSemanticsHidden = !(parentData?.mergeIntoParent ?? false) && isRectHidden;
-    final bool sizeChanged = rect.size != producedNode.rect.size;
-    final bool visibilityChanged = configProvider.effective.isHidden != isSemanticsHidden;
-    // print('producedNode ${producedNode.id} transform\n${geometry.transform}');
-    producedNode
+    final bool isSemanticsHidden = configProvider.effective.isHidden ||
+                                   (!(parentData?.mergeIntoParent ?? false) && isRectHidden);
+    node
       ..rect = rect
       ..transform = geometry.transform
       ..parentSemanticsClipRect = geometry.semanticsClipRect
       ..parentPaintClipRect = geometry.paintClipRect;
-    if (visibilityChanged) {
+    if (configProvider.effective.isHidden != isSemanticsHidden) {
       configProvider.setProperty((SemanticsConfiguration config) {
         config.isHidden = isSemanticsHidden;
       });
@@ -5035,13 +5126,11 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     //
     // See _SemanticsGeometry._computeMergedGeometryFor for sibling node's
     // geometry is calculated.
-    for (final SemanticsNode node in semanticsNodes) {
-      if (node != producedNode) {
-        node.transform = producedNode.transform;
+    for (final SemanticsNode otherNode in semanticsNodes) {
+      if (otherNode != node) {
+        otherNode.transform = node.transform;
       }
     }
-
-    return sizeChanged || visibilityChanged;
   }
 
   void _updateSiblingNodesGeometries() {
@@ -5078,7 +5167,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
 
   /// The [renderObject]'s semantics information has changed.
   void markNeedsUpdate() {
-    print('markNeedsUpdate ${describeIdentity(renderObject)}');
+    // print('markNeedsUpdate ${describeIdentity(renderObject)}');
     final SemanticsNode? producedSemanticsNode = cachedSemanticsNode;
     // Dirty the semantics tree starting at `this` until we have reached a
     // RenderObject that is a semantics boundary. All semantics past this
@@ -5098,12 +5187,13 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     // possible sibling node.
     while (node.semanticsParent != null && (mayProduceSiblingNodes || !isEffectiveSemanticsBoundary)) {
       if (node != renderObject && node._semantics.parentDataDirty) {
-        print('break for at node ${describeIdentity(node)}');
+        // print('break for at node ${describeIdentity(node)}');
         break;
       }
-      print('remove parent data for ${describeIdentity(node)}');
+      // print('remove parent data for ${describeIdentity(node)}');
       node._semantics.parentGeometry = null;
       node._semantics.parentData = null;
+      node._semantics._blocksPreviousSibling = null;
       // print('remove parent data for ${describeIdentity(node)}');
       // Since this node is a semantics boundary, the produced sibling nodes will
       // be attached to the parent semantics boundary. Thus, these sibling nodes
@@ -5113,14 +5203,16 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       }
 
       node = node.semanticsParent!;
-      isEffectiveSemanticsBoundary = node._semantics.configProvider.effective.isSemanticBoundary;
-      if (isEffectiveSemanticsBoundary && !(node._semantics._formedSemanticsNode ?? false)) {
-        // We have reached a semantics boundary that doesn't own a semantics node.
-        // That means the semantics of this branch are currently blocked and will
-        // not appear in the semantics tree. We can abort the walk here.
-        print('returned for at node ${describeIdentity(node)}');
-        return;
-      }
+      isEffectiveSemanticsBoundary =
+        node._semantics.configProvider.effective.isSemanticBoundary
+        && !(node._semantics._formedSemanticsNode ?? false);
+      // if (isEffectiveSemanticsBoundary && !(node._semantics._formedSemanticsNode ?? false)) {
+      //   // We have reached a semantics boundary that doesn't own a semantics node.
+      //   // That means the semantics of this branch are currently blocked and will
+      //   // not appear in the semantics tree. We can abort the walk here.
+      //   print('returned for at node ${describeIdentity(node)}');
+      //   return;
+      // }
     }
     if (node != renderObject && producedSemanticsNode != null && node._semantics.parentDataDirty) {
       // If `this` node has already been added to [owner._nodesNeedingSemantics]
@@ -5130,13 +5222,13 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       // this block will ensure that the semantics of `this` node actually gets
       // updated.
       // (See semantics_10_test.dart for an example why this is required).
-      print('remove for at node ${describeIdentity(node)}');
+      // print('remove for at node ${describeIdentity(node)}');
       renderObject.owner!._nodesNeedingSemantics.remove(renderObject);
     }
     if (!node._semantics.parentDataDirty) {
       if (renderObject.owner != null) {
         assert(node._semantics.configProvider.effective.isSemanticBoundary || node.semanticsParent == null);
-        print('add for at node ${describeIdentity(node)}');
+        // print('add for at node ${describeIdentity(node)}');
         if (renderObject.owner!._nodesNeedingSemantics.add(node)) {
           renderObject.owner!.requestVisualUpdate();
         }
@@ -5174,6 +5266,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     cachedSemanticsNode = null;
     parentData = null;
     parentGeometry = null;
+    _blocksPreviousSibling = null;
     mergeUp.clear();
     siblingMergeGroup.clear();
     _children.clear();
@@ -5184,16 +5277,17 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
 
 @override
 List<DiagnosticsNode> debugDescribeChildren() {
-  return _children
-    .whereType<_RenderObjectSemantics>()
-    .map<DiagnosticsNode>((_RenderObjectSemantics child) => child.toDiagnosticsNode())
-    .toList();
+  // return _children
+  //   .whereType<_RenderObjectSemantics>()
+  //   .map<DiagnosticsNode>((_RenderObjectSemantics child) => child.toDiagnosticsNode())
+  //   .toList();
 
   // final children = <DiagnosticsNode>[];
   // renderObject.visitChildrenForSemantics((child) {
   //   children.add(child._semantics.toDiagnosticsNode());
   // });
   // return children;
+  return _getNonBlockedChildren().map((_RenderObjectSemantics e) => e.toDiagnosticsNode()).toList();
 }
 
   @protected
@@ -5217,6 +5311,10 @@ List<DiagnosticsNode> debugDescribeChildren() {
       properties.add(StringProperty('formedSemanticsNode', semanticsNodeStatus, quoted: false));
     }
     properties.add(FlagProperty('isSemanticBoundary', value: configProvider.effective.isSemanticBoundary, ifTrue: 'semantic boundary'));
+    if (contributeToSemanticsTree && siblingMergeGroup.isNotEmpty) {
+      properties.add(StringProperty('Sibling group', siblingMergeGroup.toString(), quoted: false));
+      properties.add(StringProperty('Sibling Node', siblingNodes.map<int>((SemanticsNode node) => node.id).toList().toString(), quoted: false));
+    }
   }
 }
 

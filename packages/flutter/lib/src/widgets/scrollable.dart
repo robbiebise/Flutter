@@ -1472,7 +1472,6 @@ class _ScrollableSelectionContainerDelegate extends MultiSelectableSelectionCont
         _selectableEndEdgeUpdateRecords.remove(selectable);
         _selectableStartEdgeUpdateRecords.remove(selectable);
       case SelectionEventType.selectAll:
-      case SelectionEventType.collapseSelection:
       case SelectionEventType.selectWord:
       case SelectionEventType.selectParagraph:
         _selectableEndEdgeUpdateRecords[selectable] = state.position.pixels;

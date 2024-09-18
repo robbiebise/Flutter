@@ -3610,7 +3610,7 @@ abstract class RenderObject with DiagnosticableTreeMixin implements HitTestTarge
     if (kReleaseMode) {
       return false;
     }
-    return _semantics.parentDataDirty || !_semantics.built;
+    return _semantics.parentDataDirty;
   }
 
   /// The semantics of this render object.
@@ -4602,8 +4602,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
   /// its cache, so it can't update by themselves.
   void ensureSemantics() {
     assert(configProvider.effective.isSemanticBoundary || isRoot);
-    if (!built) {
-      assert(isRoot);
+    if (isRoot) {
       buildSemantics(
         usedSemanticsIds: <int>{},
         geometry: _SemanticsGeometry.root,
@@ -4717,7 +4716,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
     assert(childConfigurationsDelegate != null || configToFragment.isEmpty);
     if (!explicitChildNodesForChildren && hasChildConfigurationsDelegate) {
       final ChildSemanticsConfigurationsResult result = childConfigurationsDelegate(childConfigurations);
-      mergeUp.addAll(
+      children.addAll(
         result.mergeUp.map<_SemanticsFragment>((SemanticsConfiguration config) {
           final _SemanticsFragment? semantics = configToFragment[config];
           if (semantics != null) {
@@ -4736,7 +4735,6 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
           }).toList(),
         );
       }
-      assert(children.every((_SemanticsFragment fragment) => fragment.config == null));
     }
     mergeUp.addAll(children);
 
@@ -4769,7 +4767,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         } else {
           final Map<_RenderObjectSemantics, double> passUpChildren = childSemantics._childrenAndElevationAdjustments;
           for (final _RenderObjectSemantics passUpChild in passUpChildren.keys) {
-            final double passUpElevationAdjustment = passUpChildren[passUpChild]! + 1.0;
+            final double passUpElevationAdjustment = passUpChildren[passUpChild]! + childSemantics.configProvider.original.elevation;
             _childrenAndElevationAdjustments[passUpChild] = passUpElevationAdjustment;
             passUpChild.elevationAdjustment = passUpElevationAdjustment;
           }
@@ -4845,7 +4843,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       //
       // The semanticsNodes and siblingNodes should not changed, otherwise,
       // needsBuilds will be false.
-      if (_updateSemanticsNodeGeometry(geometry: geometry)) {
+      if (_updateSemanticsNodeGeometry(geometry: geometry) || isRoot) {
         buildSemanticsSubtree(
           usedSemanticsIds: usedSemanticsIds,
           geometry: geometry,
@@ -5032,7 +5030,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         rect = paintRect;
       }
     }
-    final bool isSemanticsHidden = configProvider.effective.isHidden ||
+    final bool isSemanticsHidden = configProvider.original.isHidden ||
                                    (!(parentData?.mergeIntoParent ?? false) && isRectHidden);
     final bool sizeChanged = rect.size != node.rect.size;
     final bool visibilityChanged = configProvider.effective.isHidden != isSemanticsHidden;
@@ -5125,7 +5123,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
 
       node = node.semanticsParent!;
       isEffectiveSemanticsBoundary = node._semantics.configProvider.effective.isSemanticBoundary;
-      // if (isEffectiveSemanticsBoundary && !(node._semantics._formedSemanticsNode ?? false)) {
+      // if (isEffectiveSemanticsBoundary && !node._semantics.built) {
       //   // We have reached a semantics boundary that doesn't own a semantics node.
       //   // That means the semantics of this branch are currently blocked and will
       //   // not appear in the semantics tree. We can abort the walk here.
@@ -5295,7 +5293,7 @@ final class _SemanticsGeometry {
     RenderObject childRenderObject = child.renderObject;
     RenderObject parentRenderObject = parent.renderObject;
 
-    final List<RenderObject> childToCommonAncestor = <RenderObject>[child.renderObject];
+    final List<RenderObject> childToCommonAncestor = <RenderObject>[childRenderObject];
 
     // Find the common ancestor.
     while (!identical(childRenderObject, parentRenderObject)) {
@@ -5304,10 +5302,8 @@ final class _SemanticsGeometry {
 
       if (fromDepth >= toDepth) {
         assert(childRenderObject.parent != null, '$parent and $child are not in the same render tree.');
-        final RenderObject childParentRenderObject = childRenderObject.parent!;
-        childParentRenderObject.applyPaintTransform(childRenderObject, transform);
-        childToCommonAncestor.add(childParentRenderObject);
-        childRenderObject = childParentRenderObject;
+        childRenderObject = childRenderObject.parent!;
+        childToCommonAncestor.add(childRenderObject);
       }
       if (fromDepth <= toDepth) {
         assert(parentRenderObject.parent != null, '$parent and $child are not in the same render tree.');
@@ -5316,7 +5312,12 @@ final class _SemanticsGeometry {
         parentRenderObject = toParent;
       }
     }
+
+    // Calculate transform.
     assert(childToCommonAncestor.length >= 2);
+    for (int i = childToCommonAncestor.length - 1; i > 0; i -= 1) {
+      childToCommonAncestor[i].applyPaintTransform(childToCommonAncestor[i - 1], transform);
+    }
 
     if (parentToCommonAncestorTransform != null) {
       if (parentToCommonAncestorTransform.invert() != 0) {
@@ -5329,7 +5330,7 @@ final class _SemanticsGeometry {
     // Calculate clips.
     Rect? paintClipRect;
     Rect? semanticsClipRect;
-    if (childToCommonAncestor.last == parentRenderObject) {
+    if (childToCommonAncestor.last == parent.renderObject) {
       // This is most common case, i.e. parent is the common ancestor.
       paintClipRect = geometry.paintClipRect;
       semanticsClipRect = geometry.semanticsClipRect;
@@ -5347,9 +5348,9 @@ final class _SemanticsGeometry {
       // has up-to-date semantics geometry and compute the clip rects from there.
       //
       // Currently it can only happen when the subtree contains an OverlayPortal.
-      final List<RenderObject> clipPath = <RenderObject>[childRenderObject];
+      final List<RenderObject> clipPath = <RenderObject>[child.renderObject];
 
-      RenderObject? ancestor = childToCommonAncestor.last;
+      RenderObject? ancestor = child.renderObject.parent;
       while (ancestor != null && ancestor._semantics.cachedSemanticsNode == null) {
         clipPath.add(ancestor);
         ancestor = ancestor.parent;

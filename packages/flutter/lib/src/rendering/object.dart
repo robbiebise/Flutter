@@ -4577,10 +4577,13 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       return true;
     }
 
+    if (configProvider.effective.isSemanticBoundary) {
+      return false;
+    }
+
     renderObject.visitChildrenForSemantics((RenderObject child) {
       final _RenderObjectSemantics childSemantics = child._semantics;
-      final SemanticsConfiguration childConfig = child._semantics.configProvider.effective;
-      if (!childConfig.isSemanticBoundary && childSemantics.isBlockingPreviousSibling) {
+      if (childSemantics.isBlockingPreviousSibling) {
         _blocksPreviousSibling = true;
       }
     });
@@ -5193,17 +5196,17 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
 
 @override
 List<DiagnosticsNode> debugDescribeChildren() {
-  return _childrenAndElevationAdjustments
-    .keys
-    .map<DiagnosticsNode>((_RenderObjectSemantics child) => child.toDiagnosticsNode())
-    .toList();
+  // return _childrenAndElevationAdjustments
+  //   .keys
+  //   .map<DiagnosticsNode>((_RenderObjectSemantics child) => child.toDiagnosticsNode())
+  //   .toList();
 
   // final children = <DiagnosticsNode>[];
   // renderObject.visitChildrenForSemantics((child) {
   //   children.add(child._semantics.toDiagnosticsNode());
   // });
   // return children;
-  // return _getNonBlockedChildren().map((_RenderObjectSemantics e) => e.toDiagnosticsNode()).toList();
+  return _getNonBlockedChildren().map((_RenderObjectSemantics e) => e.toDiagnosticsNode()).toList();
 }
 
   @protected

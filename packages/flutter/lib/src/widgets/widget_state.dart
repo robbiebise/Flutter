@@ -6,6 +6,8 @@
 /// @docImport 'package:flutter/scheduler.dart';
 library;
 
+import 'dart:collection';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -966,7 +968,13 @@ typedef WidgetStateMap<T> = Map<WidgetStatesConstraint, T>;
 class WidgetStateMapper<T> with Diagnosticable implements WidgetStateProperty<T> {
   /// Creates a [WidgetStateProperty] object that can resolve
   /// to a value of type [T] using the provided [map].
-  const WidgetStateMapper(WidgetStateMap<T> map) : _map = map;
+  const WidgetStateMapper(WidgetStateMap<T> map)
+      : assert(
+          map is! HashMap,
+          'WidgetStateMapper relies on its keys being ordered consistently. '
+          'Consider using a map literal or a LinkedHashMap instead.',
+        ),
+        _map = map;
 
   final WidgetStateMap<T> _map;
 

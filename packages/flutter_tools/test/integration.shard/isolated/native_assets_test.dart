@@ -135,6 +135,7 @@ void main() {
               const Barrier('Application finished.'),
             ],
             logging: false,
+            debug: true,
           );
           if (result.exitCode != 0) {
             throw Exception('flutter run failed: ${result.exitCode}\n${result.stderr}\n${result.stdout}');

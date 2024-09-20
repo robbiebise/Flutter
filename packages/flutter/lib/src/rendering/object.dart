@@ -4725,9 +4725,6 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
           if (semantics != null) {
             return semantics;
           }
-          // Parent fragment of Incomplete fragments can't be a forking
-          // fragment since they need to be merged.
-          // configProvider.setProperty((SemanticsConfiguration config) => config.hasBeenAnnotated = true);
           return _IncompleteSemanticsFragment(config, this);
         }),
       );
@@ -4740,7 +4737,6 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       }
     }
     mergeUp.addAll(children);
-
     if (contributeToSemanticsTree) {
       // Remove old value
       for (final _SemanticsFragment fragment in mergeUp) {

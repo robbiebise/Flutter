@@ -62,9 +62,6 @@ void main() {
     );
     final Matrix4 transform = overscrollIndicator.getTransformTo(sliverAppBar);
     final Offset? offset = MatrixUtils.getAsTranslation(transform);
-
-    final BuildContext context = tester.element(customScrollViewFinder);
-    final double headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight;
-    expect(offset?.dy, headerHeight);
+    expect(offset?.dy, kToolbarHeight);
   });
 }

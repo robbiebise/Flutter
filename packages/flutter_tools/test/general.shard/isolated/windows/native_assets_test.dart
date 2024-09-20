@@ -49,9 +49,9 @@ void main() {
     projectUri = environment.projectDir.uri;
   });
 
-
-
   for (final bool flutterTester in <bool>[false, true]) {
+    final bool expectNonWindowsBuild = flutterTester && !const LocalPlatform().isWindows;
+
     String testName = '';
     if (flutterTester) {
       testName += ' flutter tester';
@@ -63,7 +63,7 @@ void main() {
       testUsingContext('build with assets $buildMode$testName',
           overrides: <Type, Generator>{
             FeatureFlags: () => TestFeatureFlags(isNativeAssetsEnabled: true),
-            ProcessManager: () => FakeProcessManager.empty(),
+            ProcessManager: () => expectNonWindowsBuild ? FakeProcessManager.any() : FakeProcessManager.empty(),
           }, () async {
         final File packageConfig = environment.projectDir
             .childDirectory('.dart_tool')
@@ -143,8 +143,6 @@ void main() {
       });
     }
   }
-
-
 
   // This logic is mocked in the other tests to avoid having test order
   // randomization causing issues with what processes are invoked.

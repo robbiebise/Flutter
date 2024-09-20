@@ -349,7 +349,7 @@ void main() {
           ]),
         );
         // Multi arch.
-        expect(buildRunner.buildInvocations, 2);
+        expect(buildRunner.buildInvocations, flutterTester ? 1 : 2);
         expect(
           buildRunner.linkInvocations,
           buildMode == BuildMode.release ? 2 : 0,

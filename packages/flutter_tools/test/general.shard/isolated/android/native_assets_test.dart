@@ -174,7 +174,6 @@ void main() {
     );
   });
 
-
 }
 
 class _BuildRunnerWithoutNdk extends FakeFlutterNativeAssetsBuildRunner {

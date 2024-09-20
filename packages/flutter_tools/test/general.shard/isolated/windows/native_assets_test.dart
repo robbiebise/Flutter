@@ -50,8 +50,6 @@ void main() {
   });
 
   for (final bool flutterTester in <bool>[false, true]) {
-    final bool expectNonWindowsBuild = flutterTester && !const LocalPlatform().isWindows;
-
     String testName = '';
     if (flutterTester) {
       testName += ' flutter tester';
@@ -60,10 +58,19 @@ void main() {
       BuildMode.debug,
       if (!flutterTester) BuildMode.release,
     ]) {
+      if (flutterTester && !const LocalPlatform().isWindows) {
+        // When calling [runFlutterSpecificDartBuild] with the flutter tester
+        // target platform, it will perform a build for the local machine. That
+        // means e.g. running this test on MacOS will cause it to run a MacOS
+        // build - which in return requires a special [ProcessManager] that can
+        // simulate output of `otool` invocations.
+        continue;
+      }
+
       testUsingContext('build with assets $buildMode$testName',
           overrides: <Type, Generator>{
             FeatureFlags: () => TestFeatureFlags(isNativeAssetsEnabled: true),
-            ProcessManager: () => expectNonWindowsBuild ? FakeProcessManager.any() : FakeProcessManager.empty(),
+            ProcessManager: () => FakeProcessManager.empty(),
           }, () async {
         final File packageConfig = environment.projectDir
             .childDirectory('.dart_tool')

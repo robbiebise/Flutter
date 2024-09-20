@@ -4611,6 +4611,7 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
         geometry: _SemanticsGeometry.root,
       );
     } else {
+      assert(built);
       // parent data and parent geometry don't change, there isn't anything to
       // update for semantics nodes generated in this render object semantics.
       buildSemanticsSubtree(
@@ -5121,14 +5122,12 @@ class _RenderObjectSemantics extends _SemanticsFragment with DiagnosticableTreeM
       }
 
       node = node.semanticsParent!;
-      isEffectiveSemanticsBoundary = node._semantics.configProvider.effective.isSemanticBoundary;
-      // if (isEffectiveSemanticsBoundary && !node._semantics.built) {
-      //   // We have reached a semantics boundary that doesn't own a semantics node.
-      //   // That means the semantics of this branch are currently blocked and will
-      //   // not appear in the semantics tree. We can abort the walk here.
-      //   print('returned for at node ${describeIdentity(node)}');
-      //   return;
-      // }
+      // If node._semantics.built is false, this branch is currently blocked
+      // in that case it should continue dirty upward until it reach a
+      // unblocked semantics boundary.
+      isEffectiveSemanticsBoundary =
+          node._semantics.configProvider.effective.isSemanticBoundary
+          && node._semantics.built;
     }
     if (node != renderObject && producedSemanticsNode != null && node._semantics.parentDataDirty) {
       // If `this` node has already been added to [owner._nodesNeedingSemantics]
@@ -5224,6 +5223,7 @@ List<DiagnosticsNode> debugDescribeChildren() {
       properties.add(StringProperty('formedSemanticsNode', semanticsNodeStatus, quoted: false));
     }
     properties.add(FlagProperty('isSemanticBoundary', value: configProvider.effective.isSemanticBoundary, ifTrue: 'semantic boundary'));
+    properties.add(FlagProperty('blocksSemantics', value: isBlockingPreviousSibling, ifTrue: 'BLOCKS SEMANTICS'));
     if (contributeToSemanticsTree && siblingMergeGroup.isNotEmpty) {
       properties.add(StringProperty('Sibling group', siblingMergeGroup.toString(), quoted: false));
     }

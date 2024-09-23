@@ -55,11 +55,11 @@ import 'inherited_notifier.dart';
 /// If the [Focus] default constructor is used, then this widget will manage any
 /// given [focusNode] by overwriting the appropriate values of the [focusNode]
 /// with the values of [FocusNode.onKey], [FocusNode.onKeyEvent],
-/// [FocusNode.skipTraversal], [FocusNode.canRequestFocus], and
+/// [FocusNode.skipTraversal], [FocusNode.focusable], and
 /// [FocusNode.descendantsAreFocusable] whenever the [Focus] widget is updated.
 ///
 /// If the [Focus.withExternalFocusNode] is used instead, then the values
-/// returned by [onKey], [onKeyEvent], [skipTraversal], [canRequestFocus], and
+/// returned by [onKey], [onKeyEvent], [skipTraversal], [focusable], and
 /// [descendantsAreFocusable] will be the values in the external focus node, and
 /// the external focus node's values will not be overwritten when the widget is
 /// updated.
@@ -135,6 +135,11 @@ class Focus extends StatefulWidget {
       'This feature was deprecated after v3.18.0-2.0.pre.',
     )
     FocusOnKeyCallback? onKey,
+    bool? focusable,
+    @Deprecated(
+      'Use focusable instead. '
+      'This feature was deprecated after v3.25.0-1.0.pre.',
+    )
     bool? canRequestFocus,
     bool? skipTraversal,
     bool? descendantsAreFocusable,
@@ -143,7 +148,7 @@ class Focus extends StatefulWidget {
     String? debugLabel,
   })  : _onKeyEvent = onKeyEvent,
         _onKey = onKey,
-        _canRequestFocus = canRequestFocus,
+        _focusable = focusable ?? canRequestFocus,
         _skipTraversal = skipTraversal,
         _descendantsAreFocusable = descendantsAreFocusable,
         _descendantsAreTraversable = descendantsAreTraversable,
@@ -262,7 +267,7 @@ class Focus extends StatefulWidget {
   FocusOnKeyCallback? get onKey => _onKey ?? focusNode?.onKey;
   final FocusOnKeyCallback? _onKey;
 
-  /// {@template flutter.widgets.Focus.canRequestFocus}
+  /// {@template flutter.widgets.Focus.focusable}
   /// If true, this widget may request the primary focus.
   ///
   /// Defaults to true. Set to false if you want the [FocusNode] this widget
@@ -273,7 +278,7 @@ class Focus extends StatefulWidget {
   /// This is different than [Focus.skipTraversal] because [Focus.skipTraversal]
   /// still allows the widget to be focused, just not traversed to.
   ///
-  /// Setting [FocusNode.canRequestFocus] to false implies that the widget will
+  /// Setting [FocusNode.focusable] to false implies that the widget will
   /// also be skipped for traversal purposes.
   ///
   /// See also:
@@ -283,8 +288,17 @@ class Focus extends StatefulWidget {
   /// * [FocusTraversalPolicy], a class that can be extended to describe a
   ///   traversal policy.
   /// {@endtemplate}
-  bool get canRequestFocus => _canRequestFocus ?? focusNode?.canRequestFocus ?? true;
-  final bool? _canRequestFocus;
+  bool get focusable => (_focusable ?? focusNode?.focusable) ?? focusNode?.canRequestFocus ?? true;
+
+  final bool? _focusable;
+
+
+  @Deprecated(
+    'Use focusable instead. '
+    'This feature was deprecated after v3.25.0-1.0.pre.',
+  )
+  /// {@macro flutter.widgets.Focus.focusable}
+  bool get canRequestFocus => focusable;
 
   /// Sets the [FocusNode.skipTraversal] flag on the focus node so that it won't
   /// be visited by the [FocusTraversalPolicy].
@@ -292,7 +306,7 @@ class Focus extends StatefulWidget {
   /// This is sometimes useful if a [Focus] widget should receive key events as
   /// part of the focus chain, but shouldn't be accessible via focus traversal.
   ///
-  /// This is different from [FocusNode.canRequestFocus] because it only implies
+  /// This is different from [FocusNode.focusable] because it only implies
   /// that the widget can't be reached via traversal, not that it can't be
   /// focused. It may still be focused explicitly.
   bool get skipTraversal => _skipTraversal ?? focusNode?.skipTraversal ?? false;
@@ -302,13 +316,13 @@ class Focus extends StatefulWidget {
   /// If false, will make this widget's descendants unfocusable.
   ///
   /// Defaults to true. Does not affect focusability of this node (just its
-  /// descendants): for that, use [FocusNode.canRequestFocus].
+  /// descendants): for that, use [FocusNode.focusable].
   ///
   /// If any descendants are focused when this is set to false, they will be
   /// unfocused. When [descendantsAreFocusable] is set to true again, they will
   /// not be refocused, although they will be able to accept focus again.
   ///
-  /// Does not affect the value of [FocusNode.canRequestFocus] on the
+  /// Does not affect the value of [FocusNode.focusable] on the
   /// descendants.
   ///
   /// If a descendant node loses focus when this value is changed, the focus
@@ -479,7 +493,7 @@ class Focus extends StatefulWidget {
     super.debugFillProperties(properties);
     properties.add(StringProperty('debugLabel', debugLabel, defaultValue: null));
     properties.add(FlagProperty('autofocus', value: autofocus, ifTrue: 'AUTOFOCUS', defaultValue: false));
-    properties.add(FlagProperty('canRequestFocus', value: canRequestFocus, ifFalse: 'NOT FOCUSABLE', defaultValue: false));
+    properties.add(FlagProperty('focusable', value: focusable, ifFalse: 'NOT FOCUSABLE', defaultValue: false));
     properties.add(FlagProperty('descendantsAreFocusable', value: descendantsAreFocusable, ifFalse: 'DESCENDANTS UNFOCUSABLE', defaultValue: true));
     properties.add(FlagProperty('descendantsAreTraversable', value: descendantsAreTraversable, ifFalse: 'DESCENDANTS UNTRAVERSABLE', defaultValue: true));
     properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode, defaultValue: null));
@@ -509,7 +523,7 @@ class _FocusWithExternalFocusNode extends Focus {
   @override
   FocusOnKeyCallback? get onKey => focusNode!.onKey;
   @override
-  bool get canRequestFocus => focusNode!.canRequestFocus;
+  bool get focusable => focusNode!.focusable || focusNode!.canRequestFocus;
   @override
   bool get skipTraversal => focusNode!.skipTraversal;
   @override
@@ -541,11 +555,11 @@ class _FocusState extends State<Focus> {
       focusNode.descendantsAreFocusable = widget.descendantsAreFocusable;
       focusNode.descendantsAreTraversable = widget.descendantsAreTraversable;
       focusNode.skipTraversal = widget.skipTraversal;
-      if (widget._canRequestFocus != null) {
-        focusNode.canRequestFocus = widget._canRequestFocus!;
+      if (widget._focusable != null) {
+        focusNode.focusable = widget._focusable!;
       }
     }
-    _couldRequestFocus = focusNode.canRequestFocus;
+    _couldRequestFocus = focusNode.focusable;
     _descendantsWereFocusable = focusNode.descendantsAreFocusable;
     _descendantsWereTraversable = focusNode.descendantsAreTraversable;
     _hadPrimaryFocus = focusNode.hasPrimaryFocus;
@@ -560,7 +574,7 @@ class _FocusState extends State<Focus> {
   FocusNode _createNode() {
     return FocusNode(
       debugLabel: widget.debugLabel,
-      canRequestFocus: widget.canRequestFocus,
+      focusable: widget.focusable,
       descendantsAreFocusable: widget.descendantsAreFocusable,
       descendantsAreTraversable: widget.descendantsAreTraversable,
       skipTraversal: widget.skipTraversal,
@@ -629,8 +643,8 @@ class _FocusState extends State<Focus> {
           focusNode.onKeyEvent = widget.onKeyEvent;
         }
         focusNode.skipTraversal = widget.skipTraversal;
-        if (widget._canRequestFocus != null) {
-          focusNode.canRequestFocus = widget._canRequestFocus!;
+        if (widget._focusable != null) {
+          focusNode.focusable = widget._focusable!;
         }
         focusNode.descendantsAreFocusable = widget.descendantsAreFocusable;
         focusNode.descendantsAreTraversable = widget.descendantsAreTraversable;
@@ -648,7 +662,7 @@ class _FocusState extends State<Focus> {
 
   void _handleFocusChanged() {
     final bool hasPrimaryFocus = focusNode.hasPrimaryFocus;
-    final bool canRequestFocus = focusNode.canRequestFocus;
+    final bool focusable = focusNode.focusable;
     final bool descendantsAreFocusable = focusNode.descendantsAreFocusable;
     final bool descendantsAreTraversable = focusNode.descendantsAreTraversable;
     widget.onFocusChange?.call(focusNode.hasFocus);
@@ -659,9 +673,9 @@ class _FocusState extends State<Focus> {
         _hadPrimaryFocus = hasPrimaryFocus;
       });
     }
-    if (_couldRequestFocus != canRequestFocus) {
+    if (_couldRequestFocus != focusable) {
       setState(() {
-        _couldRequestFocus = canRequestFocus;
+        _couldRequestFocus = focusable;
       });
     }
     if (_descendantsWereFocusable != descendantsAreFocusable) {
@@ -772,6 +786,11 @@ class FocusScope extends Focus {
     required super.child,
     super.autofocus,
     super.onFocusChange,
+    super.focusable,
+    @Deprecated(
+      'Use focusable instead. '
+      'This feature was deprecated after v3.25.0-1.0.pre.',
+    )
     super.canRequestFocus,
     super.skipTraversal,
     super.onKeyEvent,
@@ -835,7 +854,7 @@ class _FocusScopeWithExternalFocusNode extends FocusScope {
   @override
   FocusOnKeyCallback? get onKey => focusNode!.onKey;
   @override
-  bool get canRequestFocus => focusNode!.canRequestFocus;
+  bool get focusable => focusNode!.focusable;
   @override
   bool get skipTraversal => focusNode!.skipTraversal;
   @override
@@ -851,7 +870,7 @@ class _FocusScopeState extends _FocusState {
   FocusScopeNode _createNode() {
     return FocusScopeNode(
       debugLabel: widget.debugLabel,
-      canRequestFocus: widget.canRequestFocus,
+      focusable: widget.focusable || widget.canRequestFocus,
       skipTraversal: widget.skipTraversal,
     );
   }
@@ -884,7 +903,7 @@ class _FocusInheritedScope extends InheritedNotifier<FocusNode> {
 /// A widget that controls whether or not the descendants of this widget are
 /// focusable.
 ///
-/// Does not affect the value of [Focus.canRequestFocus] on the descendants.
+/// Does not affect the value of [Focus.focusable] on the descendants.
 ///
 /// See also:
 ///
@@ -908,7 +927,7 @@ class ExcludeFocus extends StatelessWidget {
   /// unfocused. When [excluding] is set to false again, they will not be
   /// refocused, although they will be able to accept focus again.
   ///
-  /// Does not affect the value of [FocusNode.canRequestFocus] on the
+  /// Does not affect the value of [FocusNode.focusable] on the
   /// descendants.
   ///
   /// See also:
@@ -929,7 +948,7 @@ class ExcludeFocus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      canRequestFocus: false,
+      focusable: false,
       skipTraversal: true,
       includeSemantics: false,
       descendantsAreFocusable: !excluding,

@@ -45,10 +45,10 @@ FakeProcessLister failure() {
 
 /// The expected validation result object for
 /// a passing windows version test
-const ValidationResult validWindows10ValidationResult = ValidationResult(
+const ValidationResult validWindows11ValidationResult = ValidationResult(
   ValidationType.success,
   <ValidationMessage>[],
-  statusInfo: 'Installed version of Windows is version 10 or higher',
+  statusInfo: 'Microsoft Windows 11 Pro 23H2 (2009)',
 );
 
 /// The expected validation result object for
@@ -78,19 +78,35 @@ const ValidationResult getProcessFailed = ValidationResult(
   statusInfo: 'Problem detected with Windows installation',
 );
 
+class FakeVersionExtractor extends Fake implements VersionExtractor {
+  FakeVersionExtractor({required this.mockData});
+  FakeVersionExtractor.win11Pro() : this(mockData: <String, String>{
+    'OsName': 'Microsoft Windows 11 Pro',
+    'OSDisplayVersion': '23H2',
+    'WindowsVersion': '2009'});
+
+  final Map<String, String> mockData;
+
+  @override
+  Future<Map<String, String>> getDetails() async {
+    return mockData;
+  }
+}
+
 void main() {
   testWithoutContext('Successfully running windows version check on windows 10',
       () async {
     final WindowsVersionValidator windowsVersionValidator =
         WindowsVersionValidator(
             operatingSystemUtils: FakeValidOperatingSystemUtils(),
-            processLister: ofdNotRunning());
+            processLister: ofdNotRunning(),
+            versionExtractor: FakeVersionExtractor.win11Pro());
 
     final ValidationResult result = await windowsVersionValidator.validate();
 
-    expect(result.type, validWindows10ValidationResult.type,
+    expect(result.type, validWindows11ValidationResult.type,
         reason: 'The ValidationResult type should be the same (installed)');
-    expect(result.statusInfo, validWindows10ValidationResult.statusInfo,
+    expect(result.statusInfo, validWindows11ValidationResult.statusInfo,
         reason: 'The ValidationResult statusInfo messages should be the same');
   });
 
@@ -101,13 +117,14 @@ void main() {
         WindowsVersionValidator(
             operatingSystemUtils: FakeValidOperatingSystemUtils(
                 'Microsoft Windows [versão 10.0.22621.1105]'),
-            processLister: ofdNotRunning());
+            processLister: ofdNotRunning(),
+            versionExtractor: FakeVersionExtractor.win11Pro());
 
     final ValidationResult result = await windowsVersionValidator.validate();
 
-    expect(result.type, validWindows10ValidationResult.type,
+    expect(result.type, validWindows11ValidationResult.type,
         reason: 'The ValidationResult type should be the same (installed)');
-    expect(result.statusInfo, validWindows10ValidationResult.statusInfo,
+    expect(result.statusInfo, validWindows11ValidationResult.statusInfo,
         reason: 'The ValidationResult statusInfo messages should be the same');
   });
 
@@ -116,7 +133,8 @@ void main() {
         WindowsVersionValidator(
             operatingSystemUtils: FakeValidOperatingSystemUtils(
                 'Microsoft Windows [Version 8.0.22621.1105]'),
-            processLister: ofdNotRunning());
+            processLister: ofdNotRunning(),
+            versionExtractor: FakeVersionExtractor.win11Pro());
 
     final ValidationResult result = await windowsVersionValidator.validate();
 
@@ -150,7 +168,8 @@ OS 版本:          10.0.22621 暂缺 Build 22621
     final WindowsVersionValidator validator =
         WindowsVersionValidator(
             operatingSystemUtils: FakeValidOperatingSystemUtils(),
-            processLister: ofdRunning());
+            processLister: ofdRunning(),
+            versionExtractor: FakeVersionExtractor.win11Pro());
     final ValidationResult result = await validator.validate();
     expect(result.type, ofdFoundRunning.type, reason: 'The ValidationResult type should be the same (partial)');
     expect(result.statusInfo, ofdFoundRunning.statusInfo, reason: 'The ValidationResult statusInfo should be the same');
@@ -162,7 +181,8 @@ OS 版本:          10.0.22621 暂缺 Build 22621
     final WindowsVersionValidator validator =
         WindowsVersionValidator(
             operatingSystemUtils: FakeValidOperatingSystemUtils(),
-            processLister: failure());
+            processLister: failure(),
+            versionExtractor: FakeVersionExtractor(mockData: <String, String>{}));
     final ValidationResult result = await validator.validate();
     expect(result.type, getProcessFailed.type, reason: 'The ValidationResult type should be the same (partial)');
     expect(result.statusInfo, getProcessFailed.statusInfo, reason: 'The ValidationResult statusInfo should be the same');

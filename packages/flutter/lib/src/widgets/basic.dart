@@ -4548,16 +4548,17 @@ class PositionedDirectional extends StatelessWidget {
 /// For reference, here are several terms used below to describe the layout algorithm:
 ///
 /// [BoxConstraints] : These are the minimum and maximum sizes which a parent
-/// [Widget] dictates its child must be. It can be said a child is tightly
+/// [Widget] dictates its child must be. It can be said a child widget is tightly
 /// constrained or loosely constrained. "Tightly
 /// constrained" means the size of the child is tightly controlled by its
 /// parent [Widget], and this is achieved by setting the same value for
-/// both the minimum and maximum sizes. With tight constraints the size is fixed, as it
-/// cannot be more or less than the value set for minimum and maximum. If the
-/// minimum and maximum values are not the same, it is said the child has
-/// "loose constraints", and so can be any size (in that axis) as long as it
-/// is between those values. The constraints for both height and width are
-/// found within the [BoxConstraints].
+/// both the minimum and maximum sizes. With tight constraints the size is
+/// fixed, as it cannot be more or less than the value set for minimum and
+/// maximum. If the minimum and maximum values differ, the child has
+/// 'loose constraints', allowing it to take any size within that axis,
+/// as long as it remains between the specified minimum and maximum. The
+/// constraints for both height and width are found within the
+/// [BoxConstraints].
 ///
 /// [Flex] : The superclass of [Row] and [Column]. All [Row]s and [Column]s
 /// are [Flex]es, and for most of this explanation they will be referred
@@ -4582,7 +4583,7 @@ class PositionedDirectional extends StatelessWidget {
 /// does necessarily have to._ It cannot be a child of anything other
 /// than a [Flex].
 ///
-/// [Expanded] : A child of a [Flex], it is a subtype of [Flexible]
+/// [Expanded] : A child of a [Flex], it is a subtype of [Flexible]55
 /// that _must_ stretch its child to use all of the space _reserved for
 /// it_ during layout. An [Expanded] will always use all of the space it is
 ///  offered but this does not guarantee it will use all of the extra space
@@ -4590,9 +4591,9 @@ class PositionedDirectional extends StatelessWidget {
 ///  within the [Flex].
 ///
 /// One important thing to understand is that a [Flexible] might not use all
-/// of the space offered to it, and if it does not use all of the space
-/// offered to it then no other [Widget] will get to use the rest of that
-/// space. _It is left blank._ There is an edge case in which a [Flexible]
+/// of the space offered to it. If it does not use all of the space offered
+/// to it then no other Widget will get to use the rest of that space. _It
+/// is left blank._ There is an edge case in which a [Flexible]
 /// and an [Expanded] are used within the same [Flex], and the results can
 /// only be understood by comprehending what is happening "under the hood".
 /// More on this later.
@@ -4761,7 +4762,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    - The [Expanded] and [Flexible] each has a child that is 50 pixels
 ///      high.
 ///    - The [Expanded] will pass its child tight constraints with a maximum
-///      size of 100 pixels, what was reserved for it. The
+///      size of 100 pixels, which is the space that was reserved for it. The
 ///      fact that it's passing in tight constraints causes the child to be
 ///      forced to be 100 pixels high, because the tight constraints cause it
 ///      to override the [Expanded]'s child's height parameter of 50 pixels.
@@ -4787,7 +4788,7 @@ class PositionedDirectional extends StatelessWidget {
 ///    cross axis constraint set by the parent of the [Flex]. The one case
 ///    in which the final size of the [Flex] will not be the same size as its
 ///    largest child is if you set the [crossAxisAlignment] parameter to
-///    [CrossAxisAlignment.baseline] and the maximum cross axis constraint
+///    [CrossAxisAlignment.baseline], while the maximum cross axis constraint
 ///    is more than the cross axis size of the largest child. More on this
 ///    in step 6.
 ///
@@ -4913,14 +4914,14 @@ class PositionedDirectional extends StatelessWidget {
 ///      For a [Row], the largest child is aligned with its top edge
 ///      touching the top edge of the [Row]. Then, all children are
 ///      aligned so their bottom edges are all aligned with the bottom
-///      edge _of the largest child_. If the [Row] is taller than the height
-///      of its tallest child, then no children will touch the bottom
-///      of the [Row] and it will appear that all children are "floating"
-///      above the bottom of the [Row]. For a [Column] the process is the
-///      same, however instead of the top and bottom edges, the [Column]
-///      aligns the largest child in the cross axis so it touches the "end"
-///      edge of the [Column] and then aligns "start side" all other children
-///      to the "start side" edge of the largest child.
+///      edge _of the largest child_. If the [Row]'s height is taller
+///      than the height of its tallest child, then no children will touch
+///      the bottom of the [Row] and it will appear that all children are
+///      "floating" above the bottom of the [Row]. For a [Column] the process
+///      is the same, however instead of the top and bottom edges, the
+///      [Column] aligns the largest child in the cross axis so it touches
+///      the "end" edge of the [Column] and then aligns "start side" all
+///      other children to the "start side" edge of the largest child.
 ///
 /// ## Tips
 ///

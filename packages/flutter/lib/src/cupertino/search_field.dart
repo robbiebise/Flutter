@@ -13,6 +13,12 @@ import 'text_field.dart';
 
 export 'package:flutter/services.dart' show SmartDashesType, SmartQuotesType;
 
+// The fraction of the height of the search text field after which its contents
+// completely fade out when resized on scroll.
+//
+// Eyeballed on an iPhone 15 simulator running iOS 17.5.
+const double _kMinHeightBeforeTotalTransparency = 4 / 5;
+
 /// A [CupertinoTextField] that mimics the look and behavior of UIKit's
 /// `UISearchTextField`.
 ///
@@ -326,7 +332,7 @@ class CupertinoSearchTextField extends StatefulWidget {
 }
 
 class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
-    with RestorationMixin {
+    with RestorationMixin, SingleTickerProviderStateMixin {
   /// Default value for the border radius. Radius value was determined using the
   /// comparison tool in https://github.com/flutter/platform_tests/.
   final BorderRadius _kDefaultBorderRadius =
@@ -337,12 +343,32 @@ class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
   TextEditingController get _effectiveController =>
       widget.controller ?? _controller!.value;
 
+  late AnimationController _animationController;
+  ScrollPosition? _ancestorScrollPosition;
+  double _maxHeight = 0.0;
+
   @override
   void initState() {
     super.initState();
     if (widget.controller == null) {
       _createLocalController();
     }
+     _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      value: 1.0,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateMaxHeight();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ancestorScrollPosition?.removeListener(_onScroll);
+    _ancestorScrollPosition = Scrollable.maybeOf(context)?.position;
+    _ancestorScrollPosition?.addListener(_onScroll);
   }
 
   @override
@@ -366,6 +392,8 @@ class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
 
   @override
   void dispose() {
+    _ancestorScrollPosition?.removeListener(_onScroll);
+    _animationController.dispose();
     super.dispose();
     if (widget.controller == null) {
       _controller?.dispose();
@@ -398,13 +426,44 @@ class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
     }
   }
 
+  void _calculateMaxHeight() {
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    setState(() {
+      _maxHeight = renderBox?.size.height ?? 0.0;
+    });
+  }
+
+  void _onScroll() {
+    if (_ancestorScrollPosition == null) {
+      return;
+    }
+    final double currentHeight = _maxHeight - _ancestorScrollPosition!.pixels;
+    setState(() {
+      _animationController.value = _calculateScrollOpacity(currentHeight);
+    });
+  }
+
+  double _calculateScrollOpacity(double currentHeight) {
+    final double thresholdHeight = _maxHeight * _kMinHeightBeforeTotalTransparency;
+    if (currentHeight >= _maxHeight) {
+      return 1.0;
+    } else if (currentHeight <= thresholdHeight) {
+      return 0.0;
+    } else {
+      // Calculate a value between 0 and 1 based on the current height.
+      final double range = _maxHeight - thresholdHeight;
+      final double progress = (currentHeight - thresholdHeight) / range;
+      return progress;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String placeholder = widget.placeholder ??
         CupertinoLocalizations.of(context).searchTextFieldPlaceholderLabel;
 
     final TextStyle placeholderStyle = widget.placeholderStyle ??
-        const TextStyle(color: CupertinoColors.systemGrey);
+        TextStyle(color: CupertinoColors.systemGrey.withOpacity(_animationController.value));
 
     // The icon size will be scaled by a factor of the accessibility text scale,
     // to follow the behavior of `UISearchTextField`.
@@ -423,23 +482,38 @@ class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
       size: scaledIconSize,
     );
 
-    final Widget prefix = Padding(
-      padding: widget.prefixInsets,
-      child: IconTheme(
-        data: iconThemeData,
-        child: widget.prefixIcon,
+    // Animate the top padding so that the placeholder and editable text
+    // move when the search text field is resized on scroll.
+    final EdgeInsets currentInsets = widget.padding.resolve(Directionality.of(context));
+    final EdgeInsetsGeometry? padding = EdgeInsetsGeometry.lerp(
+      widget.padding,
+      widget.padding.resolve(Directionality.of(context)).copyWith(top: currentInsets.top / 2),
+      1.0 - _animationController.value,
+    );
+
+    final Widget prefix = Opacity(
+      opacity: _animationController.value,
+      child: Padding(
+        padding: widget.prefixInsets,
+        child: IconTheme(
+          data: iconThemeData,
+          child: widget.prefixIcon,
+        ),
       ),
     );
 
-    final Widget suffix = Padding(
-      padding: widget.suffixInsets,
-      child: CupertinoButton(
-        onPressed: widget.onSuffixTap ?? _defaultOnSuffixTap,
-        minSize: 0,
-        padding: EdgeInsets.zero,
-        child: IconTheme(
-          data: iconThemeData,
-          child: widget.suffixIcon,
+    final Widget suffix = Opacity(
+      opacity: _animationController.value,
+      child: Padding(
+        padding: widget.suffixInsets,
+        child: CupertinoButton(
+          onPressed: widget.onSuffixTap ?? _defaultOnSuffixTap,
+          minSize: 0,
+          padding: EdgeInsets.zero,
+          child: IconTheme(
+            data: iconThemeData,
+            child: widget.suffixIcon,
+          ),
         ),
       ),
     );
@@ -456,7 +530,7 @@ class _CupertinoSearchTextFieldState extends State<CupertinoSearchTextField>
       suffixMode: widget.suffixMode,
       placeholder: placeholder,
       placeholderStyle: placeholderStyle,
-      padding: widget.padding,
+      padding: padding ?? widget.padding,
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
       focusNode: widget.focusNode,

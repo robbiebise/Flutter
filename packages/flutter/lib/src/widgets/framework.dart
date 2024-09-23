@@ -6688,31 +6688,42 @@ abstract class RenderObjectElement extends Element {
   }
 
   void _updateParentData(ParentDataWidget<ParentData> parentDataWidget) {
-    bool applyParentData = true;
-    assert(() {
-      try {
-        if (!parentDataWidget.debugIsValidRenderObject(renderObject)) {
-          applyParentData = false;
+    if (parentDataWidget.debugIsValidRenderObject(renderObject)) {
+      parentDataWidget.applyParentData(renderObject);
+    } else {
+      // If it's not a valid render object, then don't show the ErrorWidget, or
+      // throw an exception, just report the error and move on.
+      //
+      // This prevents it from crashing in release mode and still reports the
+      // original error in debug mode.
+      assert(() {
+        try {
+          final String parentDataWidgetType = parentDataWidget.toStringShort();
+          String errorMessage = 'Incorrect use of ParentDataWidget.\n';
+
+          if (parentDataWidgetType == 'Positioned') {
+            errorMessage += 'The widget `Positioned` must be a descendant of a `Stack` widget.\n';
+          } else if (parentDataWidgetType == 'Flexible' || parentDataWidgetType == 'Expanded') {
+            errorMessage += 'The widget `$parentDataWidgetType` must be a direct child of a `Row`, `Column`, or `Flex` widget.\n';
+          }
+
           throw FlutterError.fromParts(<DiagnosticsNode>[
-            ErrorSummary('Incorrect use of ParentDataWidget.'),
+            ErrorSummary(errorMessage),
             ...parentDataWidget._debugDescribeIncorrectParentDataType(
               parentData: renderObject.parentData,
               parentDataCreator: _ancestorRenderObjectElement?.widget as RenderObjectWidget?,
               ownershipChain: ErrorDescription(debugGetCreatorChain(10)),
             ),
           ]);
+        } on FlutterError catch (e) {
+          // We catch the exception directly to avoid activating the ErrorWidget,
+          // while still allowing debuggers to break on exception. Since the tree
+          // is in a broken state, adding the ErrorWidget would likely cause more
+          // exceptions, which is not good for the debugging experience.
+          _reportException(ErrorSummary('while applying parent data.'), e, e.stackTrace);
         }
-      } on FlutterError catch (e) {
-        // We catch the exception directly to avoid activating the ErrorWidget,
-        // while still allowing debuggers to break on exception. Since the tree
-        // is in a broken state, adding the ErrorWidget would likely cause more
-        // exceptions, which is not good for the debugging experience.
-        _reportException(ErrorSummary('while applying parent data.'), e, e.stackTrace);
-      }
-      return true;
-    }());
-    if (applyParentData) {
-      parentDataWidget.applyParentData(renderObject);
+        return true;
+      }());
     }
   }
 

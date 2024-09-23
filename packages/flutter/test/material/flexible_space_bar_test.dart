@@ -286,7 +286,6 @@ void main() {
                               label: 'Item 3',
                               textDirection: TextDirection.ltr,
                             ),
-
                           ],
                         ),
                       ],

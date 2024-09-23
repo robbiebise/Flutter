@@ -292,15 +292,7 @@ typedef MaterialStateTextStyle = WidgetStateTextStyle;
 ///   1. Create a subclass of [MaterialStateOutlineInputBorder] and implement the abstract `resolve` method.
 ///   2. Use [MaterialStateOutlineInputBorder.resolveWith] and pass in a callback that
 ///      will be used to resolve the color in the given states.
-///
-/// If a [MaterialStateOutlineInputBorder] is used for a property or a parameter that doesn't
-/// support resolving [MaterialStateProperty<OutlineInputBorder>]s, then its default color
-/// value will be used for all states.
-///
-/// To define a `const` [MaterialStateOutlineInputBorder], you'll need to extend
-/// [MaterialStateOutlineInputBorder] and override its [resolve] method. You'll also need
-/// to provide a `defaultValue` to the super constructor, so that we can know
-/// at compile-time what its default color is.
+///   3. Use [MaterialStateOutlineInputBorder.fromMap] to assign a value using a [WidgetStateMap].
 abstract class MaterialStateOutlineInputBorder extends OutlineInputBorder implements MaterialStateProperty<InputBorder> {
   /// Abstract const constructor. This constructor enables subclasses to provide
   /// const constructors so that they can be used in const expressions.
@@ -309,12 +301,25 @@ abstract class MaterialStateOutlineInputBorder extends OutlineInputBorder implem
   /// Creates a [MaterialStateOutlineInputBorder] from a [MaterialPropertyResolver<InputBorder>]
   /// callback function.
   ///
-  /// If used as a regular input border, the border resolved in the default state (the
-  /// empty set of states) will be used.
+  /// [MaterialStateOutlineInputBorder] should only be used with widgets
+  /// that document their support, like [InputDecoration.border]
+  /// If used as a regular [InputBorder], it acts the same as
+  /// an empty `OutlineInputBorder()` constructor.
   ///
-  /// The given callback parameter must return a non-null text style in the default
+  /// The given callback parameter must return a non-null input border in the default
   /// state.
   const factory MaterialStateOutlineInputBorder.resolveWith(MaterialPropertyResolver<InputBorder> callback) = _MaterialStateOutlineInputBorder;
+
+  /// Creates a [MaterialStateOutlineInputBorder] from a [WidgetStateMap].
+  ///
+  /// {@macro flutter.widgets.WidgetStateProperty.fromMap}
+  /// It should only be used with widgets that document
+  /// their support, like [InputDecoration.border]
+  /// (if used as a regular [InputBorder], it acts the same as
+  /// an empty `OutlineInputBorder()` constructor).
+  ///
+  /// {@macro flutter.widgets.WidgetState.any}
+  const factory MaterialStateOutlineInputBorder.fromMap(WidgetStateMap<InputBorder> map) = _OutlineInputBorderMapper;
 
   /// Returns a [InputBorder] that's to be used when a Material component is in the
   /// specified state.
@@ -322,13 +327,6 @@ abstract class MaterialStateOutlineInputBorder extends OutlineInputBorder implem
   InputBorder resolve(Set<MaterialState> states);
 }
 
-/// A [MaterialStateOutlineInputBorder] created from a [MaterialPropertyResolver<OutlineInputBorder>]
-/// callback alone.
-///
-/// If used as a regular input border, the border resolved in the default state will
-/// be used.
-///
-/// Used by [MaterialStateTextStyle.resolveWith].
 class _MaterialStateOutlineInputBorder extends MaterialStateOutlineInputBorder {
   const _MaterialStateOutlineInputBorder(this._resolve);
 
@@ -336,6 +334,25 @@ class _MaterialStateOutlineInputBorder extends MaterialStateOutlineInputBorder {
 
   @override
   InputBorder resolve(Set<MaterialState> states) => _resolve(states);
+}
+
+class _OutlineInputBorderMapper extends MaterialStateOutlineInputBorder {
+  const _OutlineInputBorderMapper(this.map);
+
+  final WidgetStateMap<InputBorder> map;
+
+  WidgetStateProperty<InputBorder> get _mapper => WidgetStateProperty<InputBorder>.fromMap(map);
+
+  @override
+  InputBorder resolve(Set<MaterialState> states) => _mapper.resolve(states);
+
+  @override
+  bool operator ==(Object other) {
+    return other is _OutlineInputBorderMapper && other._mapper == _mapper;
+  }
+
+  @override
+  int get hashCode => _mapper.hashCode;
 }
 
 /// Defines a [UnderlineInputBorder] that is also a [MaterialStateProperty].
@@ -354,15 +371,7 @@ class _MaterialStateOutlineInputBorder extends MaterialStateOutlineInputBorder {
 ///   1. Create a subclass of [MaterialStateUnderlineInputBorder] and implement the abstract `resolve` method.
 ///   2. Use [MaterialStateUnderlineInputBorder.resolveWith] and pass in a callback that
 ///      will be used to resolve the color in the given states.
-///
-/// If a [MaterialStateUnderlineInputBorder] is used for a property or a parameter that doesn't
-/// support resolving [MaterialStateProperty<UnderlineInputBorder>]s, then its default color
-/// value will be used for all states.
-///
-/// To define a `const` [MaterialStateUnderlineInputBorder], you'll need to extend
-/// [MaterialStateUnderlineInputBorder] and override its [resolve] method. You'll also need
-/// to provide a `defaultValue` to the super constructor, so that we can know
-/// at compile-time what its default color is.
+///   3. Use [MaterialStateUnderlineInputBorder.fromMap] to assign a value using a [WidgetStateMap].
 abstract class MaterialStateUnderlineInputBorder extends UnderlineInputBorder implements MaterialStateProperty<InputBorder> {
   /// Abstract const constructor. This constructor enables subclasses to provide
   /// const constructors so that they can be used in const expressions.
@@ -371,12 +380,26 @@ abstract class MaterialStateUnderlineInputBorder extends UnderlineInputBorder im
   /// Creates a [MaterialStateUnderlineInputBorder] from a [MaterialPropertyResolver<InputBorder>]
   /// callback function.
   ///
-  /// If used as a regular input border, the border resolved in the default state (the
-  /// empty set of states) will be used.
+  /// [MaterialStateUnderlineInputBorder] should only be used with widgets
+  /// that document their support, like [InputDecoration.border]
+  /// (if used as a regular [InputBorder], it acts the same as
+  /// an empty `UnderlineInputBorder()` constructor).
   ///
-  /// The given callback parameter must return a non-null text style in the default
+  /// The given callback parameter must return a non-null input border in the default
   /// state.
   const factory MaterialStateUnderlineInputBorder.resolveWith(MaterialPropertyResolver<InputBorder> callback) = _MaterialStateUnderlineInputBorder;
+
+  /// Creates a [MaterialStateUnderlineInputBorder] from a [WidgetStateMap<InputBorder>].
+  ///
+  /// {@macro flutter.widgets.WidgetStateProperty.fromMap}
+  ///
+  /// [MaterialStateUnderlineInputBorder] should only be used with widgets
+  /// that document their support, like [InputDecoration.border]
+  /// (if used as a regular [InputBorder], it acts the same as
+  /// an empty `UnderlineInputBorder()` constructor).
+  ///
+  /// {@macro flutter.widgets.WidgetState.any}
+  const factory MaterialStateUnderlineInputBorder.fromMap(WidgetStateMap<InputBorder> map) = _UnderlineInputBorderMapper;
 
   /// Returns a [InputBorder] that's to be used when a Material component is in the
   /// specified state.
@@ -384,13 +407,6 @@ abstract class MaterialStateUnderlineInputBorder extends UnderlineInputBorder im
   InputBorder resolve(Set<MaterialState> states);
 }
 
-/// A [MaterialStateUnderlineInputBorder] created from a [MaterialPropertyResolver<UnderlineInputBorder>]
-/// callback alone.
-///
-/// If used as a regular input border, the border resolved in the default state will
-/// be used.
-///
-/// Used by [MaterialStateTextStyle.resolveWith].
 class _MaterialStateUnderlineInputBorder extends MaterialStateUnderlineInputBorder {
   const _MaterialStateUnderlineInputBorder(this._resolve);
 
@@ -398,6 +414,25 @@ class _MaterialStateUnderlineInputBorder extends MaterialStateUnderlineInputBord
 
   @override
   InputBorder resolve(Set<MaterialState> states) => _resolve(states);
+}
+
+class _UnderlineInputBorderMapper extends MaterialStateUnderlineInputBorder {
+  const _UnderlineInputBorderMapper(this.map);
+
+  final WidgetStateMap<InputBorder> map;
+
+  WidgetStateProperty<InputBorder> get _mapper => WidgetStateProperty<InputBorder>.fromMap(map);
+
+  @override
+  InputBorder resolve(Set<MaterialState> states) => _mapper.resolve(states);
+
+  @override
+  bool operator ==(Object other) {
+    return other is _UnderlineInputBorderMapper && other._mapper == _mapper;
+  }
+
+  @override
+  int get hashCode => _mapper.hashCode;
 }
 
 /// Interface for classes that [resolve] to a value of type `T` based

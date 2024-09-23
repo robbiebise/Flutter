@@ -184,7 +184,7 @@ class Checkbox extends StatefulWidget {
   /// The cursor for a mouse pointer when it enters or is hovering over the
   /// widget.
   ///
-  /// If [mouseCursor] is a [WidgetStateProperty<MouseCursor>],
+  /// If [mouseCursor] is a [WidgetStateMouseCursor],
   /// [WidgetStateProperty.resolve] is used for the following [WidgetState]s:
   ///
   ///  * [WidgetState.selected].
@@ -198,12 +198,6 @@ class Checkbox extends StatefulWidget {
   ///
   /// If null, then the value of [CheckboxThemeData.mouseCursor] is used. If
   /// that is also null, then [WidgetStateMouseCursor.clickable] is used.
-  ///
-  /// See also:
-  ///
-  ///  * [WidgetStateMouseCursor], a [MouseCursor] that implements
-  ///    `WidgetStateProperty` which is used in APIs that need to accept
-  ///    either a [MouseCursor] or a [WidgetStateProperty<MouseCursor>].
   final MouseCursor? mouseCursor;
 
   /// The color to use when this checkbox is checked.

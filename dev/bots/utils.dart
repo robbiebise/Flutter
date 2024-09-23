@@ -315,9 +315,8 @@ String get shuffleSeed {
     return _shuffleSeed!;
   }
   // Attempt to load from the command-line argument
-  final String? seedArg = Platform.environment['--test-randomize-ordering-seed'];
-  if (seedArg != null) {
-    return seedArg;
+  if (Platform.environment case {'--test-randomize-ordering-seed': final String seed}) {
+    return seed;
   }
   // Fallback to the original time-based seed generation
   final DateTime seedTime = DateTime.now().toUtc().subtract(const Duration(hours: 7));
@@ -343,13 +342,13 @@ Future<void> runDartTest(String workingDirectory, {
   bool collectMetrics = false,
 }) async {
   int? cpus;
-  final String? cpuVariable = Platform.environment['CPU']; // CPU is set in cirrus.yml
-  if (cpuVariable != null) {
-    cpus = int.tryParse(cpuVariable, radix: 10);
+  // CPU is set in cirrus.yml
+  if (Platform.environment case {'CPU': final String cpu}) {
+    cpus = int.tryParse(cpu, radix: 10);
     if (cpus == null) {
       foundError(<String>[
         '${red}The CPU environment variable, if set, must be set to the integer number of available cores.$reset',
-        'Actual value: "$cpuVariable"',
+        'Actual value: "$cpu"',
       ]);
       return;
     }

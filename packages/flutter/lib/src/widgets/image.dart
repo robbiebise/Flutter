@@ -1103,7 +1103,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       _imageStream!.removeListener(oldListener);
     }
     if (widget.image != oldWidget.image) {
-      _resolveImage();
+      _resolveImage(updatedImage: true);
     }
   }
 
@@ -1126,7 +1126,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
         ?? SemanticsBinding.instance.accessibilityFeatures.invertColors;
   }
 
-  void _resolveImage() {
+  void _resolveImage({bool updatedImage = false}) {
     final ScrollAwareImageProvider provider = ScrollAwareImageProvider<Object>(
       context: _scrollAwareContext,
       imageProvider: widget.image,
@@ -1136,7 +1136,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
         context,
         size: widget.width != null && widget.height != null ? Size(widget.width!, widget.height!) : null,
       ));
-    _updateSourceStream(newStream);
+    _updateSourceStream(newStream, updatedImage: updatedImage);
   }
 
   ImageStreamListener? _imageStreamListener;
@@ -1199,7 +1199,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
   // Updates _imageStream to newStream, and moves the stream listener
   // registration from the old stream to the new stream (if a listener was
   // registered).
-  void _updateSourceStream(ImageStream newStream) {
+  void _updateSourceStream(ImageStream newStream, {bool updatedImage = false}) {
     if (_imageStream?.key == newStream.key) {
       return;
     }
@@ -1208,7 +1208,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       _imageStream!.removeListener(_getListener());
     }
 
-    if (!widget.gaplessPlayback) {
+    if (updatedImage && !widget.gaplessPlayback) {
       setState(() { _replaceImage(info: null); });
     }
 

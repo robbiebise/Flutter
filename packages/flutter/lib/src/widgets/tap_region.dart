@@ -12,9 +12,11 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'editable_text.dart';
 import 'framework.dart';
+import 'navigator.dart';
 
 // Enable if you want verbose logging about tap region changes.
 const bool _kDebugTapRegion = false;
@@ -48,6 +50,12 @@ abstract class TapRegionRegistry {
 
   /// Unregister the given [RenderTapRegion] with the registry.
   void unregisterTapRegion(RenderTapRegion region);
+
+  /// Clear all registered regions.
+  void clear();
+
+  /// The set of registered regions.
+  Set<RenderTapRegion> get registeredRegions;
 
   /// Allows finding of the nearest [TapRegionRegistry], such as a
   /// [RenderTapRegionSurface].
@@ -139,6 +147,74 @@ class TapRegionSurface extends SingleChildRenderObjectWidget {
   ) {}
 }
 
+/// A navigator observer that listens for push and pop events and updates the
+/// registered tap regions in the navigator's context.
+///
+/// This observer is used by the [TapRegionSurface] to clear the registered tap
+/// regions when a new route is pushed, and to re-register the tap regions when
+/// a route is popped.
+class TapRegionNavigatorObserver extends NavigatorObserver {
+  /// Creates a [TapRegionNavigatorObserver].
+  TapRegionNavigatorObserver();
+
+  @override
+  void didPush(Route<Object?> route, Route<Object?>? previousRoute) {
+    super.didPush(route, previousRoute);
+    final TapRegionRegistry? registry = _getRegistry(route);
+    registry?.clear();
+  }
+
+  @override
+  void didPop(Route<Object?> route, Route<Object?>? previousRoute) {
+    super.didPop(route, previousRoute);
+    if (previousRoute != null) {
+      final TapRegionRegistry? registry = _getRegistry(previousRoute);
+      if (registry != null) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          _registerTapRegions(previousRoute, registry);
+        });
+      }
+    }
+  }
+
+  TapRegionRegistry? _getRegistry(Route<Object?> route) {
+    final BuildContext? context = route.navigator?.context;
+    if (context == null){
+      return null;
+    }
+    return TapRegionRegistry.maybeOf(context);
+  }
+
+  void _registerTapRegions(Route<Object?> route, TapRegionRegistry registry) {
+    final BuildContext? context = route.navigator?.context;
+    if (context == null) {
+      return;
+    }
+    final List<RenderTapRegion> regions = _findTapRegionsInElementTree(context);
+
+    for (final RenderTapRegion region in regions) {
+      // Only register the region if it's not already registered.
+      if (!registry.registeredRegions.contains(region)) {
+        registry.registerTapRegion(region);
+      }
+    }
+  }
+
+  List<RenderTapRegion> _findTapRegionsInElementTree(BuildContext context) {
+    final List<RenderTapRegion> regions = <RenderTapRegion>[];
+
+    void visitor(Element element) {
+      if (element.renderObject case final RenderTapRegion region) {
+        regions.add(region);
+      }
+      element.visitChildren(visitor);
+    }
+
+    context.visitChildElements(visitor);
+    return regions;
+  }
+}
+
 /// A render object that provides notification of a tap inside or outside of a
 /// set of registered regions, without participating in the [gesture
 /// disambiguation](https://flutter.dev/to/gesture-disambiguation) system
@@ -201,7 +277,10 @@ class RenderTapRegionSurface extends RenderProxyBoxWithHitTestBehavior implement
   @override
   void unregisterTapRegion(RenderTapRegion region) {
     assert(_tapRegionDebug('Region $region unregistered.'));
-    assert(_registeredRegions.contains(region));
+    if (!_registeredRegions.contains(region)) {
+      assert(_tapRegionDebug('Region $region was not registered.'));
+      return;
+    }
     _registeredRegions.remove(region);
     if (region.groupId != null) {
       assert(_groupIdToRegions.containsKey(region.groupId));
@@ -211,6 +290,16 @@ class RenderTapRegionSurface extends RenderProxyBoxWithHitTestBehavior implement
       }
     }
   }
+
+  @override
+  void clear() {
+    assert(_tapRegionDebug('Clearing all registered regions.'));
+    _registeredRegions.clear();
+    _groupIdToRegions.clear();
+  }
+
+  @override
+  Set<RenderTapRegion> get registeredRegions => _registeredRegions;
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {

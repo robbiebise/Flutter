@@ -1703,7 +1703,10 @@ class _WidgetsAppState extends State<WidgetsApp> with WidgetsBindingObserver {
               return widget.onGenerateInitialRoutes!(initialRouteName);
             },
           onUnknownRoute: _onUnknownRoute,
-          observers: widget.navigatorObservers!,
+          observers: <NavigatorObserver>[
+            TapRegionNavigatorObserver(),
+            ...?widget.navigatorObservers,
+          ],
           routeTraversalEdgeBehavior: kIsWeb ? TraversalEdgeBehavior.leaveFlutterView : TraversalEdgeBehavior.parentScope,
           reportsRouteUpdateToEngine: true,
         ),

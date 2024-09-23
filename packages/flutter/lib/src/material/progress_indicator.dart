@@ -145,20 +145,26 @@ abstract class ProgressIndicator extends StatefulWidget {
 
 class _LinearProgressIndicatorPainter extends CustomPainter {
   const _LinearProgressIndicatorPainter({
-    required this.backgroundColor,
+    required this.trackColor,
     required this.valueColor,
     this.value,
     required this.animationValue,
     required this.textDirection,
     required this.indicatorBorderRadius,
+    required this.stopIndicatorColor,
+    required this.stopIndicatorRadius,
+    required this.trackGap,
   });
 
-  final Color backgroundColor;
+  final Color trackColor;
   final Color valueColor;
   final double? value;
   final double animationValue;
   final TextDirection textDirection;
   final BorderRadiusGeometry indicatorBorderRadius;
+  final Color stopIndicatorColor;
+  final double stopIndicatorRadius;
+  final double trackGap;
 
   // The indeterminate progress animation displays two lines whose leading (head)
   // and trailing (tail) endpoints are defined by the following four curves.
@@ -185,33 +191,80 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = backgroundColor
+    final double effectiveTrackGap = switch (value) {
+      null || 1.0 => 0.0,
+      _ => trackGap,
+    };
+
+    final Rect trackRect;
+    if (value != null && effectiveTrackGap > 0) {
+      trackRect = switch (textDirection) {
+        TextDirection.ltr => Rect.fromLTRB(
+          clampDouble(value!, 0.0, 1.0) * size.width + effectiveTrackGap,
+          0,
+          size.width,
+          size.height,
+        ),
+        TextDirection.rtl => Rect.fromLTRB(
+          0,
+          0,
+          size.width - clampDouble(value!, 0.0, 1.0) * size.width - effectiveTrackGap,
+          size.height,
+        ),
+      };
+    } else {
+      trackRect = Offset.zero & size;
+    }
+
+    // Draw the track.
+    final RRect trackRRect = indicatorBorderRadius.resolve(textDirection).toRRect(trackRect);
+    final Paint trackPaint = Paint()
+      ..color = trackColor
       ..style = PaintingStyle.fill;
+    canvas.drawRRect(trackRRect, trackPaint);
 
-    paint.color = valueColor;
+    void drawStopIndicator() {
+      // Limit the stop indicator radius to the height of the indicator.
+      final double radius = math.min(stopIndicatorRadius, size.height / 2);
+      final Paint indicatorPaint = Paint()
+        ..color = stopIndicatorColor
+        ..style = PaintingStyle.fill;
+      final Offset position = switch (textDirection) {
+        TextDirection.rtl => Offset(size.height / 2, size.height / 2),
+        TextDirection.ltr => Offset(size.width - size.height / 2, size.height / 2),
+      };
+      canvas.drawCircle(position, radius, indicatorPaint);
+    }
 
-    void drawBar(double x, double width) {
+    // Draw the stop indicator.
+    if (value != null && stopIndicatorRadius > 0) {
+      drawStopIndicator();
+    }
+
+    void drawActiveIndicator(double x, double width) {
       if (width <= 0.0) {
         return;
       }
-
+      final Paint activeIndicatorPaint = Paint()
+        ..color = valueColor
+        ..style = PaintingStyle.fill;
       final double left = switch (textDirection) {
         TextDirection.rtl => size.width - width - x,
         TextDirection.ltr => x,
       };
 
-      final Rect rect = Offset(left, 0.0) & Size(width, size.height);
+      final Rect activeRect = Offset(left, 0.0) & Size(width, size.height);
       if (indicatorBorderRadius != BorderRadius.zero) {
-        final RRect rrect = indicatorBorderRadius.resolve(textDirection).toRRect(rect);
-        canvas.drawRRect(rrect, paint);
+        final RRect activeRRect = indicatorBorderRadius.resolve(textDirection).toRRect(activeRect);
+        canvas.drawRRect(activeRRect, activeIndicatorPaint);
       } else {
-        canvas.drawRect(rect, paint);
+        canvas.drawRect(activeRect, activeIndicatorPaint);
       }
     }
 
+    // Draw the active indicator.
     if (value != null) {
-      drawBar(0.0, clampDouble(value!, 0.0, 1.0) * size.width);
+      drawActiveIndicator(0.0, clampDouble(value!, 0.0, 1.0) * size.width);
     } else {
       final double x1 = size.width * line1Tail.transform(animationValue);
       final double width1 = size.width * line1Head.transform(animationValue) - x1;
@@ -219,19 +272,22 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
       final double x2 = size.width * line2Tail.transform(animationValue);
       final double width2 = size.width * line2Head.transform(animationValue) - x2;
 
-      drawBar(x1, width1);
-      drawBar(x2, width2);
+      drawActiveIndicator(x1, width1);
+      drawActiveIndicator(x2, width2);
     }
   }
 
   @override
   bool shouldRepaint(_LinearProgressIndicatorPainter oldPainter) {
-    return oldPainter.backgroundColor != backgroundColor
+    return oldPainter.trackColor != trackColor
         || oldPainter.valueColor != valueColor
         || oldPainter.value != value
         || oldPainter.animationValue != animationValue
         || oldPainter.textDirection != textDirection
-        || oldPainter.indicatorBorderRadius != indicatorBorderRadius;
+        || oldPainter.indicatorBorderRadius != indicatorBorderRadius
+        || oldPainter.stopIndicatorColor != stopIndicatorColor
+        || oldPainter.stopIndicatorRadius != stopIndicatorRadius
+        || oldPainter.trackGap != trackGap;
   }
 }
 
@@ -258,7 +314,7 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
 /// The indicator can be made taller by wrapping the widget with a [SizedBox].
 ///
 /// {@tool dartpad}
-/// This example shows a [LinearProgressIndicator] with a changing value.
+/// This example showcases determinate and indeterminate [LinearProgressIndicator]s.
 ///
 /// ** See code in examples/api/lib/material/progress_indicator/linear_progress_indicator.0.dart **
 /// {@end-tool}
@@ -290,7 +346,10 @@ class LinearProgressIndicator extends ProgressIndicator {
     this.minHeight,
     super.semanticsLabel,
     super.semanticsValue,
-    this.borderRadius = BorderRadius.zero,
+    this.borderRadius,
+    this.stopIndicatorColor,
+    this.stopIndicatorRadius,
+    this.trackGap,
   }) : assert(minHeight == null || minHeight > 0);
 
   /// {@template flutter.material.LinearProgressIndicator.trackColor}
@@ -315,9 +374,40 @@ class LinearProgressIndicator extends ProgressIndicator {
 
   /// The border radius of both the indicator and the track.
   ///
-  /// By default it is [BorderRadius.zero], which produces a rectangular shape
+  /// If null, then the [ProgressIndicatorThemeData.borderRadius] will be used.
+  /// If that is null, then defaults to radius of 2, which produces a rounded
+  /// shape with a rounded indicator. If [ThemeData.useMaterial3] is false,
+  /// then defaults to [BorderRadius.zero], which produces a rectangular shape
   /// with a rectangular indicator.
-  final BorderRadiusGeometry borderRadius;
+  final BorderRadiusGeometry? borderRadius;
+
+  /// The color of the stop indicator.
+  ///
+  /// If [ThemeData.useMaterial3] is false, then no stop indicator will be drawn.
+  ///
+  /// If null, then the [ProgressIndicatorThemeData.stopIndicatorColor] will be used.
+  /// If that is null, then the [ColorScheme.primary] will be used.
+  final Color? stopIndicatorColor;
+
+  /// The radius of the stop indicator.
+  ///
+  /// If [ThemeData.useMaterial3] is false, then no stop indicator will be drawn.
+  ///
+  /// Set [stopIndicatorRadius] to 0 to hide the stop indicator.
+  ///
+  /// If null, then the [ProgressIndicatorThemeData.stopIndicatorRadius] will be used.
+  /// If that is null, then defaults to 2.
+  final double? stopIndicatorRadius;
+
+  /// The gap between the track and the indicator.
+  ///
+  /// If [ThemeData.useMaterial3] is false, then no track gap will be drawn.
+  ///
+  /// Set [trackGap] to 0 to hide the track gap.
+  ///
+  /// If null, then the [ProgressIndicatorThemeData.trackGap] will be used.
+  /// If that is null, then defaults to 4.
+  final double? trackGap;
 
   @override
   State<LinearProgressIndicator> createState() => _LinearProgressIndicatorState();
@@ -366,30 +456,43 @@ class _LinearProgressIndicatorState extends State<LinearProgressIndicator> with 
     final double minHeight = widget.minHeight ??
       indicatorTheme.linearMinHeight ??
       defaults.linearMinHeight!;
+    final BorderRadiusGeometry borderRadius = widget.borderRadius
+      ?? indicatorTheme.borderRadius
+      ?? defaults.borderRadius!;
+    final Color stopIndicatorColor = widget.stopIndicatorColor ??
+      indicatorTheme.stopIndicatorColor ??
+      defaults.stopIndicatorColor!;
+    final double stopIndicatorRadius = widget.stopIndicatorRadius ??
+      indicatorTheme.stopIndicatorRadius ??
+      defaults.stopIndicatorRadius!;
+    final double trackGap = widget.trackGap ??
+      indicatorTheme.trackGap ??
+      defaults.trackGap!;
 
     return widget._buildSemanticsWrapper(
       context: context,
-      child: Container(
-        // Clip is only needed with indeterminate progress indicators
-        clipBehavior: (widget.borderRadius != BorderRadius.zero && widget.value == null)
-            ? Clip.antiAlias
-            : Clip.none,
-        decoration: ShapeDecoration(
-          color: trackColor,
-          shape: RoundedRectangleBorder(borderRadius: widget.borderRadius),
-        ),
-        constraints: BoxConstraints(
-          minWidth: double.infinity,
-          minHeight: minHeight,
-        ),
-        child: CustomPaint(
-          painter: _LinearProgressIndicatorPainter(
-            backgroundColor: trackColor,
-            valueColor: widget._getValueColor(context, defaultColor: defaults.color),
-            value: widget.value, // may be null
-            animationValue: animationValue, // ignored if widget.value is not null
-            textDirection: textDirection,
-            indicatorBorderRadius: widget.borderRadius,
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        clipBehavior: (borderRadius != BorderRadius.zero && widget.value == null)
+          ? Clip.antiAlias
+          : Clip.none,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: double.infinity,
+            minHeight: minHeight,
+          ),
+          child: CustomPaint(
+            painter: _LinearProgressIndicatorPainter(
+              trackColor: trackColor,
+              valueColor: widget._getValueColor(context, defaultColor: defaults.color),
+              value: widget.value, // may be null
+              animationValue: animationValue, // ignored if widget.value is not null
+              textDirection: textDirection,
+              indicatorBorderRadius: borderRadius,
+              stopIndicatorColor: stopIndicatorColor,
+              stopIndicatorRadius: stopIndicatorRadius,
+              trackGap: trackGap,
+            ),
           ),
         ),
       ),
@@ -1063,6 +1166,18 @@ class _LinearProgressIndicatorDefaultsM2 extends ProgressIndicatorThemeData {
 
   @override
   double get linearMinHeight => 4.0;
+
+  @override
+  BorderRadius get borderRadius => BorderRadius.zero;
+
+  @override
+  Color get stopIndicatorColor => _colors.primary;
+
+  @override
+  double? get stopIndicatorRadius => 4.0 / 2;
+
+  @override
+  double? get trackGap => 4.0;
 }
 
 // BEGIN GENERATED TOKEN PROPERTIES - ProgressIndicator
@@ -1099,6 +1214,18 @@ class _LinearProgressIndicatorDefaultsM3 extends ProgressIndicatorThemeData {
 
   @override
   double get linearMinHeight => 4.0;
+
+  @override
+  BorderRadius get borderRadius => BorderRadius.circular(4.0 / 2);
+
+  @override
+  Color get stopIndicatorColor => _colors.primary;
+
+  @override
+  double? get stopIndicatorRadius => 4.0 / 2;
+
+  @override
+  double? get trackGap => 4.0;
 }
 
 // END GENERATED TOKEN PROPERTIES - ProgressIndicator

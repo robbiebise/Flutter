@@ -761,6 +761,7 @@ class _ExpansionTileState extends State<ExpansionTile> with SingleTickerProvider
                 subtitle: widget.subtitle,
                 trailing: widget.showTrailingIcon ? widget.trailing ?? _buildTrailingIcon(context) : null,
                 minTileHeight: widget.minTileHeight,
+                shape: ShapeBorder.lerp(widget.shape, widget.collapsedShape, _animationController.value),
                 internalAddSemanticForOnTap: widget.internalAddSemanticForOnTap,
               ),
             ),

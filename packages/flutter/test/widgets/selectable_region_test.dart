@@ -104,8 +104,9 @@ void main() {
       await gesture.down(const Offset(200.0, 200.0));
       await tester.pump();
       await gesture.up();
-      expect(renderSelectionSpy.events.length, 1);
+      expect(renderSelectionSpy.events.length, 2);
       expect(renderSelectionSpy.events[0], isA<SelectWordSelectionEvent>());
+      expect(renderSelectionSpy.events[1], isA<SelectionFinalizedSelectionEvent>());
       final SelectWordSelectionEvent selectionEvent = renderSelectionSpy.events[0] as SelectWordSelectionEvent;
       expect(selectionEvent.globalPosition, const Offset(200.0, 200.0));
     });
@@ -135,8 +136,9 @@ void main() {
       await gesture.down(const Offset(200.0, 200.0));
       await tester.pump();
       await gesture.up();
-      expect(renderSelectionSpy.events.length, 1);
+      expect(renderSelectionSpy.events.length, 2);
       expect(renderSelectionSpy.events[0], isA<SelectWordSelectionEvent>());
+      expect(renderSelectionSpy.events[1], isA<SelectionFinalizedSelectionEvent>());
       final SelectWordSelectionEvent selectionEvent = renderSelectionSpy.events[0] as SelectWordSelectionEvent;
       expect(selectionEvent.globalPosition, const Offset(200.0, 200.0));
     });
@@ -229,7 +231,7 @@ void main() {
       await gesture.moveTo(const Offset(200.0, 100.0));
       await gesture.up();
       expect(
-        renderSelectionSpy.events.every((SelectionEvent element) => element is ClearSelectionEvent),
+        renderSelectionSpy.events.every((SelectionEvent element) => element is ClearSelectionEvent || element is SelectionFinalizedSelectionEvent),
         isTrue
       );
     });
@@ -472,11 +474,12 @@ void main() {
       await tester.pump();
       await gesture.up();
       await tester.pumpAndSettle();
-      expect(renderSelectionSpy.events.length, 2);
+      expect(renderSelectionSpy.events.length, 3);
       expect(renderSelectionSpy.events[0], isA<SelectionEdgeUpdateEvent>());
       expect((renderSelectionSpy.events[0] as SelectionEdgeUpdateEvent).type, SelectionEventType.startEdgeUpdate);
       expect(renderSelectionSpy.events[1], isA<SelectionEdgeUpdateEvent>());
       expect((renderSelectionSpy.events[1] as SelectionEdgeUpdateEvent).type, SelectionEventType.endEdgeUpdate);
+      expect(renderSelectionSpy.events[2], isA<SelectionFinalizedSelectionEvent>());
     }, skip: kIsWeb); // https://github.com/flutter/flutter/issues/102410.
 
     testWidgets('touch long press sends select-word event', (WidgetTester tester) async {
@@ -501,8 +504,9 @@ void main() {
       addTearDown(gesture.removePointer);
       await tester.pump(const Duration(milliseconds: 500));
       await gesture.up();
-      expect(renderSelectionSpy.events.length, 1);
+      expect(renderSelectionSpy.events.length, 2);
       expect(renderSelectionSpy.events[0], isA<SelectWordSelectionEvent>());
+      expect(renderSelectionSpy.events[1], isA<SelectionFinalizedSelectionEvent>());
       final SelectWordSelectionEvent selectionEvent = renderSelectionSpy.events[0] as SelectWordSelectionEvent;
       expect(selectionEvent.globalPosition, const Offset(200.0, 200.0));
     });
@@ -536,8 +540,9 @@ void main() {
       renderSelectionSpy.events.clear();
       await gesture.moveTo(const Offset(200.0, 50.0));
       await gesture.up();
-      expect(renderSelectionSpy.events.length, 1);
+      expect(renderSelectionSpy.events.length, 2);
       expect(renderSelectionSpy.events[0].type, SelectionEventType.endEdgeUpdate);
+      expect(renderSelectionSpy.events[1].type, SelectionEventType.selectionFinalized);
       final SelectionEdgeUpdateEvent edgeEvent = renderSelectionSpy.events[0] as SelectionEdgeUpdateEvent;
       expect(edgeEvent.globalPosition, const Offset(200.0, 50.0));
       expect(edgeEvent.granularity, TextGranularity.word);
@@ -611,8 +616,9 @@ void main() {
         addTearDown(selectGesture.removePointer);
         await tester.pump(const Duration(milliseconds: 500));
         await selectGesture.up();
-        expect(renderSelectionSpy.events.length, 1);
+        expect(renderSelectionSpy.events.length, 2);
         expect(renderSelectionSpy.events[0], isA<SelectWordSelectionEvent>());
+        expect(renderSelectionSpy.events[1], isA<SelectionFinalizedSelectionEvent>());
 
         renderSelectionSpy.events.clear();
          final TestGesture scrollGesture =
@@ -648,7 +654,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await gesture.up();
       expect(
-        renderSelectionSpy.events.every((SelectionEvent element) => element is SelectionEdgeUpdateEvent),
+        renderSelectionSpy.events.every((SelectionEvent element) => element is SelectionEdgeUpdateEvent || element is SelectionFinalizedSelectionEvent),
         isTrue,
       );
     });
@@ -4809,6 +4815,256 @@ void main() {
     skip: kIsWeb, // [intended] Web uses its native context menu.
   );
 
+  testWidgets('SelectionListener onSelectionChanged is accurate with WidgetSpans', (WidgetTester tester) async {
+    final FocusNode focusNode = FocusNode();
+    final List<String> dataModel = <String>[
+      'Hello world, ',
+      'how are you today.',
+    ];
+    SelectionDetails? currentSelectionDetails;
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SelectableRegion(
+          focusNode: focusNode,
+          selectionControls: materialTextSelectionControls,
+          child: SelectionListener(
+            onSelectionChanged: (SelectionDetails selectionDetails) {
+              currentSelectionDetails = selectionDetails;
+            },
+            child: Column(
+              children: <Widget>[
+                Text.rich(
+                  TextSpan(
+                    text: dataModel[0],
+                    children: <InlineSpan>[
+                      WidgetSpan(
+                        child: Text(
+                          dataModel[1],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final RenderParagraph paragraph1 = tester.renderObject<RenderParagraph>(find.descendant(of: find.textContaining('Hello world'), matching: find.byType(RichText).first));
+    final RenderParagraph paragraph2 = tester.renderObject<RenderParagraph>(find.descendant(of: find.text('how are you today.'), matching: find.byType(RichText)));
+    final TestGesture mouseGesture = await tester.startGesture(textOffsetToPosition(paragraph1, 0), kind: PointerDeviceKind.mouse);
+
+    addTearDown(mouseGesture.removePointer);
+    await tester.pump();
+
+    // Selection on paragraph1.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 1));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 1);
+
+    // Selection on paragraph1.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 10));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 10);
+
+    // Selection on paragraph1 and paragraph2.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph2, 10));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 23);
+    await mouseGesture.up();
+    await tester.pump();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 23);
+
+    // Collapsed selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph2, 3));
+    await tester.pump();
+    await mouseGesture.up();
+    await tester.pumpAndSettle(kDoubleTapTimeout);
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 16);
+    expect(currentSelectionDetails!.localEndOffset, 16);
+
+    // Backwards selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph2, 4));
+    await tester.pump();
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 0));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 17);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+    await mouseGesture.up();
+    await tester.pump();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 17);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+
+    // Collapsed selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph1, 0));
+    await tester.pumpAndSettle();
+    await mouseGesture.up();
+    await tester.pumpAndSettle(kDoubleTapTimeout);
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+  });
+
+  testWidgets('onSelectionChanged SelectedContentRange is accurate', (WidgetTester tester) async {
+    final FocusNode focusNode = FocusNode();
+    final List<String> dataModel = <String>[
+      'How are you?',
+      'Good, and you?',
+      'Fine, thank you.',
+    ];
+    SelectionDetails? currentSelectionDetails;
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SelectableRegion(
+          focusNode: focusNode,
+          selectionControls: materialTextSelectionControls,
+          child: SelectionListener(
+            onSelectionChanged: (SelectionDetails selectionDetails) {
+              currentSelectionDetails = selectionDetails;
+            },
+            child: Column(
+              children: <Widget>[
+                Text(
+                  dataModel[0],
+                ),
+                Text(
+                  dataModel[1],
+                ),
+                Text(
+                  dataModel[2],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final RenderParagraph paragraph1 = tester.renderObject<RenderParagraph>(find.descendant(of: find.text('How are you?'), matching: find.byType(RichText)));
+    final RenderParagraph paragraph2 = tester.renderObject<RenderParagraph>(find.descendant(of: find.text('Good, and you?'), matching: find.byType(RichText)));
+    final RenderParagraph paragraph3 = tester.renderObject<RenderParagraph>(find.descendant(of: find.text('Fine, thank you.'), matching: find.byType(RichText)));
+    final TestGesture mouseGesture = await tester.startGesture(textOffsetToPosition(paragraph1, 4), kind: PointerDeviceKind.mouse);
+
+    addTearDown(mouseGesture.removePointer);
+    await tester.pump();
+
+    // Selection on paragraph1.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 7));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 7);
+
+    // Selection on paragraph1.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 10));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 10);
+
+    // Selection on paragraph1 and paragraph2.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph2, 10));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 22);
+
+    // Selection on paragraph1, paragraph2, and paragraph3.
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph3, 10));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 36);
+    await mouseGesture.up();
+    await tester.pump();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 4);
+    expect(currentSelectionDetails!.localEndOffset, 36);
+
+    // Collapsed selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph1, 3));
+    await tester.pump();
+    await mouseGesture.up();
+    await tester.pumpAndSettle(kDoubleTapTimeout);
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 3);
+    expect(currentSelectionDetails!.localEndOffset, 3);
+
+    // Backwards selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph3, 4));
+    await tester.pump();
+    await mouseGesture.moveTo(textOffsetToPosition(paragraph1, 0));
+    await tester.pumpAndSettle();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isFalse);
+    expect(currentSelectionDetails!.localStartOffset, 30);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+    await mouseGesture.up();
+    await tester.pump();
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.uncollapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 30);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+
+    // Collapsed selection.
+    await mouseGesture.down(textOffsetToPosition(paragraph1, 0));
+    await tester.pumpAndSettle();
+    await mouseGesture.up();
+    await tester.pumpAndSettle(kDoubleTapTimeout);
+    expect(currentSelectionDetails, isNotNull);
+    expect(currentSelectionDetails!.status, SelectionStatus.collapsed);
+    expect(currentSelectionDetails!.selectionFinalized, isTrue);
+    expect(currentSelectionDetails!.localStartOffset, 0);
+    expect(currentSelectionDetails!.localEndOffset, 0);
+  });
+
   testWidgets('onSelectionChange is called when the selection changes through gestures', (WidgetTester tester) async {
     SelectedContent? content;
     final FocusNode focusNode = FocusNode();
@@ -5251,6 +5507,11 @@ class RenderSelectionSpy extends RenderProxyBox
   }
 
   @override
+  SelectedContentRange getSelection() {
+    return const SelectedContentRange.empty();
+  }
+
+  @override
   final SelectionGeometry value = const SelectionGeometry(
     hasContent: true,
     status: SelectionStatus.uncollapsed,
@@ -5330,6 +5591,11 @@ class RenderSelectAll extends RenderProxyBox
   @override
   SelectedContent? getSelectedContent() {
     return const SelectedContent(plainText: 'content');
+  }
+
+  @override
+  SelectedContentRange getSelection() {
+    return const SelectedContentRange.empty();
   }
 
   @override
